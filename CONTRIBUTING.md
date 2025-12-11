@@ -46,13 +46,50 @@ This project follows a standard code of conduct. Please be respectful and constr
 
 ## Development Setup
 
-### 1. Install Dependencies
+### 1. Install Pre-commit Hooks (Required)
+
+Pre-commit hooks ensure code quality and security before commits. This is the most important step for contributing.
 
 ```bash
-# Install pre-commit hooks
-pip install pre-commit
-pre-commit install
+# Quick setup (pre-commit only)
+./scripts/setup-pre-commit.sh
 
+# Full setup with all tools
+./scripts/setup-pre-commit.sh --install-tools
+```
+
+**What the hooks check:**
+
+| Category | Checks |
+|----------|--------|
+| Terraform | Format, validate, TFLint, TFSec, Checkov, terraform-docs |
+| Shell | ShellCheck, shfmt formatting |
+| Kubernetes | Kubeconform validation |
+| YAML/JSON | Syntax validation, yamllint |
+| Markdown | markdownlint |
+| Python | Black, isort, Flake8 |
+| Secrets | Gitleaks, detect-secrets |
+| Commits | Conventional commit format |
+
+**Manual hook commands:**
+
+```bash
+# Run all hooks on all files
+pre-commit run --all-files
+
+# Run specific hook
+pre-commit run terraform_fmt --all-files
+
+# Update hooks to latest versions
+pre-commit autoupdate
+
+# Skip hooks (emergency only - not recommended)
+git commit --no-verify -m "message"
+```
+
+### 2. Verify Tools
+
+```bash
 # Verify Terraform
 terraform version
 
@@ -60,14 +97,14 @@ terraform version
 az version
 ```
 
-### 2. Configure Azure Authentication
+### 3. Configure Azure Authentication
 
 ```bash
 az login
 az account set --subscription "your-subscription-id"
 ```
 
-### 3. Initialize Terraform (for local development)
+### 4. Initialize Terraform (for local development)
 
 ```bash
 cd terraform
