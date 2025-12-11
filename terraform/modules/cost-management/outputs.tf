@@ -46,11 +46,11 @@ output "advisor_recommendations" {
   value = {
     for rec in data.azurerm_advisor_recommendations.cost.recommendations :
     rec.recommendation_name => {
-      category     = rec.category
-      impact       = rec.impact
-      description  = rec.description
-      resource_id  = rec.resource_id
-      suppressed   = rec.suppression_ids
+      category    = rec.category
+      impact      = rec.impact
+      description = rec.description
+      resource_id = rec.resource_id
+      suppressed  = rec.suppression_ids
     }
   }
   description = "Azure Advisor cost recommendations"

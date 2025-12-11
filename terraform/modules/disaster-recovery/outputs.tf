@@ -87,10 +87,10 @@ output "retention_policy" {
 # Region Information
 output "dr_configuration" {
   value = {
-    primary_region    = var.primary_location
-    dr_region         = var.dr_location
-    storage_type      = var.storage_redundancy
-    cross_region_restore = var.enable_cross_region_restore
+    primary_region        = var.primary_location
+    dr_region             = var.dr_location
+    storage_type          = var.storage_redundancy
+    cross_region_restore  = var.enable_cross_region_restore
     site_recovery_enabled = var.enable_site_recovery
   }
   description = "Disaster recovery configuration summary"

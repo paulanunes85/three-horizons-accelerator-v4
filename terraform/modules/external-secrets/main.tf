@@ -204,9 +204,9 @@ resource "kubernetes_manifest" "cluster_secret_store" {
     spec = {
       provider = {
         azurekv = {
-          authType    = "WorkloadIdentity"
-          vaultUrl    = var.key_vault_uri
-          tenantId    = data.azurerm_client_config.current.tenant_id
+          authType = "WorkloadIdentity"
+          vaultUrl = var.key_vault_uri
+          tenantId = data.azurerm_client_config.current.tenant_id
           serviceAccountRef = {
             name      = "${local.eso_release_name}-controller"
             namespace = local.eso_namespace
@@ -283,8 +283,8 @@ resource "kubernetes_manifest" "push_secret_store" {
       namespace = local.eso_namespace
     }
     spec = {
-      updatePolicy = "Replace"
-      deletionPolicy = "Delete"
+      updatePolicy    = "Replace"
+      deletionPolicy  = "Delete"
       refreshInterval = "1h"
       secretStoreRefs = [
         {

@@ -17,7 +17,7 @@
 
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -52,7 +52,7 @@ terraform {
       version = ">= 3.5"
     }
   }
-  
+
   # Backend configuration - uncomment and configure for your environment
   # backend "azurerm" {
   #   resource_group_name  = "rg-terraform-state"
@@ -76,7 +76,7 @@ provider "azurerm" {
       prevent_deletion_if_contains_resources = false
     }
   }
-  
+
   subscription_id = var.azure_subscription_id
 }
 
@@ -120,7 +120,7 @@ provider "kubectl" {
 variable "customer_name" {
   description = "Customer name for resource naming (lowercase, no spaces)"
   type        = string
-  
+
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", var.customer_name))
     error_message = "Customer name must be lowercase alphanumeric with hyphens only."
@@ -131,7 +131,7 @@ variable "environment" {
   description = "Environment (dev, staging, prod)"
   type        = string
   default     = "prod"
-  
+
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)
     error_message = "Environment must be dev, staging, or prod."
@@ -179,7 +179,7 @@ variable "deployment_mode" {
   description = "Deployment mode (express, standard, enterprise)"
   type        = string
   default     = "standard"
-  
+
   validation {
     condition     = contains(["express", "standard", "enterprise"], var.deployment_mode)
     error_message = "Deployment mode must be express, standard, or enterprise."
@@ -228,7 +228,7 @@ variable "tags" {
 
 locals {
   name_prefix = "${var.customer_name}-${var.environment}"
-  
+
   common_tags = merge(var.tags, {
     "three-horizons/customer"        = var.customer_name
     "three-horizons/environment"     = var.environment
@@ -236,7 +236,7 @@ locals {
     "three-horizons/managed-by"      = "terraform"
     "three-horizons/version"         = "1.0.0"
   })
-  
+
   # Deployment mode configurations
   deployment_configs = {
     express = {
@@ -264,7 +264,7 @@ locals {
       enable_ai         = true
     }
   }
-  
+
   config = local.deployment_configs[var.deployment_mode]
 }
 
@@ -284,14 +284,14 @@ resource "azurerm_resource_group" "main" {
 
 module "networking" {
   source = "./modules/networking"
-  
+
   customer_name       = var.customer_name
   environment         = var.environment
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
-  
+
   vnet_cidr = "10.0.0.0/16"
-  
+
   subnet_config = {
     aks_nodes_cidr         = "10.0.0.0/22"
     aks_pods_cidr          = "10.0.16.0/20"
@@ -299,13 +299,13 @@ module "networking" {
     bastion_cidr           = "10.0.5.0/26"
     app_gateway_cidr       = "10.0.6.0/24"
   }
-  
+
   enable_bastion     = var.deployment_mode == "enterprise"
   enable_app_gateway = var.deployment_mode == "enterprise"
-  
+
   dns_zone_name   = var.domain_name
   create_dns_zone = true
-  
+
   tags = local.common_tags
 }
 
@@ -315,15 +315,15 @@ module "networking" {
 
 module "security" {
   source = "./modules/security"
-  
+
   customer_name       = var.customer_name
   environment         = var.environment
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
   tenant_id           = var.azure_tenant_id
-  
+
   aks_oidc_issuer_url = module.aks.oidc_issuer_url
-  
+
   key_vault_config = {
     sku_name                      = "standard"
     soft_delete_retention_days    = 90
@@ -337,28 +337,28 @@ module "security" {
       virtual_network_subnet_ids = [module.networking.subnet_ids.aks_nodes]
     }
   }
-  
+
   admin_group_id      = var.admin_group_id
   subnet_id           = module.networking.subnet_ids.private_endpoints
   private_dns_zone_id = module.networking.private_dns_zone_ids.keyvault
-  
+
   workload_identities = {
     "rhdh" = {
-      namespace           = "rhdh"
-      service_account     = "rhdh"
-      key_vault_role      = "Key Vault Secrets User"
+      namespace                   = "rhdh"
+      service_account             = "rhdh"
+      key_vault_role              = "Key Vault Secrets User"
       additional_role_assignments = []
     }
     "argocd" = {
-      namespace           = "argocd"
-      service_account     = "argocd-server"
-      key_vault_role      = "Key Vault Secrets User"
+      namespace                   = "argocd"
+      service_account             = "argocd-server"
+      key_vault_role              = "Key Vault Secrets User"
       additional_role_assignments = []
     }
   }
-  
+
   tags = local.common_tags
-  
+
   depends_on = [module.networking]
 }
 
@@ -368,16 +368,16 @@ module "security" {
 
 module "aks" {
   source = "./modules/aks-cluster"
-  
+
   customer_name       = var.customer_name
   environment         = var.environment
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
-  
+
   kubernetes_version = "1.29"
-  
+
   network_config = {
-    vnet_id        = module.networking.vnet_id
+    vnet_id         = module.networking.vnet_id
     nodes_subnet_id = module.networking.subnet_ids.aks_nodes
     pods_subnet_id  = module.networking.subnet_ids.aks_pods
     network_plugin  = "azure"
@@ -385,7 +385,7 @@ module "aks" {
     service_cidr    = "10.1.0.0/16"
     dns_service_ip  = "10.1.0.10"
   }
-  
+
   default_node_pool = {
     name                = "system"
     node_count          = local.config.aks_node_count
@@ -398,7 +398,7 @@ module "aks" {
     enable_auto_scaling = true
     zones               = local.config.enable_ha ? ["1", "2", "3"] : null
   }
-  
+
   additional_node_pools = var.deployment_mode == "enterprise" ? {
     "workload" = {
       name                = "workload"
@@ -415,20 +415,20 @@ module "aks" {
       zones       = ["1", "2", "3"]
     }
   } : {}
-  
-  enable_workload_identity      = true
-  enable_azure_policy           = true
-  enable_defender               = var.environment == "prod"
-  enable_image_cleaner          = true
-  enable_cost_analysis          = true
+
+  enable_workload_identity       = true
+  enable_azure_policy            = true
+  enable_defender                = var.environment == "prod"
+  enable_image_cleaner           = true
+  enable_cost_analysis           = true
   enable_vertical_pod_autoscaler = true
-  
+
   admin_group_ids = [var.admin_group_id]
-  
+
   private_dns_zone_id = module.networking.private_dns_zone_ids.aks
-  
+
   tags = local.common_tags
-  
+
   depends_on = [module.networking]
 }
 
@@ -438,19 +438,19 @@ module "aks" {
 
 module "databases" {
   source = "./modules/databases"
-  
+
   customer_name       = var.customer_name
   environment         = var.environment
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
-  
+
   subnet_id = module.networking.subnet_ids.private_endpoints
-  
+
   private_dns_zone_ids = {
     postgres = module.networking.private_dns_zone_ids.postgres
     redis    = module.networking.private_dns_zone_ids.redis
   }
-  
+
   postgresql_config = {
     enabled               = local.config.enable_databases
     sku_name              = var.deployment_mode == "express" ? "B_Standard_B1ms" : "GP_Standard_D2s_v3"
@@ -462,7 +462,7 @@ module "databases" {
     high_availability     = local.config.enable_ha
     databases             = ["rhdh", "backstage"]
   }
-  
+
   redis_config = {
     enabled             = local.config.enable_databases
     sku_name            = var.deployment_mode == "express" ? "Basic" : "Standard"
@@ -472,11 +472,11 @@ module "databases" {
     minimum_tls_version = "1.2"
     maxmemory_policy    = "volatile-lru"
   }
-  
+
   key_vault_id = module.security.key_vault_id
-  
+
   tags = local.common_tags
-  
+
   depends_on = [module.networking, module.security]
 }
 
@@ -487,20 +487,20 @@ module "databases" {
 module "ai_foundry" {
   source = "./modules/ai-foundry"
   count  = var.enable_ai_foundry && local.config.enable_ai ? 1 : 0
-  
+
   customer_name       = var.customer_name
   environment         = var.environment
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
-  
+
   subnet_id = module.networking.subnet_ids.private_endpoints
-  
+
   private_dns_zone_ids = {
     openai            = module.networking.private_dns_zone_ids.openai
     cognitiveservices = module.networking.private_dns_zone_ids.cognitiveservices
     search            = module.networking.private_dns_zone_ids.search
   }
-  
+
   openai_config = {
     enabled  = true
     sku_name = "S0"
@@ -528,7 +528,7 @@ module "ai_foundry" {
       }
     ]
   }
-  
+
   ai_search_config = {
     enabled                       = true
     sku_name                      = var.deployment_mode == "enterprise" ? "standard2" : "standard"
@@ -537,17 +537,17 @@ module "ai_foundry" {
     semantic_search_sku           = "standard"
     public_network_access_enabled = false
   }
-  
+
   content_safety_config = {
     enabled  = true
     sku_name = "S0"
   }
-  
+
   key_vault_id               = module.security.key_vault_id
   log_analytics_workspace_id = module.observability.log_analytics_workspace_id
-  
+
   tags = local.common_tags
-  
+
   depends_on = [module.networking, module.security]
 }
 
@@ -557,24 +557,24 @@ module "ai_foundry" {
 
 module "observability" {
   source = "./modules/observability"
-  
+
   customer_name       = var.customer_name
   environment         = var.environment
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
-  
+
   aks_cluster_id = module.aks.cluster_id
-  
+
   grafana_admin_group_id  = var.admin_group_id
   grafana_viewer_group_id = ""
-  
+
   enable_container_insights = true
   retention_days            = var.environment == "prod" ? 90 : 30
-  
-  alert_email_receivers = []  # Configure as needed
-  
+
+  alert_email_receivers = [] # Configure as needed
+
   tags = local.common_tags
-  
+
   depends_on = [module.aks]
 }
 
@@ -584,30 +584,30 @@ module "observability" {
 
 module "argocd" {
   source = "./modules/argocd"
-  
+
   customer_name = var.customer_name
   environment   = var.environment
   namespace     = "argocd"
-  
+
   chart_version = "5.51.0"
-  
+
   domain_name = var.domain_name
   github_org  = var.github_org
-  
+
   github_app_id            = var.github_app_id
   github_app_client_id     = var.github_app_client_id
   github_app_client_secret = var.github_app_client_secret
-  
+
   admin_password_hash = var.argocd_admin_password
-  
+
   ha_enabled     = local.config.enable_ha
   ingress_class  = "nginx"
   cluster_issuer = "letsencrypt-prod"
-  
+
   azure_ad_admin_group_id = var.admin_group_id
-  
+
   tags = local.common_tags
-  
+
   depends_on = [module.aks, module.security]
 }
 
@@ -623,16 +623,16 @@ output "dns_name_servers" {
 output "platform_urls" {
   description = "Platform service URLs"
   value = {
-    argocd   = "https://argocd.${var.domain_name}"
-    rhdh     = "https://rhdh.${var.domain_name}"
-    grafana  = module.observability.grafana_endpoint
+    argocd           = "https://argocd.${var.domain_name}"
+    rhdh             = "https://rhdh.${var.domain_name}"
+    grafana          = module.observability.grafana_endpoint
     prometheus_query = module.observability.prometheus_query_endpoint
   }
 }
 
 output "next_steps" {
   description = "Post-deployment instructions"
-  value = <<-EOT
+  value       = <<-EOT
     
     ✅ THREE HORIZONS PLATFORM DEPLOYED SUCCESSFULLY!
     

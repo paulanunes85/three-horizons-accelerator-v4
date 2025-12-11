@@ -17,7 +17,7 @@ module "naming" {
   environment  = var.environment
   location     = var.location
   instance     = var.instance
-  org_code     = var.org_code  # Optional: "ms", "cont", etc.
+  org_code     = var.org_code # Optional: "ms", "cont", etc.
 }
 
 # -----------------------------------------------------------------------------
@@ -39,14 +39,14 @@ module "networking" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module outputs
-  vnet_name           = module.naming.virtual_network
-  aks_subnet_name     = module.naming.subnet_aks
-  db_subnet_name      = module.naming.subnet_db
-  pe_subnet_name      = module.naming.subnet_pe
-  nsg_name            = module.naming.network_security_group
-  
+  vnet_name       = module.naming.virtual_network
+  aks_subnet_name = module.naming.subnet_aks
+  db_subnet_name  = module.naming.subnet_db
+  pe_subnet_name  = module.naming.subnet_pe
+  nsg_name        = module.naming.network_security_group
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -60,12 +60,12 @@ module "aks_cluster" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module outputs
-  cluster_name        = module.naming.aks_cluster
-  node_pool_name      = module.naming.aks_node_pool_system
-  identity_name       = module.naming.managed_identity_aks
-  
+  cluster_name   = module.naming.aks_cluster
+  node_pool_name = module.naming.aks_node_pool_system
+  identity_name  = module.naming.managed_identity_aks
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -79,10 +79,10 @@ module "container_registry" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module - automatically removes hyphens
-  acr_name            = module.naming.container_registry  # e.g., "crthreehorizonsprdbrs"
-  
+  acr_name = module.naming.container_registry # e.g., "crthreehorizonsprdbrs"
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -93,12 +93,12 @@ module "container_registry" {
 
 resource "azurerm_storage_account" "main" {
   # Use naming module - automatically handles constraints
-  name                     = module.naming.storage_account  # e.g., "stthreehorizonsprdbrs001"
+  name                     = module.naming.storage_account # e.g., "stthreehorizonsprdbrs001"
   resource_group_name      = azurerm_resource_group.main.name
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  
+
   tags = module.naming.tags
 }
 
@@ -111,11 +111,11 @@ module "security" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module
-  key_vault_name      = module.naming.key_vault  # e.g., "kv-threehorizons-prd-brs"
-  identity_name       = module.naming.managed_identity
-  
+  key_vault_name = module.naming.key_vault # e.g., "kv-threehorizons-prd-brs"
+  identity_name  = module.naming.managed_identity
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -129,11 +129,11 @@ module "databases" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module
-  server_name         = module.naming.postgresql_server  # e.g., "psql-threehorizons-prd-brs"
-  database_name       = module.naming.postgresql_database
-  
+  server_name   = module.naming.postgresql_server # e.g., "psql-threehorizons-prd-brs"
+  database_name = module.naming.postgresql_database
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -147,12 +147,12 @@ module "observability" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module
-  log_analytics_name  = module.naming.log_analytics_workspace
-  app_insights_name   = module.naming.application_insights
-  grafana_name        = module.naming.grafana
-  
+  log_analytics_name = module.naming.log_analytics_workspace
+  app_insights_name  = module.naming.application_insights
+  grafana_name       = module.naming.grafana
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -167,12 +167,12 @@ module "ai_foundry" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module
-  openai_name         = module.naming.openai_service
-  search_name         = module.naming.search_service
-  ai_hub_name         = module.naming.ai_hub
-  
+  openai_name = module.naming.openai_service
+  search_name = module.naming.search_service
+  ai_hub_name = module.naming.ai_hub
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -187,10 +187,10 @@ module "purview" {
 
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  
+
   # Use naming module
-  purview_name        = module.naming.purview_account
-  
+  purview_name = module.naming.purview_account
+
   # ... other variables
   tags = module.naming.tags
 }
@@ -208,7 +208,7 @@ module "defender" {
 # -----------------------------------------------------------------------------
 
 resource "azurerm_private_endpoint" "keyvault" {
-  name                = "${module.naming.private_endpoint}-kv"  # pe-threehorizons-prd-brs-kv
+  name                = "${module.naming.private_endpoint}-kv" # pe-threehorizons-prd-brs-kv
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
   subnet_id           = module.networking.pe_subnet_id
@@ -219,12 +219,12 @@ resource "azurerm_private_endpoint" "keyvault" {
     is_manual_connection           = false
     subresource_names              = ["vault"]
   }
-  
+
   tags = module.naming.tags
 }
 
 resource "azurerm_private_endpoint" "acr" {
-  name                = "${module.naming.private_endpoint}-acr"  # pe-threehorizons-prd-brs-acr
+  name                = "${module.naming.private_endpoint}-acr" # pe-threehorizons-prd-brs-acr
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
   subnet_id           = module.networking.pe_subnet_id
@@ -235,6 +235,6 @@ resource "azurerm_private_endpoint" "acr" {
     is_manual_connection           = false
     subresource_names              = ["registry"]
   }
-  
+
   tags = module.naming.tags
 }

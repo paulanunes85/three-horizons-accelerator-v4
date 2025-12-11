@@ -35,3 +35,4 @@ output "scope_map_ids" {
     ci_push  = azurerm_container_registry_scope_map.ci_push.id
     readonly = azurerm_container_registry_scope_map.readonly.id
   }
+}

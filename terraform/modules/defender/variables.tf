@@ -65,14 +65,14 @@ variable "enable_jit_access" {
 variable "auto_provisioning_settings" {
   description = "Auto-provisioning settings for agents"
   type = object({
-    log_analytics_agent     = bool
+    log_analytics_agent      = bool
     vulnerability_assessment = bool
-    defender_for_containers = bool
+    defender_for_containers  = bool
   })
   default = {
-    log_analytics_agent     = true
+    log_analytics_agent      = true
     vulnerability_assessment = true
-    defender_for_containers = true
+    defender_for_containers  = true
   }
 }
 

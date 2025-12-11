@@ -19,10 +19,10 @@ locals {
   rsv_name = "rsv-${var.customer_name}-${var.environment}-${var.primary_region_short}"
 
   common_tags = merge(var.tags, {
-    "app.kubernetes.io/managed-by"  = "terraform"
-    "platform.three-horizons/tier"  = "disaster-recovery"
-    "disaster-recovery/rpo"         = var.recovery_point_objective
-    "disaster-recovery/rto"         = var.recovery_time_objective
+    "app.kubernetes.io/managed-by" = "terraform"
+    "platform.three-horizons/tier" = "disaster-recovery"
+    "disaster-recovery/rpo"        = var.recovery_point_objective
+    "disaster-recovery/rto"        = var.recovery_time_objective
   })
 
   # Backup schedule mappings

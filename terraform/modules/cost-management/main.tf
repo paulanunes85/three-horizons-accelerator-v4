@@ -16,9 +16,9 @@
 # -----------------------------------------------------------------------------
 
 locals {
-  budget_name       = "budget-${var.customer_name}-${var.environment}"
-  export_name       = "export-${var.customer_name}-${var.environment}"
-  alert_emails      = var.alert_email_addresses
+  budget_name  = "budget-${var.customer_name}-${var.environment}"
+  export_name  = "export-${var.customer_name}-${var.environment}"
+  alert_emails = var.alert_email_addresses
 
   # Calculate budget thresholds
   warning_threshold  = var.monthly_budget * 0.8
@@ -229,9 +229,9 @@ resource "azurerm_storage_container" "cost_export" {
 resource "azurerm_resource_group_cost_management_export" "main" {
   count = var.enable_cost_export ? 1 : 0
 
-  name                    = local.export_name
-  resource_group_id       = data.azurerm_resource_group.main.id
-  recurrence_type         = var.export_recurrence
+  name                         = local.export_name
+  resource_group_id            = data.azurerm_resource_group.main.id
+  recurrence_type              = var.export_recurrence
   recurrence_period_start_date = formatdate("YYYY-MM-01'T'00:00:00Z", timestamp())
   recurrence_period_end_date   = var.budget_end_date
 

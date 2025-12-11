@@ -12,92 +12,7 @@
 #
 # =============================================================================
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">= 3.75"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.23"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = ">= 2.11"
-    }
-  }
-}
-
-# =============================================================================
-# VARIABLES
-# =============================================================================
-
-variable "customer_name" {
-  description = "Customer name for resource naming"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment (dev, staging, prod)"
-  type        = string
-}
-
-variable "location" {
-  description = "Azure region"
-  type        = string
-}
-
-variable "resource_group_name" {
-  description = "Resource group name"
-  type        = string
-}
-
-variable "aks_cluster_id" {
-  description = "AKS cluster resource ID"
-  type        = string
-}
-
-variable "grafana_admin_group_id" {
-  description = "Azure AD group ID for Grafana admins"
-  type        = string
-}
-
-variable "grafana_viewer_group_id" {
-  description = "Azure AD group ID for Grafana viewers"
-  type        = string
-  default     = ""
-}
-
-variable "enable_container_insights" {
-  description = "Enable Container Insights"
-  type        = bool
-  default     = true
-}
-
-variable "log_analytics_workspace_id" {
-  description = "Log Analytics workspace ID (for Container Insights)"
-  type        = string
-  default     = ""
-}
-
-variable "retention_days" {
-  description = "Data retention in days"
-  type        = number
-  default     = 30
-}
-
-variable "alert_email_receivers" {
-  description = "Email addresses for alert notifications"
-  type        = list(string)
-  default     = []
-}
-
-variable "tags" {
-  description = "Tags to apply to resources"
-  type        = map(string)
-  default     = {}
-}
+# NOTE: Terraform block is in versions.tf
 
 # =============================================================================
 # LOCALS
@@ -105,7 +20,7 @@ variable "tags" {
 
 locals {
   name_prefix = "${var.customer_name}-${var.environment}"
-  
+
   common_tags = merge(var.tags, {
     "three-horizons/customer"    = var.customer_name
     "three-horizons/environment" = var.environment
@@ -121,7 +36,7 @@ resource "azurerm_monitor_workspace" "prometheus" {
   name                = "amw-${local.name_prefix}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  
+
   tags = local.common_tags
 }
 
@@ -130,24 +45,24 @@ resource "azurerm_monitor_workspace" "prometheus" {
 # =============================================================================
 
 resource "azurerm_dashboard_grafana" "main" {
-  name                              = "grafana-${local.name_prefix}"
-  location                          = var.location
-  resource_group_name               = var.resource_group_name
-  grafana_major_version             = 10
-  
+  name                  = "grafana-${local.name_prefix}"
+  location              = var.location
+  resource_group_name   = var.resource_group_name
+  grafana_major_version = 10
+
   api_key_enabled                   = true
   deterministic_outbound_ip_enabled = true
   public_network_access_enabled     = true
   zone_redundancy_enabled           = var.environment == "prod"
-  
+
   identity {
     type = "SystemAssigned"
   }
-  
+
   azure_monitor_workspace_integrations {
     resource_id = azurerm_monitor_workspace.prometheus.id
   }
-  
+
   tags = local.common_tags
 }
 
@@ -161,7 +76,7 @@ resource "azurerm_role_assignment" "grafana_admin" {
 # Grafana Viewer role assignment (if provided)
 resource "azurerm_role_assignment" "grafana_viewer" {
   count = var.grafana_viewer_group_id != "" ? 1 : 0
-  
+
   scope                = azurerm_dashboard_grafana.main.id
   role_definition_name = "Grafana Viewer"
   principal_id         = var.grafana_viewer_group_id
@@ -184,7 +99,7 @@ resource "azurerm_monitor_data_collection_endpoint" "prometheus" {
   resource_group_name           = var.resource_group_name
   kind                          = "Linux"
   public_network_access_enabled = true
-  
+
   tags = local.common_tags
 }
 
@@ -194,26 +109,26 @@ resource "azurerm_monitor_data_collection_rule" "prometheus" {
   resource_group_name         = var.resource_group_name
   data_collection_endpoint_id = azurerm_monitor_data_collection_endpoint.prometheus.id
   kind                        = "Linux"
-  
+
   destinations {
     monitor_account {
       monitor_account_id = azurerm_monitor_workspace.prometheus.id
       name               = "MonitoringAccount"
     }
   }
-  
+
   data_flow {
     streams      = ["Microsoft-PrometheusMetrics"]
     destinations = ["MonitoringAccount"]
   }
-  
+
   data_sources {
     prometheus_forwarder {
       streams = ["Microsoft-PrometheusMetrics"]
       name    = "PrometheusDataSource"
     }
   }
-  
+
   tags = local.common_tags
 }
 
@@ -236,7 +151,7 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "recording_rules" {
   rule_group_enabled  = true
   interval            = "PT1M"
   scopes              = [azurerm_monitor_workspace.prometheus.id]
-  
+
   # Node recording rules
   rule {
     record     = "node:node_cpu_utilization:avg1m"
@@ -246,7 +161,7 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "recording_rules" {
       )
     EOT
   }
-  
+
   rule {
     record     = "node:node_memory_utilization:ratio"
     expression = <<-EOT
@@ -255,7 +170,7 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "recording_rules" {
       )
     EOT
   }
-  
+
   # Pod recording rules
   rule {
     record     = "namespace:container_cpu_usage_seconds_total:sum_rate"
@@ -265,7 +180,7 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "recording_rules" {
       )
     EOT
   }
-  
+
   rule {
     record     = "namespace:container_memory_working_set_bytes:sum"
     expression = <<-EOT
@@ -274,7 +189,7 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "recording_rules" {
       )
     EOT
   }
-  
+
   # DORA metrics recording rules
   rule {
     record     = "deployment:deployment_frequency:count_per_day"
@@ -284,7 +199,7 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "recording_rules" {
       )
     EOT
   }
-  
+
   tags = local.common_tags
 }
 
@@ -300,61 +215,61 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "alerts" {
   rule_group_enabled  = true
   interval            = "PT1M"
   scopes              = [azurerm_monitor_workspace.prometheus.id]
-  
+
   # Node alerts
   rule {
     alert      = "NodeHighCPU"
     expression = "node:node_cpu_utilization:avg1m > 0.85"
     for        = "PT5M"
     severity   = 2
-    
+
     labels = {
       severity = "warning"
     }
-    
+
     annotations = {
       summary     = "Node CPU usage is high"
       description = "Node {{ $labels.node }} CPU usage is above 85% for 5 minutes."
     }
-    
+
     action {
       action_group_id = length(azurerm_monitor_action_group.alerts) > 0 ? azurerm_monitor_action_group.alerts[0].id : null
     }
   }
-  
+
   rule {
     alert      = "NodeHighMemory"
     expression = "node:node_memory_utilization:ratio > 0.85"
     for        = "PT5M"
     severity   = 2
-    
+
     labels = {
       severity = "warning"
     }
-    
+
     annotations = {
       summary     = "Node memory usage is high"
       description = "Node {{ $labels.node }} memory usage is above 85% for 5 minutes."
     }
   }
-  
+
   # Pod alerts
   rule {
     alert      = "PodCrashLooping"
     expression = "increase(kube_pod_container_status_restarts_total[1h]) > 5"
     for        = "PT15M"
     severity   = 2
-    
+
     labels = {
       severity = "warning"
     }
-    
+
     annotations = {
       summary     = "Pod is crash looping"
       description = "Pod {{ $labels.namespace }}/{{ $labels.pod }} has restarted more than 5 times in the last hour."
     }
   }
-  
+
   rule {
     alert      = "PodNotReady"
     expression = <<-EOT
@@ -364,17 +279,17 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "alerts" {
     EOT
     for        = "PT15M"
     severity   = 3
-    
+
     labels = {
       severity = "warning"
     }
-    
+
     annotations = {
       summary     = "Pod not ready"
       description = "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state for 15 minutes."
     }
   }
-  
+
   # Deployment alerts
   rule {
     alert      = "DeploymentReplicasMismatch"
@@ -383,17 +298,17 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "alerts" {
     EOT
     for        = "PT10M"
     severity   = 2
-    
+
     labels = {
       severity = "warning"
     }
-    
+
     annotations = {
       summary     = "Deployment replicas mismatch"
       description = "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $value }} available replicas, expected {{ $labels.replicas }}."
     }
   }
-  
+
   # PVC alerts
   rule {
     alert      = "PVCAlmostFull"
@@ -404,17 +319,17 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "alerts" {
     EOT
     for        = "PT5M"
     severity   = 2
-    
+
     labels = {
       severity = "warning"
     }
-    
+
     annotations = {
       summary     = "PVC almost full"
       description = "PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} is more than 85% full."
     }
   }
-  
+
   # Certificate alerts
   rule {
     alert      = "CertificateExpiringSoon"
@@ -423,17 +338,17 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "alerts" {
     EOT
     for        = "PT1H"
     severity   = 2
-    
+
     labels = {
       severity = "warning"
     }
-    
+
     annotations = {
       summary     = "Certificate expiring soon"
       description = "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} expires in less than 7 days."
     }
   }
-  
+
   tags = local.common_tags
 }
 
@@ -443,11 +358,11 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "alerts" {
 
 resource "azurerm_monitor_action_group" "alerts" {
   count = length(var.alert_email_receivers) > 0 ? 1 : 0
-  
+
   name                = "ag-${local.name_prefix}"
   resource_group_name = var.resource_group_name
   short_name          = substr(local.name_prefix, 0, 12)
-  
+
   dynamic "email_receiver" {
     for_each = var.alert_email_receivers
     content {
@@ -456,7 +371,7 @@ resource "azurerm_monitor_action_group" "alerts" {
       use_common_alert_schema = true
     }
   }
-  
+
   tags = local.common_tags
 }
 
@@ -466,13 +381,13 @@ resource "azurerm_monitor_action_group" "alerts" {
 
 resource "azurerm_log_analytics_workspace" "main" {
   count = var.enable_container_insights && var.log_analytics_workspace_id == "" ? 1 : 0
-  
+
   name                = "law-${local.name_prefix}"
   location            = var.location
   resource_group_name = var.resource_group_name
   sku                 = "PerGB2018"
   retention_in_days   = var.retention_days
-  
+
   tags = local.common_tags
 }
 
@@ -482,18 +397,18 @@ resource "azurerm_log_analytics_workspace" "main" {
 
 resource "azurerm_log_analytics_solution" "container_insights" {
   count = var.enable_container_insights ? 1 : 0
-  
+
   solution_name         = "ContainerInsights"
   location              = var.location
   resource_group_name   = var.resource_group_name
   workspace_resource_id = var.log_analytics_workspace_id != "" ? var.log_analytics_workspace_id : azurerm_log_analytics_workspace.main[0].id
   workspace_name        = var.log_analytics_workspace_id != "" ? split("/", var.log_analytics_workspace_id)[8] : azurerm_log_analytics_workspace.main[0].name
-  
+
   plan {
     publisher = "Microsoft"
     product   = "OMSGallery/ContainerInsights"
   }
-  
+
   tags = local.common_tags
 }
 
@@ -504,7 +419,7 @@ resource "azurerm_log_analytics_solution" "container_insights" {
 resource "kubernetes_namespace" "grafana_dashboards" {
   metadata {
     name = "grafana-dashboards"
-    
+
     labels = {
       "three-horizons/component" = "observability"
     }
@@ -515,26 +430,26 @@ resource "kubernetes_config_map" "grafana_dashboards" {
   metadata {
     name      = "three-horizons-dashboards"
     namespace = kubernetes_namespace.grafana_dashboards.metadata[0].name
-    
+
     labels = {
       "grafana_dashboard" = "1"
     }
   }
-  
+
   data = {
     "cluster-overview.json" = jsonencode({
       annotations = {
         list = []
       }
-      editable  = true
+      editable     = true
       graphTooltip = 0
-      id        = null
-      links     = []
+      id           = null
+      links        = []
       panels = [
         {
-          title    = "Node CPU Usage"
-          type     = "timeseries"
-          gridPos  = { h = 8, w = 12, x = 0, y = 0 }
+          title   = "Node CPU Usage"
+          type    = "timeseries"
+          gridPos = { h = 8, w = 12, x = 0, y = 0 }
           targets = [
             {
               expr         = "node:node_cpu_utilization:avg1m"
@@ -543,9 +458,9 @@ resource "kubernetes_config_map" "grafana_dashboards" {
           ]
         },
         {
-          title    = "Node Memory Usage"
-          type     = "timeseries"
-          gridPos  = { h = 8, w = 12, x = 12, y = 0 }
+          title   = "Node Memory Usage"
+          type    = "timeseries"
+          gridPos = { h = 8, w = 12, x = 12, y = 0 }
           targets = [
             {
               expr         = "node:node_memory_utilization:ratio"
@@ -554,9 +469,9 @@ resource "kubernetes_config_map" "grafana_dashboards" {
           ]
         },
         {
-          title    = "Pod Count by Namespace"
-          type     = "bargauge"
-          gridPos  = { h = 8, w = 12, x = 0, y = 8 }
+          title   = "Pod Count by Namespace"
+          type    = "bargauge"
+          gridPos = { h = 8, w = 12, x = 0, y = 8 }
           targets = [
             {
               expr         = "count by (namespace) (kube_pod_info)"
@@ -565,9 +480,9 @@ resource "kubernetes_config_map" "grafana_dashboards" {
           ]
         },
         {
-          title    = "Container Restarts"
-          type     = "stat"
-          gridPos  = { h = 8, w = 12, x = 12, y = 8 }
+          title   = "Container Restarts"
+          type    = "stat"
+          gridPos = { h = 8, w = 12, x = 12, y = 8 }
           targets = [
             {
               expr = "sum(increase(kube_pod_container_status_restarts_total[24h]))"
@@ -582,7 +497,7 @@ resource "kubernetes_config_map" "grafana_dashboards" {
       title         = "Three Horizons - Cluster Overview"
       uid           = "three-horizons-cluster"
     })
-    
+
     "golden-path-apps.json" = jsonencode({
       annotations = {
         list = []
@@ -593,9 +508,9 @@ resource "kubernetes_config_map" "grafana_dashboards" {
       links        = []
       panels = [
         {
-          title    = "Request Rate by Service"
-          type     = "timeseries"
-          gridPos  = { h = 8, w = 12, x = 0, y = 0 }
+          title   = "Request Rate by Service"
+          type    = "timeseries"
+          gridPos = { h = 8, w = 12, x = 0, y = 0 }
           targets = [
             {
               expr         = "sum by (service) (rate(http_requests_total[5m]))"
@@ -604,9 +519,9 @@ resource "kubernetes_config_map" "grafana_dashboards" {
           ]
         },
         {
-          title    = "Response Latency (p95)"
-          type     = "timeseries"
-          gridPos  = { h = 8, w = 12, x = 12, y = 0 }
+          title   = "Response Latency (p95)"
+          type    = "timeseries"
+          gridPos = { h = 8, w = 12, x = 12, y = 0 }
           targets = [
             {
               expr         = "histogram_quantile(0.95, sum by (service, le) (rate(http_request_duration_seconds_bucket[5m])))"
@@ -615,9 +530,9 @@ resource "kubernetes_config_map" "grafana_dashboards" {
           ]
         },
         {
-          title    = "Error Rate"
-          type     = "timeseries"
-          gridPos  = { h = 8, w = 24, x = 0, y = 8 }
+          title   = "Error Rate"
+          type    = "timeseries"
+          gridPos = { h = 8, w = 24, x = 0, y = 8 }
           targets = [
             {
               expr         = "sum by (service) (rate(http_requests_total{status=~\"5..\"}[5m])) / sum by (service) (rate(http_requests_total[5m]))"
@@ -649,37 +564,4 @@ resource "kubernetes_config_map" "grafana_dashboards" {
 # OUTPUTS
 # =============================================================================
 
-output "prometheus_workspace_id" {
-  description = "Azure Monitor workspace ID"
-  value       = azurerm_monitor_workspace.prometheus.id
-}
 
-output "prometheus_query_endpoint" {
-  description = "Prometheus query endpoint"
-  value       = azurerm_monitor_workspace.prometheus.query_endpoint
-}
-
-output "grafana_id" {
-  description = "Azure Managed Grafana ID"
-  value       = azurerm_dashboard_grafana.main.id
-}
-
-output "grafana_endpoint" {
-  description = "Grafana endpoint URL"
-  value       = azurerm_dashboard_grafana.main.endpoint
-}
-
-output "grafana_identity_principal_id" {
-  description = "Grafana managed identity principal ID"
-  value       = azurerm_dashboard_grafana.main.identity[0].principal_id
-}
-
-output "log_analytics_workspace_id" {
-  description = "Log Analytics workspace ID"
-  value       = var.enable_container_insights ? (var.log_analytics_workspace_id != "" ? var.log_analytics_workspace_id : azurerm_log_analytics_workspace.main[0].id) : null
-}
-
-output "data_collection_rule_id" {
-  description = "Prometheus data collection rule ID"
-  value       = azurerm_monitor_data_collection_rule.prometheus.id
-}

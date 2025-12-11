@@ -15,126 +15,7 @@
 #
 # =============================================================================
 
-terraform {
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.23"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = ">= 2.11"
-    }
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = ">= 1.14"
-    }
-  }
-}
-
-# =============================================================================
-# VARIABLES
-# =============================================================================
-
-variable "customer_name" {
-  description = "Customer name for resource naming"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment (dev, staging, prod)"
-  type        = string
-}
-
-variable "namespace" {
-  description = "Kubernetes namespace for ArgoCD"
-  type        = string
-  default     = "argocd"
-}
-
-variable "chart_version" {
-  description = "ArgoCD Helm chart version"
-  type        = string
-  default     = "5.51.0"
-}
-
-variable "domain_name" {
-  description = "Domain name for ArgoCD ingress"
-  type        = string
-}
-
-variable "github_org" {
-  description = "GitHub organization name"
-  type        = string
-}
-
-variable "github_app_id" {
-  description = "GitHub App ID for SSO"
-  type        = string
-  sensitive   = true
-}
-
-variable "github_app_client_id" {
-  description = "GitHub App Client ID"
-  type        = string
-  sensitive   = true
-}
-
-variable "github_app_client_secret" {
-  description = "GitHub App Client Secret"
-  type        = string
-  sensitive   = true
-}
-
-variable "admin_password_hash" {
-  description = "Bcrypt hash of admin password"
-  type        = string
-  sensitive   = true
-}
-
-variable "slack_webhook_url" {
-  description = "Slack webhook URL for notifications (optional)"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "teams_webhook_url" {
-  description = "MS Teams webhook URL for notifications (optional)"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ha_enabled" {
-  description = "Enable high availability mode"
-  type        = bool
-  default     = true
-}
-
-variable "ingress_class" {
-  description = "Ingress class name"
-  type        = string
-  default     = "nginx"
-}
-
-variable "cluster_issuer" {
-  description = "Cert-manager cluster issuer name"
-  type        = string
-  default     = "letsencrypt-prod"
-}
-
-variable "azure_ad_admin_group_id" {
-  description = "Azure AD group ID for admin access (optional)"
-  type        = string
-  default     = ""
-}
-
-variable "tags" {
-  description = "Tags to apply to resources"
-  type        = map(string)
-  default     = {}
-}
+# NOTE: Terraform block is in versions.tf
 
 # =============================================================================
 # LOCALS
@@ -142,9 +23,9 @@ variable "tags" {
 
 locals {
   argocd_hostname = "argocd.${var.domain_name}"
-  
+
   replicas = var.ha_enabled ? 3 : 1
-  
+
   common_labels = {
     "app.kubernetes.io/managed-by" = "terraform"
     "three-horizons/customer"      = var.customer_name
@@ -159,7 +40,7 @@ locals {
 resource "kubernetes_namespace" "argocd" {
   metadata {
     name = var.namespace
-    
+
     labels = merge(local.common_labels, {
       "app.kubernetes.io/name" = "argocd"
     })
@@ -176,29 +57,29 @@ resource "kubernetes_secret" "github_app" {
     namespace = kubernetes_namespace.argocd.metadata[0].name
     labels    = local.common_labels
   }
-  
+
   data = {
     "dex.github.clientId"     = var.github_app_client_id
     "dex.github.clientSecret" = var.github_app_client_secret
   }
-  
+
   type = "Opaque"
 }
 
 resource "kubernetes_secret" "notifications" {
   count = var.slack_webhook_url != "" || var.teams_webhook_url != "" ? 1 : 0
-  
+
   metadata {
     name      = "argocd-notifications-secret"
     namespace = kubernetes_namespace.argocd.metadata[0].name
     labels    = local.common_labels
   }
-  
+
   data = {
-    "slack-token"        = var.slack_webhook_url
-    "teams-webhook-url"  = var.teams_webhook_url
+    "slack-token"       = var.slack_webhook_url
+    "teams-webhook-url" = var.teams_webhook_url
   }
-  
+
   type = "Opaque"
 }
 
@@ -212,30 +93,30 @@ resource "helm_release" "argocd" {
   chart      = "argo-cd"
   version    = var.chart_version
   namespace  = kubernetes_namespace.argocd.metadata[0].name
-  
+
   timeout         = 600
   atomic          = true
   cleanup_on_fail = true
-  
+
   values = [yamlencode({
     # -------------------------------------------------------------------------
     # Global Configuration
     # -------------------------------------------------------------------------
     global = {
       domain = local.argocd_hostname
-      
+
       logging = {
         format = "json"
         level  = "info"
       }
     }
-    
+
     # -------------------------------------------------------------------------
     # Controller
     # -------------------------------------------------------------------------
     controller = {
       replicas = local.replicas
-      
+
       resources = {
         requests = {
           cpu    = "250m"
@@ -246,14 +127,14 @@ resource "helm_release" "argocd" {
           memory = "2Gi"
         }
       }
-      
+
       metrics = {
         enabled = true
         serviceMonitor = {
           enabled = true
         }
       }
-      
+
       topologySpreadConstraints = var.ha_enabled ? [
         {
           maxSkew           = 1
@@ -267,19 +148,19 @@ resource "helm_release" "argocd" {
         }
       ] : []
     }
-    
+
     # -------------------------------------------------------------------------
     # Server
     # -------------------------------------------------------------------------
     server = {
       replicas = local.replicas
-      
+
       autoscaling = {
         enabled     = var.ha_enabled
         minReplicas = local.replicas
         maxReplicas = 5
       }
-      
+
       resources = {
         requests = {
           cpu    = "100m"
@@ -290,20 +171,20 @@ resource "helm_release" "argocd" {
           memory = "512Mi"
         }
       }
-      
+
       # Ingress configuration
       ingress = {
         enabled          = true
         ingressClassName = var.ingress_class
-        
+
         annotations = {
           "cert-manager.io/cluster-issuer"                 = var.cluster_issuer
           "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
           "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTPS"
         }
-        
+
         hosts = [local.argocd_hostname]
-        
+
         tls = [
           {
             secretName = "argocd-server-tls"
@@ -311,19 +192,19 @@ resource "helm_release" "argocd" {
           }
         ]
       }
-      
+
       # Extra args
       extraArgs = [
-        "--insecure"  # TLS termination at ingress
+        "--insecure" # TLS termination at ingress
       ]
-      
+
       metrics = {
         enabled = true
         serviceMonitor = {
           enabled = true
         }
       }
-      
+
       topologySpreadConstraints = var.ha_enabled ? [
         {
           maxSkew           = 1
@@ -337,19 +218,19 @@ resource "helm_release" "argocd" {
         }
       ] : []
     }
-    
+
     # -------------------------------------------------------------------------
     # Repo Server
     # -------------------------------------------------------------------------
     repoServer = {
       replicas = local.replicas
-      
+
       autoscaling = {
         enabled     = var.ha_enabled
         minReplicas = local.replicas
         maxReplicas = 5
       }
-      
+
       resources = {
         requests = {
           cpu    = "100m"
@@ -360,7 +241,7 @@ resource "helm_release" "argocd" {
           memory = "1Gi"
         }
       }
-      
+
       metrics = {
         enabled = true
         serviceMonitor = {
@@ -368,14 +249,14 @@ resource "helm_release" "argocd" {
         }
       }
     }
-    
+
     # -------------------------------------------------------------------------
     # Application Set Controller
     # -------------------------------------------------------------------------
     applicationSet = {
       enabled  = true
       replicas = var.ha_enabled ? 2 : 1
-      
+
       resources = {
         requests = {
           cpu    = "50m"
@@ -386,7 +267,7 @@ resource "helm_release" "argocd" {
           memory = "256Mi"
         }
       }
-      
+
       metrics = {
         enabled = true
         serviceMonitor = {
@@ -394,13 +275,13 @@ resource "helm_release" "argocd" {
         }
       }
     }
-    
+
     # -------------------------------------------------------------------------
     # Notifications Controller
     # -------------------------------------------------------------------------
     notifications = {
       enabled = var.slack_webhook_url != "" || var.teams_webhook_url != ""
-      
+
       resources = {
         requests = {
           cpu    = "50m"
@@ -411,14 +292,14 @@ resource "helm_release" "argocd" {
           memory = "128Mi"
         }
       }
-      
+
       metrics = {
         enabled = true
         serviceMonitor = {
           enabled = true
         }
       }
-      
+
       # Notification templates
       templates = {
         "template.app-deployed" = <<-EOT
@@ -445,7 +326,7 @@ resource "helm_release" "argocd" {
                 ]
               }]
         EOT
-        
+
         "template.app-sync-failed" = <<-EOT
           message: |
             {{if eq .serviceType "slack"}}:x:{{end}} Application *{{.app.metadata.name}}* sync failed.
@@ -471,7 +352,7 @@ resource "helm_release" "argocd" {
               }]
         EOT
       }
-      
+
       # Notification triggers
       triggers = {
         "trigger.on-deployed" = <<-EOT
@@ -479,35 +360,35 @@ resource "helm_release" "argocd" {
             oncePer: app.status.sync.revision
             send: [app-deployed]
         EOT
-        
+
         "trigger.on-sync-failed" = <<-EOT
           - when: app.status.operationState.phase in ['Error', 'Failed']
             send: [app-sync-failed]
         EOT
       }
     }
-    
+
     # -------------------------------------------------------------------------
     # Redis (for HA)
     # -------------------------------------------------------------------------
     redis-ha = {
       enabled = var.ha_enabled
-      
+
       haproxy = {
         enabled = true
       }
     }
-    
+
     redis = {
       enabled = !var.ha_enabled
     }
-    
+
     # -------------------------------------------------------------------------
     # Dex (SSO)
     # -------------------------------------------------------------------------
     dex = {
       enabled = true
-      
+
       resources = {
         requests = {
           cpu    = "50m"
@@ -519,7 +400,7 @@ resource "helm_release" "argocd" {
         }
       }
     }
-    
+
     # -------------------------------------------------------------------------
     # Config
     # -------------------------------------------------------------------------
@@ -528,12 +409,12 @@ resource "helm_release" "argocd" {
       secret = {
         argocdServerAdminPassword = var.admin_password_hash
       }
-      
+
       # CM configuration
       cm = {
         # URL
         "url" = "https://${local.argocd_hostname}"
-        
+
         # Dex configuration for GitHub SSO
         "dex.config" = yamlencode({
           connectors = [
@@ -553,10 +434,10 @@ resource "helm_release" "argocd" {
             }
           ]
         })
-        
+
         # Resource tracking
         "application.resourceTrackingMethod" = "annotation"
-        
+
         # Health assessments
         "resource.customizations.health.argoproj.io_Application" = <<-EOT
           hs = {}
@@ -573,11 +454,11 @@ resource "helm_release" "argocd" {
           return hs
         EOT
       }
-      
+
       # RBAC configuration
       rbac = {
         "policy.default" = "role:readonly"
-        
+
         "policy.csv" = <<-EOT
           # Admin access for GitHub org admins
           g, ${var.github_org}:platform-admins, role:admin
@@ -591,15 +472,15 @@ resource "helm_release" "argocd" {
           p, role:team-member, applications, action/*, */*, allow
           p, role:team-member, logs, get, */*, allow
         EOT
-        
+
         "scopes" = "[groups]"
       }
-      
+
       # Parameters
       params = {
-        "server.insecure" = true  # TLS at ingress level
+        "server.insecure" = true # TLS at ingress level
       }
-      
+
       # Repository credentials (template)
       credentialTemplates = {
         "github-https" = {
@@ -610,7 +491,7 @@ resource "helm_release" "argocd" {
       }
     }
   })]
-  
+
   depends_on = [
     kubernetes_secret.github_app,
     kubernetes_secret.notifications
@@ -632,7 +513,7 @@ resource "kubectl_manifest" "platform_project" {
     }
     spec = {
       description = "Three Horizons Platform Components"
-      
+
       sourceRepos = [
         "https://github.com/${var.github_org}/*",
         "https://charts.jetstack.io",
@@ -643,14 +524,14 @@ resource "kubectl_manifest" "platform_project" {
         "https://charts.bitnami.com/bitnami",
         "registry-1.docker.io"
       ]
-      
+
       destinations = [
         {
           namespace = "*"
           server    = "https://kubernetes.default.svc"
         }
       ]
-      
+
       clusterResourceWhitelist = [
         { group = "", kind = "Namespace" },
         { group = "", kind = "PersistentVolume" },
@@ -664,13 +545,13 @@ resource "kubectl_manifest" "platform_project" {
         { group = "cert-manager.io", kind = "ClusterIssuer" },
         { group = "monitoring.coreos.com", kind = "*" }
       ]
-      
+
       namespaceResourceWhitelist = [
         { group = "*", kind = "*" }
       ]
     }
   })
-  
+
   depends_on = [helm_release.argocd]
 }
 
@@ -678,27 +559,4 @@ resource "kubectl_manifest" "platform_project" {
 # OUTPUTS
 # =============================================================================
 
-output "namespace" {
-  description = "ArgoCD namespace"
-  value       = kubernetes_namespace.argocd.metadata[0].name
-}
 
-output "hostname" {
-  description = "ArgoCD hostname"
-  value       = local.argocd_hostname
-}
-
-output "url" {
-  description = "ArgoCD URL"
-  value       = "https://${local.argocd_hostname}"
-}
-
-output "server_service" {
-  description = "ArgoCD server service name"
-  value       = "argocd-server"
-}
-
-output "platform_project" {
-  description = "Platform AppProject name"
-  value       = "platform"
-}

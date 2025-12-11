@@ -176,20 +176,20 @@ output "deployment_summary" {
     environment = var.environment
     location    = var.location
     platform    = var.kubernetes_platform
-    
+
     endpoints = {
-      aks_fqdn    = var.kubernetes_platform == "aks" ? module.aks_cluster[0].cluster_fqdn : "N/A"
-      acr_server  = module.container_registry.login_server
-      keyvault    = module.security.keyvault_uri
-      argocd      = var.enable_argocd ? module.argocd[0].argocd_url : "Not deployed"
-      rhdh        = var.enable_rhdh ? module.rhdh[0].rhdh_url : "Not deployed"
-      grafana     = var.enable_observability ? module.observability[0].grafana_url : "Not deployed"
+      aks_fqdn   = var.kubernetes_platform == "aks" ? module.aks_cluster[0].cluster_fqdn : "N/A"
+      acr_server = module.container_registry.login_server
+      keyvault   = module.security.keyvault_uri
+      argocd     = var.enable_argocd ? module.argocd[0].argocd_url : "Not deployed"
+      rhdh       = var.enable_rhdh ? module.rhdh[0].rhdh_url : "Not deployed"
+      grafana    = var.enable_observability ? module.observability[0].grafana_url : "Not deployed"
     }
-    
+
     features = {
-      defender     = var.enable_defender
-      purview      = var.enable_purview
-      ai_foundry   = var.enable_ai_foundry
+      defender       = var.enable_defender
+      purview        = var.enable_purview
+      ai_foundry     = var.enable_ai_foundry
       github_runners = var.enable_github_runners
     }
   }

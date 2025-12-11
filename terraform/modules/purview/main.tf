@@ -23,140 +23,7 @@
 #
 # =============================================================================
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">= 3.75"
-    }
-    azapi = {
-      source  = "Azure/azapi"
-      version = ">= 1.9"
-    }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = ">= 2.45"
-    }
-  }
-}
-
-# =============================================================================
-# VARIABLES
-# =============================================================================
-
-variable "customer_name" {
-  description = "Customer name for resource naming"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment (dev, staging, prod)"
-  type        = string
-}
-
-variable "location" {
-  description = "Azure region"
-  type        = string
-}
-
-variable "resource_group_name" {
-  description = "Resource group name"
-  type        = string
-}
-
-variable "sizing_profile" {
-  description = "Sizing profile: small, medium, large, xlarge"
-  type        = string
-  default     = "medium"
-  
-  validation {
-    condition     = contains(["small", "medium", "large", "xlarge"], var.sizing_profile)
-    error_message = "Sizing profile must be small, medium, large, or xlarge."
-  }
-}
-
-variable "subnet_id" {
-  description = "Subnet ID for private endpoint"
-  type        = string
-}
-
-variable "private_dns_zone_ids" {
-  description = "Private DNS zone IDs for Purview endpoints"
-  type = object({
-    purview         = string
-    purview_studio  = string
-    storage_blob    = string
-    storage_queue   = string
-    servicebus      = string
-    eventhub        = string
-  })
-}
-
-variable "data_sources" {
-  description = "Data sources to register and scan"
-  type = list(object({
-    name           = string
-    type           = string  # AzureSqlDatabase, AzureDataLakeStorage, AzurePostgreSql, etc.
-    resource_id    = string
-    scan_frequency = string  # weekly, daily, continuous
-  }))
-  default = []
-}
-
-variable "admin_group_id" {
-  description = "Azure AD group ID for Purview administrators"
-  type        = string
-}
-
-variable "enable_latam_classifications" {
-  description = "Enable LATAM-specific data classifications"
-  type        = bool
-  default     = true
-}
-
-variable "glossary_terms" {
-  description = "Business glossary terms to create"
-  type = list(object({
-    name        = string
-    definition  = string
-    stewards    = list(string)
-    experts     = list(string)
-    status      = string  # Draft, Approved, Expired
-  }))
-  default = []
-}
-
-variable "collection_hierarchy" {
-  description = "Collection structure for organizing assets"
-  type = list(object({
-    name        = string
-    parent      = string  # "" for root collections
-    description = string
-  }))
-  default = [
-    { name = "H1-Foundation", parent = "", description = "Foundation infrastructure assets" },
-    { name = "H2-Enhancement", parent = "", description = "Enhanced platform assets" },
-    { name = "H3-Innovation", parent = "", description = "AI/ML innovation assets" }
-  ]
-}
-
-variable "data_quality_rules" {
-  description = "Data quality rules to configure"
-  type = list(object({
-    name          = string
-    description   = string
-    dimension     = string  # Completeness, Uniqueness, Validity, Consistency, Timeliness
-    threshold     = number  # 0-100 percentage
-    applies_to    = list(string)  # Asset patterns
-  }))
-  default = []
-}
-
-variable "tags" {
-  description = "Tags to apply to resources"
-  type        = map(string)
-  default     = {}
-}
+# NOTE: Terraform block is in versions.tf
 
 # =============================================================================
 # LOCALS
@@ -164,18 +31,18 @@ variable "tags" {
 
 locals {
   name_prefix = "${var.customer_name}-${var.environment}"
-  
+
   # Purview names must be alphanumeric, 3-63 chars
   purview_name = "pv${replace(var.customer_name, "-", "")}${var.environment}"
-  
+
   # Capacity units by sizing profile
   capacity_config = {
-    small  = 0   # Free tier
+    small  = 0 # Free tier
     medium = 1
     large  = 4
     xlarge = 16
   }
-  
+
   # Scan frequency by sizing profile
   scan_frequency = {
     small  = "weekly"
@@ -183,7 +50,7 @@ locals {
     large  = "daily"
     xlarge = "continuous"
   }
-  
+
   # LATAM-specific classification rules
   latam_classifications = {
     "BRAZIL_CPF" = {
@@ -247,7 +114,7 @@ locals {
       country     = "Peru"
     }
   }
-  
+
   common_tags = merge(var.tags, {
     "three-horizons/customer"    = var.customer_name
     "three-horizons/environment" = var.environment
@@ -270,15 +137,15 @@ resource "azurerm_purview_account" "main" {
   name                = local.purview_name
   resource_group_name = var.resource_group_name
   location            = var.location
-  
+
   public_network_enabled = false
-  
+
   managed_resource_group_name = "rg-${local.purview_name}-managed"
-  
+
   identity {
     type = "SystemAssigned"
   }
-  
+
   tags = local.common_tags
 }
 
@@ -292,19 +159,19 @@ resource "azurerm_private_endpoint" "purview_portal" {
   location            = var.location
   resource_group_name = var.resource_group_name
   subnet_id           = var.subnet_id
-  
+
   private_service_connection {
     name                           = "purview-portal-connection"
     private_connection_resource_id = azurerm_purview_account.main.id
     is_manual_connection           = false
     subresource_names              = ["portal"]
   }
-  
+
   private_dns_zone_group {
     name                 = "purview-portal-dns"
     private_dns_zone_ids = [var.private_dns_zone_ids.purview_studio]
   }
-  
+
   tags = local.common_tags
 }
 
@@ -314,19 +181,19 @@ resource "azurerm_private_endpoint" "purview_account" {
   location            = var.location
   resource_group_name = var.resource_group_name
   subnet_id           = var.subnet_id
-  
+
   private_service_connection {
     name                           = "purview-account-connection"
     private_connection_resource_id = azurerm_purview_account.main.id
     is_manual_connection           = false
     subresource_names              = ["account"]
   }
-  
+
   private_dns_zone_group {
     name                 = "purview-account-dns"
     private_dns_zone_ids = [var.private_dns_zone_ids.purview]
   }
-  
+
   tags = local.common_tags
 }
 
@@ -351,7 +218,7 @@ resource "azurerm_role_assignment" "purview_ds_admin" {
 # Storage Blob Data Reader for Purview managed identity (scanning)
 resource "azurerm_role_assignment" "purview_storage_reader" {
   for_each = { for ds in var.data_sources : ds.name => ds if ds.type == "AzureDataLakeStorage" || ds.type == "AzureBlobStorage" }
-  
+
   scope                = each.value.resource_id
   role_definition_name = "Storage Blob Data Reader"
   principal_id         = azurerm_purview_account.main.identity[0].principal_id
@@ -360,7 +227,7 @@ resource "azurerm_role_assignment" "purview_storage_reader" {
 # SQL Server role for Purview (via azapi for databases)
 resource "azurerm_role_assignment" "purview_sql_reader" {
   for_each = { for ds in var.data_sources : ds.name => ds if ds.type == "AzureSqlDatabase" }
-  
+
   scope                = each.value.resource_id
   role_definition_name = "Reader"
   principal_id         = azurerm_purview_account.main.identity[0].principal_id
@@ -372,36 +239,36 @@ resource "azurerm_role_assignment" "purview_sql_reader" {
 
 resource "azapi_resource" "collections" {
   for_each = { for coll in var.collection_hierarchy : coll.name => coll }
-  
+
   type      = "Microsoft.Purview/accounts/collections@2021-12-01"
   name      = replace(lower(each.value.name), "-", "")
   parent_id = each.value.parent == "" ? azurerm_purview_account.main.id : azapi_resource.collections[each.value.parent].id
-  
+
   body = jsonencode({
     properties = {
-      description   = each.value.description
-      friendlyName  = each.value.name
+      description  = each.value.description
+      friendlyName = each.value.name
     }
   })
-  
+
   depends_on = [azurerm_purview_account.main]
 }
 
 # Environment sub-collections
 resource "azapi_resource" "environment_collections" {
   for_each = toset(["Development", "Staging", "Production"])
-  
+
   type      = "Microsoft.Purview/accounts/collections@2021-12-01"
   name      = lower(each.value)
   parent_id = azurerm_purview_account.main.id
-  
+
   body = jsonencode({
     properties = {
-      description   = "${each.value} environment assets"
-      friendlyName  = each.value
+      description  = "${each.value} environment assets"
+      friendlyName = each.value
     }
   })
-  
+
   depends_on = [azurerm_purview_account.main]
 }
 
@@ -411,17 +278,17 @@ resource "azapi_resource" "environment_collections" {
 
 resource "azapi_resource" "latam_classifications" {
   for_each = var.enable_latam_classifications ? local.latam_classifications : {}
-  
+
   type      = "Microsoft.Purview/accounts/classificationRules@2022-02-01-preview"
   name      = each.key
   parent_id = azurerm_purview_account.main.id
-  
+
   body = jsonencode({
     properties = {
-      classificationName = each.value.name
-      description        = each.value.description
-      kind              = "Custom"
-      ruleStatus        = "Enabled"
+      classificationName     = each.value.name
+      description            = each.value.description
+      kind                   = "Custom"
+      ruleStatus             = "Enabled"
       minimumPercentageMatch = 60
       classificationAction   = "Classify"
       dataPatterns = [
@@ -432,7 +299,7 @@ resource "azapi_resource" "latam_classifications" {
       ]
     }
   })
-  
+
   depends_on = [azurerm_purview_account.main]
 }
 
@@ -442,11 +309,11 @@ resource "azapi_resource" "latam_classifications" {
 
 resource "azapi_resource" "data_sources" {
   for_each = { for ds in var.data_sources : ds.name => ds }
-  
+
   type      = "Microsoft.Purview/accounts/dataSources@2022-02-01-preview"
   name      = each.value.name
   parent_id = azurerm_purview_account.main.id
-  
+
   body = jsonencode({
     kind = each.value.type
     properties = {
@@ -457,7 +324,7 @@ resource "azapi_resource" "data_sources" {
       }
     }
   })
-  
+
   depends_on = [azapi_resource.collections]
 }
 
@@ -469,24 +336,24 @@ resource "azapi_resource" "scan_rule_set" {
   type      = "Microsoft.Purview/accounts/scanRuleSets@2022-02-01-preview"
   name      = "ThreeHorizonsScanRuleSet"
   parent_id = azurerm_purview_account.main.id
-  
+
   body = jsonencode({
     kind = "AzureStorage"
     properties = {
-      description = "Three Horizons standard scan rule set with LATAM classifications"
-      excludedSystemClassifications = []
+      description                           = "Three Horizons standard scan rule set with LATAM classifications"
+      excludedSystemClassifications         = []
       includedCustomClassificationRuleNames = var.enable_latam_classifications ? keys(local.latam_classifications) : []
       scanningRule = {
         customFileExtensions = []
         fileExtensions = [
-          "CSV", "JSON", "PARQUET", "AVRO", "ORC", 
+          "CSV", "JSON", "PARQUET", "AVRO", "ORC",
           "DOC", "DOCX", "PDF", "XLS", "XLSX",
           "TXT", "XML", "PSV", "TSV"
         ]
       }
     }
   })
-  
+
   depends_on = [azapi_resource.latam_classifications]
 }
 
@@ -496,23 +363,23 @@ resource "azapi_resource" "scan_rule_set" {
 
 resource "azapi_resource" "glossary_terms" {
   for_each = { for term in var.glossary_terms : term.name => term }
-  
+
   type      = "Microsoft.Purview/accounts/glossaryTerms@2022-02-01-preview"
   name      = replace(lower(each.value.name), " ", "-")
   parent_id = azurerm_purview_account.main.id
-  
+
   body = jsonencode({
     properties = {
       name            = each.value.name
       longDescription = each.value.definition
       status          = each.value.status
       contacts = {
-        expert = [for expert in each.value.experts : { id = expert }]
+        expert  = [for expert in each.value.experts : { id = expert }]
         steward = [for steward in each.value.stewards : { id = steward }]
       }
     }
   })
-  
+
   depends_on = [azurerm_purview_account.main]
 }
 
@@ -522,11 +389,11 @@ resource "azapi_resource" "glossary_terms" {
 
 resource "azapi_resource" "data_quality_rules" {
   for_each = { for rule in var.data_quality_rules : rule.name => rule }
-  
+
   type      = "Microsoft.Purview/accounts/dataQualityRules@2023-02-01-preview"
   name      = replace(lower(each.value.name), " ", "-")
   parent_id = azurerm_purview_account.main.id
-  
+
   body = jsonencode({
     properties = {
       displayName = each.value.name
@@ -539,7 +406,7 @@ resource "azapi_resource" "data_quality_rules" {
       }
     }
   })
-  
+
   depends_on = [azurerm_purview_account.main]
 }
 
@@ -547,27 +414,22 @@ resource "azapi_resource" "data_quality_rules" {
 # DIAGNOSTIC SETTINGS
 # =============================================================================
 
-variable "log_analytics_workspace_id" {
-  description = "Log Analytics workspace ID for diagnostics"
-  type        = string
-  default     = ""
-}
 
 resource "azurerm_monitor_diagnostic_setting" "purview" {
   count = var.log_analytics_workspace_id != "" ? 1 : 0
-  
+
   name                       = "purview-diagnostics"
   target_resource_id         = azurerm_purview_account.main.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
-  
+
   enabled_log {
     category = "ScanStatusLogEvent"
   }
-  
+
   enabled_log {
     category = "DataSensitivityLogEvent"
   }
-  
+
   metric {
     category = "AllMetrics"
   }
@@ -577,62 +439,4 @@ resource "azurerm_monitor_diagnostic_setting" "purview" {
 # OUTPUTS
 # =============================================================================
 
-output "purview_account_id" {
-  description = "Purview account ID"
-  value       = azurerm_purview_account.main.id
-}
 
-output "purview_account_name" {
-  description = "Purview account name"
-  value       = azurerm_purview_account.main.name
-}
-
-output "purview_catalog_endpoint" {
-  description = "Purview catalog endpoint"
-  value       = azurerm_purview_account.main.catalog_endpoint
-}
-
-output "purview_guardian_endpoint" {
-  description = "Purview guardian (scan) endpoint"
-  value       = azurerm_purview_account.main.guardian_endpoint
-}
-
-output "purview_identity_principal_id" {
-  description = "Purview managed identity principal ID"
-  value       = azurerm_purview_account.main.identity[0].principal_id
-}
-
-output "purview_identity_tenant_id" {
-  description = "Purview managed identity tenant ID"
-  value       = azurerm_purview_account.main.identity[0].tenant_id
-}
-
-output "latam_classifications_enabled" {
-  description = "LATAM classifications enabled"
-  value       = var.enable_latam_classifications ? keys(local.latam_classifications) : []
-}
-
-output "collections" {
-  description = "Created collections"
-  value       = [for coll in var.collection_hierarchy : coll.name]
-}
-
-output "sizing_profile" {
-  description = "Active sizing profile"
-  value       = var.sizing_profile
-}
-
-output "estimated_monthly_cost" {
-  description = "Estimated monthly cost range"
-  value = {
-    small  = "$0-100"
-    medium = "$500-800"
-    large  = "$2,000-3,000"
-    xlarge = "$5,000-8,000"
-  }[var.sizing_profile]
-}
-
-output "portal_url" {
-  description = "Purview governance portal URL"
-  value       = "https://${local.purview_name}.purview.azure.com"
-}

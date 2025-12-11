@@ -21,54 +21,54 @@ locals {
   # Azure region short codes (CAF recommended)
   region_codes = {
     # Americas
-    "brazilsouth"       = "brs"
-    "brazilsoutheast"   = "brse"
-    "eastus"            = "eus"
-    "eastus2"           = "eus2"
-    "westus"            = "wus"
-    "westus2"           = "wus2"
-    "westus3"           = "wus3"
-    "centralus"         = "cus"
-    "northcentralus"    = "ncus"
-    "southcentralus"    = "scus"
-    "westcentralus"     = "wcus"
-    "canadacentral"     = "cac"
-    "canadaeast"        = "cae"
-    
+    "brazilsouth"     = "brs"
+    "brazilsoutheast" = "brse"
+    "eastus"          = "eus"
+    "eastus2"         = "eus2"
+    "westus"          = "wus"
+    "westus2"         = "wus2"
+    "westus3"         = "wus3"
+    "centralus"       = "cus"
+    "northcentralus"  = "ncus"
+    "southcentralus"  = "scus"
+    "westcentralus"   = "wcus"
+    "canadacentral"   = "cac"
+    "canadaeast"      = "cae"
+
     # Europe
-    "westeurope"        = "weu"
-    "northeurope"       = "neu"
-    "uksouth"           = "uks"
-    "ukwest"            = "ukw"
-    "francecentral"     = "frc"
-    "francesouth"       = "frs"
+    "westeurope"         = "weu"
+    "northeurope"        = "neu"
+    "uksouth"            = "uks"
+    "ukwest"             = "ukw"
+    "francecentral"      = "frc"
+    "francesouth"        = "frs"
     "germanywestcentral" = "gwc"
-    "switzerlandnorth"  = "chn"
-    
+    "switzerlandnorth"   = "chn"
+
     # Asia Pacific
-    "eastasia"          = "ea"
-    "southeastasia"     = "sea"
-    "japaneast"         = "jpe"
-    "japanwest"         = "jpw"
-    "australiaeast"     = "aue"
+    "eastasia"           = "ea"
+    "southeastasia"      = "sea"
+    "japaneast"          = "jpe"
+    "japanwest"          = "jpw"
+    "australiaeast"      = "aue"
     "australiasoutheast" = "ause"
-    "centralindia"      = "inc"
-    "southindia"        = "ins"
-    "koreacentral"      = "krc"
-    "koreasouth"        = "krs"
+    "centralindia"       = "inc"
+    "southindia"         = "ins"
+    "koreacentral"       = "krc"
+    "koreasouth"         = "krs"
   }
 
   region_code = lookup(local.region_codes, var.location, substr(var.location, 0, 4))
-  
+
   # Base naming components
   org_prefix = var.org_code != "" ? "${var.org_code}-" : ""
-  
+
   # Standard prefix: {org}-{project}-{env}-{region}
   base_prefix = "${local.org_prefix}${var.project_name}-${var.environment}-${local.region_code}"
-  
+
   # For resources that don't allow hyphens
   base_prefix_no_dash = replace(local.base_prefix, "-", "")
-  
+
   # Short prefix for length-limited resources
   short_prefix = "${var.project_name}${var.environment}${local.region_code}"
 }

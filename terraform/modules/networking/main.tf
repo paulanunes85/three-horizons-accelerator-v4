@@ -13,91 +13,7 @@
 #
 # =============================================================================
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">= 3.75"
-    }
-  }
-}
-
-# =============================================================================
-# VARIABLES
-# =============================================================================
-
-variable "customer_name" {
-  description = "Customer name for resource naming"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment (dev, staging, prod)"
-  type        = string
-}
-
-variable "location" {
-  description = "Azure region"
-  type        = string
-}
-
-variable "resource_group_name" {
-  description = "Resource group name"
-  type        = string
-}
-
-variable "vnet_cidr" {
-  description = "CIDR block for VNet"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "subnet_config" {
-  description = "Subnet configuration"
-  type = object({
-    aks_nodes_cidr      = string
-    aks_pods_cidr       = string
-    private_endpoints_cidr = string
-    bastion_cidr        = string
-    app_gateway_cidr    = string
-  })
-  default = {
-    aks_nodes_cidr         = "10.0.0.0/22"      # 1024 IPs for nodes
-    aks_pods_cidr          = "10.0.16.0/20"     # 4096 IPs for pods
-    private_endpoints_cidr = "10.0.4.0/24"      # 256 IPs for private endpoints
-    bastion_cidr           = "10.0.5.0/26"      # 64 IPs for Bastion
-    app_gateway_cidr       = "10.0.6.0/24"      # 256 IPs for App Gateway
-  }
-}
-
-variable "enable_bastion" {
-  description = "Enable Azure Bastion for secure VM access"
-  type        = bool
-  default     = false
-}
-
-variable "enable_app_gateway" {
-  description = "Enable Application Gateway subnet"
-  type        = bool
-  default     = false
-}
-
-variable "dns_zone_name" {
-  description = "Public DNS zone name"
-  type        = string
-}
-
-variable "create_dns_zone" {
-  description = "Create the public DNS zone"
-  type        = bool
-  default     = true
-}
-
-variable "tags" {
-  description = "Tags to apply to resources"
-  type        = map(string)
-  default     = {}
-}
+# NOTE: Terraform block is in versions.tf
 
 # =============================================================================
 # LOCALS
@@ -105,23 +21,23 @@ variable "tags" {
 
 locals {
   name_prefix = "${var.customer_name}-${var.environment}"
-  
+
   common_tags = merge(var.tags, {
     "three-horizons/customer"    = var.customer_name
     "three-horizons/environment" = var.environment
     "three-horizons/component"   = "networking"
   })
-  
+
   # Private DNS zones for Azure services
   private_dns_zones = {
-    "postgres"  = "privatelink.postgres.database.azure.com"
-    "redis"     = "privatelink.redis.cache.windows.net"
-    "keyvault"  = "privatelink.vaultcore.azure.net"
-    "acr"       = "privatelink.azurecr.io"
-    "blob"      = "privatelink.blob.core.windows.net"
-    "openai"    = "privatelink.openai.azure.com"
+    "postgres"          = "privatelink.postgres.database.azure.com"
+    "redis"             = "privatelink.redis.cache.windows.net"
+    "keyvault"          = "privatelink.vaultcore.azure.net"
+    "acr"               = "privatelink.azurecr.io"
+    "blob"              = "privatelink.blob.core.windows.net"
+    "openai"            = "privatelink.openai.azure.com"
     "cognitiveservices" = "privatelink.cognitiveservices.azure.com"
-    "search"    = "privatelink.search.windows.net"
+    "search"            = "privatelink.search.windows.net"
   }
 }
 
@@ -134,7 +50,7 @@ resource "azurerm_virtual_network" "main" {
   location            = var.location
   resource_group_name = var.resource_group_name
   address_space       = [var.vnet_cidr]
-  
+
   tags = local.common_tags
 }
 
@@ -148,7 +64,7 @@ resource "azurerm_subnet" "aks_nodes" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.subnet_config.aks_nodes_cidr]
-  
+
   # Required for Azure CNI Overlay
   delegation {
     name = "aks-delegation"
@@ -165,7 +81,7 @@ resource "azurerm_subnet" "aks_pods" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.subnet_config.aks_pods_cidr]
-  
+
   delegation {
     name = "aks-pods-delegation"
     service_delegation {
@@ -181,15 +97,15 @@ resource "azurerm_subnet" "private_endpoints" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.subnet_config.private_endpoints_cidr]
-  
+
   private_endpoint_network_policies_enabled = true
 }
 
 # Azure Bastion Subnet (if enabled)
 resource "azurerm_subnet" "bastion" {
   count = var.enable_bastion ? 1 : 0
-  
-  name                 = "AzureBastionSubnet"  # Must be this exact name
+
+  name                 = "AzureBastionSubnet" # Must be this exact name
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.subnet_config.bastion_cidr]
@@ -198,7 +114,7 @@ resource "azurerm_subnet" "bastion" {
 # Application Gateway Subnet (if enabled)
 resource "azurerm_subnet" "app_gateway" {
   count = var.enable_app_gateway ? 1 : 0
-  
+
   name                 = "snet-app-gateway"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
@@ -214,7 +130,7 @@ resource "azurerm_network_security_group" "aks_nodes" {
   name                = "nsg-aks-nodes-${local.name_prefix}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  
+
   # Allow internal VNet traffic
   security_rule {
     name                       = "AllowVNetInbound"
@@ -227,7 +143,7 @@ resource "azurerm_network_security_group" "aks_nodes" {
     source_address_prefix      = "VirtualNetwork"
     destination_address_prefix = "VirtualNetwork"
   }
-  
+
   # Allow Azure Load Balancer
   security_rule {
     name                       = "AllowAzureLoadBalancerInbound"
@@ -240,7 +156,7 @@ resource "azurerm_network_security_group" "aks_nodes" {
     source_address_prefix      = "AzureLoadBalancer"
     destination_address_prefix = "*"
   }
-  
+
   # Allow HTTP/HTTPS from internet (via load balancer)
   security_rule {
     name                       = "AllowHTTPSInbound"
@@ -253,7 +169,7 @@ resource "azurerm_network_security_group" "aks_nodes" {
     source_address_prefix      = "Internet"
     destination_address_prefix = "*"
   }
-  
+
   # Deny all other inbound
   security_rule {
     name                       = "DenyAllInbound"
@@ -266,7 +182,7 @@ resource "azurerm_network_security_group" "aks_nodes" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
-  
+
   tags = local.common_tags
 }
 
@@ -280,7 +196,7 @@ resource "azurerm_network_security_group" "private_endpoints" {
   name                = "nsg-private-endpoints-${local.name_prefix}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  
+
   # Allow traffic from VNet only
   security_rule {
     name                       = "AllowVNetInbound"
@@ -293,7 +209,7 @@ resource "azurerm_network_security_group" "private_endpoints" {
     source_address_prefix      = "VirtualNetwork"
     destination_address_prefix = "VirtualNetwork"
   }
-  
+
   # Deny all other inbound
   security_rule {
     name                       = "DenyAllInbound"
@@ -306,7 +222,7 @@ resource "azurerm_network_security_group" "private_endpoints" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
-  
+
   tags = local.common_tags
 }
 
@@ -321,23 +237,23 @@ resource "azurerm_subnet_network_security_group_association" "private_endpoints"
 
 resource "azurerm_private_dns_zone" "zones" {
   for_each = local.private_dns_zones
-  
+
   name                = each.value
   resource_group_name = var.resource_group_name
-  
+
   tags = local.common_tags
 }
 
 # Link private DNS zones to VNet
 resource "azurerm_private_dns_zone_virtual_network_link" "links" {
   for_each = local.private_dns_zones
-  
+
   name                  = "link-${each.key}-${local.name_prefix}"
   resource_group_name   = var.resource_group_name
   private_dns_zone_name = azurerm_private_dns_zone.zones[each.key].name
   virtual_network_id    = azurerm_virtual_network.main.id
   registration_enabled  = false
-  
+
   tags = local.common_tags
 }
 
@@ -347,10 +263,10 @@ resource "azurerm_private_dns_zone_virtual_network_link" "links" {
 
 resource "azurerm_dns_zone" "public" {
   count = var.create_dns_zone ? 1 : 0
-  
+
   name                = var.dns_zone_name
   resource_group_name = var.resource_group_name
-  
+
   tags = local.common_tags
 }
 
@@ -360,36 +276,36 @@ resource "azurerm_dns_zone" "public" {
 
 resource "azurerm_public_ip" "bastion" {
   count = var.enable_bastion ? 1 : 0
-  
+
   name                = "pip-bastion-${local.name_prefix}"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Static"
   sku                 = "Standard"
-  
+
   tags = local.common_tags
 }
 
 resource "azurerm_bastion_host" "main" {
   count = var.enable_bastion ? 1 : 0
-  
+
   name                = "bastion-${local.name_prefix}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  
+
   ip_configuration {
     name                 = "configuration"
     subnet_id            = azurerm_subnet.bastion[0].id
     public_ip_address_id = azurerm_public_ip.bastion[0].id
   }
-  
+
   sku = "Standard"
-  
-  tunneling_enabled    = true
-  file_copy_enabled    = true
-  copy_paste_enabled   = true
+
+  tunneling_enabled      = true
+  file_copy_enabled      = true
+  copy_paste_enabled     = true
   shareable_link_enabled = false
-  
+
   tags = local.common_tags
 }
 
@@ -397,60 +313,4 @@ resource "azurerm_bastion_host" "main" {
 # OUTPUTS
 # =============================================================================
 
-output "vnet_id" {
-  description = "Virtual Network ID"
-  value       = azurerm_virtual_network.main.id
-}
 
-output "vnet_name" {
-  description = "Virtual Network name"
-  value       = azurerm_virtual_network.main.name
-}
-
-output "subnet_ids" {
-  description = "Subnet IDs"
-  value = {
-    aks_nodes         = azurerm_subnet.aks_nodes.id
-    aks_pods          = azurerm_subnet.aks_pods.id
-    private_endpoints = azurerm_subnet.private_endpoints.id
-    bastion           = var.enable_bastion ? azurerm_subnet.bastion[0].id : null
-    app_gateway       = var.enable_app_gateway ? azurerm_subnet.app_gateway[0].id : null
-  }
-}
-
-output "private_dns_zone_ids" {
-  description = "Private DNS zone IDs"
-  value = {
-    for key, zone in azurerm_private_dns_zone.zones : key => zone.id
-  }
-}
-
-output "private_dns_zone_names" {
-  description = "Private DNS zone names"
-  value = {
-    for key, zone in azurerm_private_dns_zone.zones : key => zone.name
-  }
-}
-
-output "public_dns_zone_id" {
-  description = "Public DNS zone ID"
-  value       = var.create_dns_zone ? azurerm_dns_zone.public[0].id : null
-}
-
-output "public_dns_zone_name_servers" {
-  description = "Public DNS zone name servers"
-  value       = var.create_dns_zone ? azurerm_dns_zone.public[0].name_servers : null
-}
-
-output "bastion_hostname" {
-  description = "Azure Bastion hostname"
-  value       = var.enable_bastion ? azurerm_bastion_host.main[0].dns_name : null
-}
-
-output "nsg_ids" {
-  description = "Network Security Group IDs"
-  value = {
-    aks_nodes         = azurerm_network_security_group.aks_nodes.id
-    private_endpoints = azurerm_network_security_group.private_endpoints.id
-  }
-}
