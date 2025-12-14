@@ -2,1049 +2,1545 @@
 
 > **Version:** 4.0.0
 > **Last Updated:** December 2025
+> **Audience:** Platform Administrators, SRE Teams, DevOps Engineers
 
 ---
 
 ## Table of Contents
 
-1. [Daily Operations](#1-daily-operations)
-2. [Monitoring and Alerting](#2-monitoring-and-alerting)
-3. [Scaling Operations](#3-scaling-operations)
-4. [Backup and Recovery](#4-backup-and-recovery)
-5. [Secret Management](#5-secret-management)
-6. [User Management](#6-user-management)
-7. [Certificate Management](#7-certificate-management)
-8. [Cost Management](#8-cost-management)
-9. [Security Operations](#9-security-operations)
-10. [Maintenance Windows](#10-maintenance-windows)
-11. [Incident Response](#11-incident-response)
-12. [Runbook: Common Procedures](#12-runbook-common-procedures)
+1. [Introduction](#1-introduction)
+2. [Daily Operations](#2-daily-operations)
+3. [Monitoring and Alerting](#3-monitoring-and-alerting)
+4. [Scaling Operations](#4-scaling-operations)
+5. [Backup and Recovery](#5-backup-and-recovery)
+6. [Secret Management](#6-secret-management)
+7. [User Management](#7-user-management)
+8. [Certificate Management](#8-certificate-management)
+9. [Cost Management](#9-cost-management)
+10. [Security Operations](#10-security-operations)
+11. [Maintenance Windows](#11-maintenance-windows)
+12. [Incident Response](#12-incident-response)
+13. [Runbook: Common Procedures](#13-runbook-common-procedures)
 
 ---
 
-## 1. Daily Operations
+## 1. Introduction
 
-### 1.1 Daily Health Check
+### What is This Guide?
 
-Run this script every morning:
+This Administrator Guide provides everything you need to **operate and maintain** the Three Horizons platform on a day-to-day basis. It covers routine tasks, monitoring, troubleshooting, and incident response.
+
+> 💡 **Different from Other Guides**
+>
+> - **Deployment Guide:** How to install the platform (one-time)
+> - **Architecture Guide:** How the platform is designed (reference)
+> - **Administrator Guide (this):** How to operate the platform (daily)
+> - **Troubleshooting Guide:** How to fix specific problems (when issues occur)
+
+### Who Should Read This?
+
+| Role | What You'll Learn |
+|------|-------------------|
+| **Platform Administrators** | Day-to-day platform operations |
+| **SRE Engineers** | Reliability and monitoring |
+| **DevOps Engineers** | CI/CD and deployment operations |
+| **Security Engineers** | Security operations and compliance |
+| **On-Call Engineers** | Incident response procedures |
+
+### Quick Reference Card
+
+Keep this handy for daily operations:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    QUICK REFERENCE - COMMON COMMANDS                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  CLUSTER ACCESS:                                                             │
+│  az aks get-credentials --resource-group rg-XXX --name aks-XXX              │
+│                                                                              │
+│  HEALTH CHECK:                                                               │
+│  kubectl get nodes                    # Check node health                   │
+│  kubectl get pods -A | grep -v Running  # Find problem pods                 │
+│  kubectl top nodes                    # Check resource usage                │
+│                                                                              │
+│  ARGOCD:                                                                     │
+│  kubectl port-forward svc/argocd-server -n argocd 8080:443                  │
+│  # Then visit https://localhost:8080                                        │
+│                                                                              │
+│  GRAFANA:                                                                    │
+│  kubectl port-forward svc/prometheus-grafana -n observability 3000:80       │
+│  # Then visit http://localhost:3000                                         │
+│                                                                              │
+│  LOGS:                                                                       │
+│  kubectl logs -f deployment/XXX -n NAMESPACE                                │
+│  kubectl logs -f deployment/XXX -n NAMESPACE --previous  # Crashed pod     │
+│                                                                              │
+│  RESTART:                                                                    │
+│  kubectl rollout restart deployment/XXX -n NAMESPACE                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Daily Operations
+
+### 2.1 Daily Health Check
+
+> 💡 **Why Daily Health Checks?**
+>
+> Catching problems early prevents outages. A 5-minute daily check can prevent
+> hours of emergency response later.
+
+**Run this script every morning:**
 
 ```bash
 #!/bin/bash
-# scripts/daily-health-check.sh
+# Save as: daily-health-check.sh
+# Run with: ./daily-health-check.sh
 
-echo "=== THREE HORIZONS DAILY HEALTH CHECK ==="
-echo "Date: $(date)"
+echo ""
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║           THREE HORIZONS DAILY HEALTH CHECK                       ║"
+echo "║           $(date)                                                 ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# 1. Cluster Health
-echo "--- AKS Cluster Status ---"
-kubectl get nodes -o wide
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 1: CLUSTER HEALTH
+# ─────────────────────────────────────────────────────────────────────────────
+echo "┌─────────────────────────────────────────────────────────────────────┐"
+echo "│  1. CLUSTER NODES                                                   │"
+echo "└─────────────────────────────────────────────────────────────────────┘"
 echo ""
 
-# 2. Pod Health
-echo "--- Problem Pods ---"
-kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded | grep -v "^NAMESPACE"
+# Get node status
+NODE_STATUS=$(kubectl get nodes --no-headers 2>/dev/null)
+if [ $? -ne 0 ]; then
+    echo "  ❌ ERROR: Cannot connect to cluster!"
+    echo "     → Run: az aks get-credentials --resource-group <rg> --name <aks>"
+    exit 1
+fi
+
+# Count nodes by status
+TOTAL_NODES=$(echo "$NODE_STATUS" | wc -l | tr -d ' ')
+READY_NODES=$(echo "$NODE_STATUS" | grep -c " Ready ")
+NOT_READY=$(echo "$NODE_STATUS" | grep -c -v " Ready ")
+
+if [ "$READY_NODES" -eq "$TOTAL_NODES" ]; then
+    echo "  ✅ All $TOTAL_NODES nodes are Ready"
+else
+    echo "  ⚠️  $NOT_READY of $TOTAL_NODES nodes are NOT Ready!"
+    echo ""
+    kubectl get nodes | grep -v " Ready "
+fi
 echo ""
 
-# 3. ArgoCD Applications
-echo "--- ArgoCD Applications ---"
-kubectl get applications -n argocd -o custom-columns=NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 2: PROBLEM PODS
+# ─────────────────────────────────────────────────────────────────────────────
+echo "┌─────────────────────────────────────────────────────────────────────┐"
+echo "│  2. PROBLEM PODS                                                    │"
+echo "└─────────────────────────────────────────────────────────────────────┘"
 echo ""
 
-# 4. Resource Usage
-echo "--- Node Resource Usage ---"
-kubectl top nodes
+# Find pods not in Running or Succeeded state
+PROBLEM_PODS=$(kubectl get pods -A --no-headers 2>/dev/null | grep -v -E "Running|Completed|Succeeded")
+PROBLEM_COUNT=$(echo "$PROBLEM_PODS" | grep -c "." || echo "0")
+
+if [ -z "$PROBLEM_PODS" ] || [ "$PROBLEM_COUNT" -eq 0 ]; then
+    echo "  ✅ No problem pods found"
+else
+    echo "  ⚠️  Found $PROBLEM_COUNT problem pods:"
+    echo ""
+    echo "  NAMESPACE              NAME                              STATUS"
+    echo "  ─────────────────────────────────────────────────────────────────"
+    echo "$PROBLEM_PODS" | head -10 | awk '{printf "  %-20s %-35s %s\n", $1, $2, $4}'
+    if [ "$PROBLEM_COUNT" -gt 10 ]; then
+        echo "  ... and $((PROBLEM_COUNT - 10)) more"
+    fi
+fi
 echo ""
 
-# 5. PVC Status
-echo "--- Persistent Volume Claims ---"
-kubectl get pvc -A | grep -v Bound
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 3: ARGOCD APPLICATIONS
+# ─────────────────────────────────────────────────────────────────────────────
+echo "┌─────────────────────────────────────────────────────────────────────┐"
+echo "│  3. ARGOCD APPLICATIONS                                             │"
+echo "└─────────────────────────────────────────────────────────────────────┘"
 echo ""
 
-# 6. Recent Events (Warnings)
-echo "--- Recent Warning Events ---"
-kubectl get events -A --field-selector type=Warning --sort-by='.lastTimestamp' | tail -20
+APPS=$(kubectl get applications -n argocd --no-headers 2>/dev/null)
+if [ -z "$APPS" ]; then
+    echo "  ℹ️  No ArgoCD applications found (ArgoCD may not be installed)"
+else
+    SYNCED=$(echo "$APPS" | grep -c "Synced.*Healthy" || echo "0")
+    TOTAL_APPS=$(echo "$APPS" | wc -l | tr -d ' ')
+
+    if [ "$SYNCED" -eq "$TOTAL_APPS" ]; then
+        echo "  ✅ All $TOTAL_APPS applications are Synced and Healthy"
+    else
+        echo "  ⚠️  Some applications need attention:"
+        echo ""
+        echo "  APPLICATION            SYNC       HEALTH"
+        echo "  ─────────────────────────────────────────────────────────────────"
+        kubectl get applications -n argocd --no-headers | grep -v "Synced.*Healthy" | \
+            awk '{printf "  %-24s %-10s %s\n", $1, $2, $3}'
+    fi
+fi
 echo ""
 
-# 7. Cert Expiry Check
-echo "--- Certificate Status ---"
-kubectl get certificates -A 2>/dev/null || echo "cert-manager not installed"
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 4: RESOURCE USAGE
+# ─────────────────────────────────────────────────────────────────────────────
+echo "┌─────────────────────────────────────────────────────────────────────┐"
+echo "│  4. RESOURCE USAGE                                                  │"
+echo "└─────────────────────────────────────────────────────────────────────┘"
 echo ""
 
-echo "=== HEALTH CHECK COMPLETE ==="
+# Check if metrics-server is available
+kubectl top nodes &>/dev/null
+if [ $? -ne 0 ]; then
+    echo "  ℹ️  Metrics server not available (kubectl top won't work)"
+else
+    echo "  NODE                    CPU      MEMORY"
+    echo "  ─────────────────────────────────────────────────────────────────"
+    kubectl top nodes --no-headers 2>/dev/null | \
+        awk '{
+            cpu_pct = $3; mem_pct = $5;
+            cpu_warn = (cpu_pct > 80) ? "⚠️" : "✓";
+            mem_warn = (mem_pct > 85) ? "⚠️" : "✓";
+            printf "  %-24s %s %-6s %s %-6s\n", $1, cpu_warn, cpu_pct, mem_warn, mem_pct
+        }'
+fi
+echo ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 5: RECENT WARNINGS
+# ─────────────────────────────────────────────────────────────────────────────
+echo "┌─────────────────────────────────────────────────────────────────────┐"
+echo "│  5. RECENT WARNING EVENTS (Last 1 Hour)                             │"
+echo "└─────────────────────────────────────────────────────────────────────┘"
+echo ""
+
+WARNINGS=$(kubectl get events -A --field-selector type=Warning \
+    --sort-by='.lastTimestamp' 2>/dev/null | tail -5)
+
+if [ -z "$WARNINGS" ]; then
+    echo "  ✅ No recent warning events"
+else
+    echo "  Recent warnings:"
+    echo ""
+    echo "$WARNINGS" | awk 'NR>1 {printf "  • [%s] %s: %s\n", $1, $5, $7}'
+fi
+echo ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 6: EXTERNAL SECRETS
+# ─────────────────────────────────────────────────────────────────────────────
+echo "┌─────────────────────────────────────────────────────────────────────┐"
+echo "│  6. EXTERNAL SECRETS STATUS                                         │"
+echo "└─────────────────────────────────────────────────────────────────────┘"
+echo ""
+
+ES_STATUS=$(kubectl get externalsecrets -A --no-headers 2>/dev/null)
+if [ -z "$ES_STATUS" ]; then
+    echo "  ℹ️  No External Secrets configured"
+else
+    SYNCED_ES=$(echo "$ES_STATUS" | grep -c "SecretSynced" || echo "0")
+    TOTAL_ES=$(echo "$ES_STATUS" | wc -l | tr -d ' ')
+
+    if [ "$SYNCED_ES" -eq "$TOTAL_ES" ]; then
+        echo "  ✅ All $TOTAL_ES External Secrets are synced"
+    else
+        echo "  ⚠️  Some External Secrets need attention:"
+        echo "$ES_STATUS" | grep -v "SecretSynced" | \
+            awk '{printf "  • %s/%s - Status: %s\n", $1, $2, $4}'
+    fi
+fi
+echo ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SUMMARY
+# ─────────────────────────────────────────────────────────────────────────────
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║                    HEALTH CHECK COMPLETE                          ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
 ```
 
-### 1.2 Key Metrics to Monitor
+**Understanding the output:**
 
-| Metric | Normal Range | Alert Threshold | Action |
-|--------|--------------|-----------------|--------|
-| Node CPU | < 70% | > 85% | Scale out nodes |
-| Node Memory | < 80% | > 90% | Scale out nodes |
-| Pod Restarts | 0-2 | > 5 | Investigate logs |
-| API Server Latency | < 500ms | > 1s | Check control plane |
-| Failed Pods | 0 | > 0 | Check events |
-| PV Usage | < 80% | > 90% | Expand storage |
+| Symbol | Meaning | Action Required |
+|--------|---------|-----------------|
+| ✅ | Everything OK | None |
+| ⚠️ | Warning | Investigate soon |
+| ❌ | Error | Investigate immediately |
+| ℹ️ | Information | For your awareness |
 
-### 1.3 Daily Tasks Checklist
+### 2.2 Key Metrics to Monitor
 
-- [ ] Run health check script
-- [ ] Review Grafana dashboards
-- [ ] Check Slack/Teams for alerts
-- [ ] Verify backup completion
-- [ ] Review security alerts in Defender
-- [ ] Check ArgoCD sync status
-- [ ] Review cost anomalies
+> 💡 **What Metrics Should I Watch?**
+>
+> These are the most important metrics that indicate platform health.
+> Set up alerts for these in Grafana/Prometheus.
+
+| Metric | Normal Range | Warning Threshold | Critical Threshold | What It Means |
+|--------|--------------|-------------------|--------------------|---------------|
+| **Node CPU** | < 70% | > 80% | > 90% | Nodes are overloaded |
+| **Node Memory** | < 75% | > 85% | > 95% | Risk of OOM kills |
+| **Pod Restarts** | 0-2/hour | > 5/hour | > 10/hour | Application instability |
+| **API Server Latency** | < 200ms | > 500ms | > 1s | Control plane issues |
+| **Failed Pods** | 0 | > 0 | > 5 | Application failures |
+| **PV Usage** | < 70% | > 80% | > 90% | Storage running out |
+| **Certificate Expiry** | > 30 days | < 30 days | < 7 days | TLS cert expiring |
+
+### 2.3 Daily Tasks Checklist
+
+Print this and check off each item:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DAILY OPERATIONS CHECKLIST                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  MORNING (Start of Day):                                                    │
+│  □ Run health check script                                                  │
+│  □ Review overnight alerts in Slack/PagerDuty                              │
+│  □ Check Grafana dashboards for anomalies                                  │
+│  □ Verify last night's backup completed                                    │
+│                                                                              │
+│  MIDDAY:                                                                    │
+│  □ Review ArgoCD sync status                                               │
+│  □ Check for pending deployments                                           │
+│  □ Monitor resource usage trends                                           │
+│                                                                              │
+│  END OF DAY:                                                                │
+│  □ Review Defender for Cloud alerts                                        │
+│  □ Check cost dashboard for anomalies                                      │
+│  □ Document any issues encountered                                         │
+│  □ Handoff notes for on-call (if applicable)                              │
+│                                                                              │
+│  WEEKLY (Pick a day):                                                       │
+│  □ Review security alerts summary                                          │
+│  □ Check certificate expiry dates                                          │
+│  □ Review and clean up unused resources                                    │
+│  □ Test backup restoration (monthly)                                       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 2. Monitoring and Alerting
+## 3. Monitoring and Alerting
 
-### 2.1 Accessing Dashboards
+### 3.1 Accessing Monitoring Tools
+
+> 💡 **How to Access Dashboards**
+>
+> All monitoring tools run inside the Kubernetes cluster. You access them
+> by "port-forwarding" - creating a tunnel from your computer to the service.
+
+#### Grafana (Dashboards and Visualization)
 
 ```bash
-# Grafana
+# Step 1: Start port-forward to Grafana
 kubectl port-forward svc/prometheus-grafana -n observability 3000:80
-# URL: http://localhost:3000
-# Get password: kubectl get secret prometheus-grafana -n observability -o jsonpath="{.data.admin-password}" | base64 -d
 
-# Prometheus
+# Step 2: Get the admin password
+kubectl get secret prometheus-grafana -n observability \
+  -o jsonpath="{.data.admin-password}" | base64 -d && echo
+
+# Step 3: Open browser to http://localhost:3000
+# Username: admin
+# Password: (from step 2)
+```
+
+**What you'll see in Grafana:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    GRAFANA DASHBOARD OVERVIEW                                │
+│                                                                              │
+│  HOME                                                                        │
+│  ├── Platform Overview         ← Start here! Overall platform health        │
+│  │                                                                           │
+│  ├── Kubernetes                                                              │
+│  │   ├── Cluster Overview      ← Node and pod counts, resource usage        │
+│  │   ├── Node Metrics          ← Individual node CPU/memory/disk            │
+│  │   ├── Pod Metrics           ← Individual pod resource usage              │
+│  │   └── Namespace Overview    ← Resources by namespace                     │
+│  │                                                                           │
+│  ├── Applications                                                            │
+│  │   ├── ArgoCD Dashboard      ← Application sync status                    │
+│  │   └── API Metrics           ← Request rates, error rates, latency        │
+│  │                                                                           │
+│  └── Cost                                                                    │
+│      └── Cost Dashboard        ← Resource costs by namespace/team           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Prometheus (Metrics Query)
+
+```bash
+# Start port-forward to Prometheus
 kubectl port-forward svc/prometheus-kube-prometheus-prometheus -n observability 9090:9090
-# URL: http://localhost:9090
 
-# ArgoCD
+# Open browser to http://localhost:9090
+```
+
+**Useful PromQL Queries:**
+
+```promql
+# CPU usage by node (percentage)
+100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+# Memory usage by node (percentage)
+(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100
+
+# Pod restart count in last hour
+increase(kube_pod_container_status_restarts_total[1h])
+
+# HTTP request rate by service
+sum(rate(http_requests_total[5m])) by (service)
+
+# HTTP error rate (5xx) by service
+sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+```
+
+#### ArgoCD (GitOps Deployments)
+
+```bash
+# Start port-forward to ArgoCD
 kubectl port-forward svc/argocd-server -n argocd 8080:443
-# URL: https://localhost:8080
+
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d && echo
+
+# Open browser to https://localhost:8080
+# Username: admin
+# Password: (from above command)
 ```
 
-### 2.2 Key Dashboards
+### 3.2 Alert Configuration
 
-| Dashboard | Purpose | Location |
-|-----------|---------|----------|
-| Platform Overview | Overall health | Grafana > Platform |
-| Node Metrics | Node health | Grafana > Kubernetes > Nodes |
-| Pod Metrics | Pod health | Grafana > Kubernetes > Pods |
-| Cost Dashboard | Cost tracking | Grafana > Cost |
-| Agent Metrics | AI agent stats | Grafana > Agents |
+> 💡 **How Alerts Work**
+>
+> 1. Prometheus evaluates alert rules continuously
+> 2. When a rule matches, Prometheus fires an alert to Alertmanager
+> 3. Alertmanager groups similar alerts and routes them
+> 4. You receive notification via Slack, PagerDuty, email, etc.
 
-### 2.3 Alert Configuration
+**Alert Severity Levels:**
 
-**File:** `prometheus/alerting-rules.yaml`
+| Severity | Response Time | Who to Notify | Examples |
+|----------|---------------|---------------|----------|
+| **Critical** | Immediate (< 15 min) | On-call + escalation | Platform down, data loss risk |
+| **Warning** | Same day (< 4 hours) | On-call | High CPU, approaching limits |
+| **Info** | Next business day | Team channel | FYI events, non-urgent |
+
+**Configuring Alert Routes:**
+
+File: `prometheus/alertmanager-config.yaml`
 
 ```yaml
+# This configures WHERE alerts go based on severity
+route:
+  # Default receiver
+  receiver: 'slack-notifications'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'namespace']
+
+  # Wait before sending (to group similar alerts)
+  group_wait: 30s
+
+  # How long to wait before sending new alerts in the same group
+  group_interval: 5m
+
+  # How often to resend alerts that are still firing
+  repeat_interval: 4h
+
+  # Child routes - more specific matching
+  routes:
+    # Critical alerts go to PagerDuty
+    - match:
+        severity: critical
+      receiver: 'pagerduty'
+      repeat_interval: 15m
+
+    # Warning alerts go to Slack
+    - match:
+        severity: warning
+      receiver: 'slack-notifications'
+
+    # Info alerts are logged only
+    - match:
+        severity: info
+      receiver: 'null'
+
+receivers:
+  # PagerDuty for critical alerts
+  - name: 'pagerduty'
+    pagerduty_configs:
+      - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        description: '{{ .GroupLabels.alertname }}'
+
+  # Slack for warnings
+  - name: 'slack-notifications'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/XXX/YYY/ZZZ'
+        channel: '#platform-alerts'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  # Null receiver (drops alerts)
+  - name: 'null'
+```
+
+### 3.3 Creating Custom Alerts
+
+**Example: Alert when HTTP error rate exceeds 1%**
+
+```yaml
+# Add to prometheus/alerting-rules.yaml
 groups:
-  - name: platform-alerts
+  - name: application-alerts
     rules:
-      # High CPU Alert
-      - alert: HighNodeCPU
-        expr: (1 - avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 0.85
-        for: 10m
+      # Alert: High HTTP Error Rate
+      - alert: HighHTTPErrorRate
+        # PromQL expression that triggers the alert
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+          ) > 0.01
+
+        # How long condition must be true before alerting
+        for: 5m
+
+        # Labels for routing
         labels:
           severity: warning
-        annotations:
-          summary: "High CPU usage on {{ $labels.instance }}"
-          description: "CPU usage is above 85% for more than 10 minutes"
+          team: platform
 
-      # Memory Alert
-      - alert: HighNodeMemory
-        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.9
-        for: 10m
-        labels:
-          severity: critical
+        # Human-readable information
         annotations:
-          summary: "High memory usage on {{ $labels.instance }}"
+          summary: "High HTTP error rate for {{ $labels.service }}"
+          description: |
+            Service {{ $labels.service }} has an error rate of
+            {{ $value | humanizePercentage }} (threshold: 1%).
 
-      # Pod Crashloop
-      - alert: PodCrashLooping
-        expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 3
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
-
-      # PVC Almost Full
-      - alert: PVCAlmostFull
-        expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.9
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "PVC {{ $labels.persistentvolumeclaim }} is almost full"
+            Runbook: https://wiki.company.com/runbooks/high-error-rate
+          dashboard: "https://grafana.company.com/d/api-dashboard"
 ```
 
-### 2.4 Notification Channels
+**Alert Best Practices:**
 
-Configure in `argocd/notifications.yaml`:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-notifications-cm
-  namespace: argocd
-data:
-  service.teams: |
-    recipientUrls:
-      platform-team: $teams-webhook-url
-
-  service.slack: |
-    token: $slack-token
-
-  trigger.on-sync-failed: |
-    - send: [app-sync-failed]
-      when: app.status.operationState.phase in ['Error', 'Failed']
-
-  template.app-sync-failed: |
-    teams:
-      title: "Application Sync Failed"
-      body: |
-        Application: {{.app.metadata.name}}
-        Status: {{.app.status.operationState.phase}}
-        Message: {{.app.status.operationState.message}}
-```
+| Do | Don't |
+|----|-------|
+| ✅ Set meaningful `for` duration (avoid flapping) | ❌ Alert on every blip |
+| ✅ Include runbook links in annotations | ❌ Leave operators guessing |
+| ✅ Route by severity to appropriate channels | ❌ Send everything to PagerDuty |
+| ✅ Alert on symptoms (error rate high) | ❌ Alert on causes (CPU high) |
+| ✅ Test alerts before deploying | ❌ Find out alerts don't work during incident |
 
 ---
 
-## 3. Scaling Operations
+## 4. Scaling Operations
 
-### 3.1 Manual Node Scaling
+### 4.1 Understanding Autoscaling
+
+> 💡 **Types of Autoscaling**
+>
+> The platform supports three types of autoscaling:
+> - **HPA (Horizontal Pod Autoscaler):** Scales pods within a deployment
+> - **VPA (Vertical Pod Autoscaler):** Adjusts pod resource requests
+> - **Cluster Autoscaler:** Adds/removes nodes from the cluster
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    AUTOSCALING HIERARCHY                                     │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    CLUSTER AUTOSCALER                                │   │
+│   │                                                                      │   │
+│   │   Watches: Pending pods that can't be scheduled                     │   │
+│   │   Action: Add nodes when pods can't fit, remove when underutilized │   │
+│   │   Scope: Entire cluster                                             │   │
+│   │   Speed: Slow (minutes to add node)                                 │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                         │
+│                                    ▼                                         │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    HORIZONTAL POD AUTOSCALER (HPA)                   │   │
+│   │                                                                      │   │
+│   │   Watches: CPU/memory usage, custom metrics                         │   │
+│   │   Action: Add/remove pod replicas                                   │   │
+│   │   Scope: Single deployment                                          │   │
+│   │   Speed: Fast (seconds to add pod)                                  │   │
+│   │                                                                      │   │
+│   │   Example:                                                           │   │
+│   │   Load ↑ → HPA adds pods → Pods pending → CA adds node → Pods run  │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Manual Node Scaling
+
+> ⚠️ **When to Scale Manually**
+>
+> Usually, let the Cluster Autoscaler handle scaling. Manual scaling is for:
+> - Preparing for known traffic spikes
+> - Cost optimization (scaling down during off-hours)
+> - Emergency situations
+
+**Scale cluster nodes:**
 
 ```bash
-# Get current node count
-az aks nodepool show \
-  --resource-group rg-threehorizons-dev \
-  --cluster-name aks-threehorizons-dev \
-  --name user \
-  --query "count"
+# View current node count
+kubectl get nodes | wc -l
 
-# Scale up nodes
+# Scale the workload node pool
 az aks nodepool scale \
   --resource-group rg-threehorizons-dev \
   --cluster-name aks-threehorizons-dev \
-  --name user \
+  --name workload \
   --node-count 5
 
-# Scale down nodes (careful!)
-az aks nodepool scale \
-  --resource-group rg-threehorizons-dev \
-  --cluster-name aks-threehorizons-dev \
-  --name user \
-  --node-count 3
+# Verify new nodes are Ready
+watch kubectl get nodes
 ```
 
-### 3.2 Configure Autoscaler
+**Understanding the scaling process:**
 
-```bash
-# Enable cluster autoscaler
-az aks nodepool update \
-  --resource-group rg-threehorizons-dev \
-  --cluster-name aks-threehorizons-dev \
-  --name user \
-  --enable-cluster-autoscaler \
-  --min-count 3 \
-  --max-count 10
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    NODE SCALING TIMELINE                                    │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  T+0      │ Scale command issued                                           │
+│  T+1 min  │ Azure starts provisioning VM                                   │
+│  T+3 min  │ VM is running, joining cluster                                │
+│  T+4 min  │ Node appears as "NotReady"                                     │
+│  T+5 min  │ Node is "Ready", pods can be scheduled                        │
+│           │                                                                 │
+│  TOTAL: ~5 minutes to add a node                                           │
+│                                                                             │
+│  ⚠️ If you need capacity NOW, plan ahead!                                  │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Autoscaler Configuration via Terraform:**
+### 4.3 Configuring Horizontal Pod Autoscaler
 
-```hcl
-# terraform/modules/aks-cluster/main.tf
-
-resource "azurerm_kubernetes_cluster_node_pool" "user" {
-  name                  = "user"
-  kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
-  vm_size               = "Standard_D8s_v5"
-
-  enable_auto_scaling = true
-  min_count           = 3
-  max_count           = 10
-
-  node_labels = {
-    "workload" = "general"
-  }
-}
-```
-
-### 3.3 Horizontal Pod Autoscaler (HPA)
+**Create an HPA for a deployment:**
 
 ```yaml
-# Example HPA for application
+# Example: Autoscale based on CPU usage
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: my-app-hpa
-  namespace: default
+  namespace: production
 spec:
+  # Target deployment
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: my-app
-  minReplicas: 2
-  maxReplicas: 10
+
+  # Min and max replicas
+  minReplicas: 3
+  maxReplicas: 20
+
+  # Scaling triggers
   metrics:
+    # Scale when CPU usage > 70%
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
           averageUtilization: 70
+
+    # Scale when memory usage > 80%
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
           averageUtilization: 80
+
+  # Scale-down settings (prevent flapping)
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 min before scaling down
+      policies:
+        - type: Percent
+          value: 50       # Max 50% reduction at once
+          periodSeconds: 60
 ```
 
-### 3.4 Vertical Pod Autoscaler (VPA)
+**Apply and verify:**
 
-```yaml
-apiVersion: autoscaling.k8s.io/v1
-kind: VerticalPodAutoscaler
-metadata:
-  name: my-app-vpa
-spec:
-  targetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: my-app
-  updatePolicy:
-    updateMode: "Auto"
-  resourcePolicy:
-    containerPolicies:
-      - containerName: "*"
-        minAllowed:
-          cpu: 100m
-          memory: 128Mi
-        maxAllowed:
-          cpu: 2
-          memory: 4Gi
+```bash
+# Apply the HPA
+kubectl apply -f my-app-hpa.yaml
+
+# Check HPA status
+kubectl get hpa -n production
+
+# Watch HPA in action
+kubectl get hpa -n production -w
+```
+
+**Expected output:**
+
+```
+NAME         REFERENCE           TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+my-app-hpa   Deployment/my-app   23%/70%   3         20        5          2m
 ```
 
 ---
 
-## 4. Backup and Recovery
+## 5. Backup and Recovery
 
-### 4.1 Velero Setup
+### 5.1 What Gets Backed Up
 
-```bash
-# Install Velero
-helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
-helm repo update
+> 💡 **Backup Strategy**
+>
+> We use a "belt and suspenders" approach:
+> - **Terraform state:** In Azure Storage (versioned)
+> - **Git:** All configs in version control
+> - **Velero:** Kubernetes resources and PV snapshots
+> - **Azure Backup:** Managed services (PostgreSQL, etc.)
 
-# Create storage account for backups
-az storage account create \
-  --name stthreehorizonsbackup \
-  --resource-group rg-threehorizons-dev \
-  --location brazilsouth \
-  --sku Standard_GRS
-
-# Get storage key
-AZURE_STORAGE_KEY=$(az storage account keys list \
-  --account-name stthreehorizonsbackup \
-  --resource-group rg-threehorizons-dev \
-  --query "[0].value" -o tsv)
-
-# Create blob container
-az storage container create \
-  --name velero \
-  --account-name stthreehorizonsbackup \
-  --account-key $AZURE_STORAGE_KEY
-
-# Install Velero
-velero install \
-  --provider azure \
-  --plugins velero/velero-plugin-for-microsoft-azure:v1.8.0 \
-  --bucket velero \
-  --secret-file ./credentials-velero \
-  --backup-location-config resourceGroup=rg-threehorizons-dev,storageAccount=stthreehorizonsbackup \
-  --snapshot-location-config apiTimeout=5m,resourceGroup=rg-threehorizons-dev
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    BACKUP ARCHITECTURE                                       │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                        DATA SOURCES                                  │   │
+│   │                                                                      │   │
+│   │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐        │   │
+│   │  │Kubernetes │  │ Terraform │  │  GitHub   │  │  Azure    │        │   │
+│   │  │ Resources │  │   State   │  │   Repos   │  │  PaaS     │        │   │
+│   │  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘        │   │
+│   └────────┼──────────────┼──────────────┼──────────────┼───────────────┘   │
+│            │              │              │              │                    │
+│            ▼              ▼              ▼              ▼                    │
+│   ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐   │
+│   │    VELERO     │ │Azure Storage  │ │   GitHub      │ │ Azure Backup  │   │
+│   │               │ │ (versioned)   │ │               │ │               │   │
+│   │ • K8s objects │ │ • tfstate     │ │ • All code    │ │ • PostgreSQL  │   │
+│   │ • PV snapshots│ │ • Locked      │ │ • All configs │ │ • Key Vault   │   │
+│   │ • Namespaces  │ │               │ │ • History     │ │               │   │
+│   └───────────────┘ └───────────────┘ └───────────────┘ └───────────────┘   │
+│                                                                              │
+│   RETENTION POLICIES:                                                        │
+│   • Daily backups: 7 days                                                   │
+│   • Weekly backups: 4 weeks                                                 │
+│   • Monthly backups: 12 months                                              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Backup Schedule
+### 5.2 Velero Backup Commands
+
+**Check backup status:**
 
 ```bash
-# Create daily backup schedule
-velero schedule create daily-backup \
-  --schedule="0 2 * * *" \
-  --ttl 168h \
-  --include-namespaces default,argocd,rhdh,observability
+# List all backups
+velero backup get
 
-# Create weekly full backup
-velero schedule create weekly-full \
-  --schedule="0 3 * * 0" \
-  --ttl 720h
+# Check backup details
+velero backup describe <backup-name>
 
-# List schedules
-velero schedule get
+# Check backup logs
+velero backup logs <backup-name>
 ```
 
-### 4.3 Manual Backup
+**Create manual backup:**
 
 ```bash
+# Backup everything
+velero backup create full-backup-$(date +%Y%m%d)
+
 # Backup specific namespace
-velero backup create manual-backup-$(date +%Y%m%d) \
-  --include-namespaces default,argocd \
-  --wait
+velero backup create myapp-backup-$(date +%Y%m%d) \
+  --include-namespaces myapp-production
 
-# Backup with volume snapshots
-velero backup create manual-backup-with-volumes \
-  --include-namespaces default \
-  --snapshot-volumes=true \
-  --wait
-
-# Check backup status
-velero backup describe manual-backup-$(date +%Y%m%d)
+# Backup with specific labels
+velero backup create critical-apps-$(date +%Y%m%d) \
+  --selector app.kubernetes.io/part-of=critical
 ```
 
-### 4.4 Restore Procedure
+### 5.3 Restore Procedures
+
+> ⚠️ **Before Restoring**
+>
+> 1. Communicate to stakeholders that restoration is happening
+> 2. Ensure you have the right backup identified
+> 3. Decide: restore to same namespace or new namespace?
+
+**Restore from backup:**
 
 ```bash
 # List available backups
 velero backup get
 
-# Restore from backup
-velero restore create --from-backup daily-backup-20251211020000
+# Restore entire backup
+velero restore create --from-backup full-backup-20241210
 
 # Restore specific namespace
-velero restore create --from-backup daily-backup-20251211020000 \
-  --include-namespaces default
+velero restore create --from-backup full-backup-20241210 \
+  --include-namespaces production
+
+# Restore to different namespace (create mapping)
+velero restore create --from-backup full-backup-20241210 \
+  --namespace-mappings production:production-restored
 
 # Check restore status
 velero restore describe <restore-name>
 ```
 
-### 4.5 Database Backup
+**Disaster Recovery Runbook:**
 
-```bash
-# PostgreSQL backup
-az postgres flexible-server backup create \
-  --resource-group rg-threehorizons-dev \
-  --name psql-threehorizons-dev \
-  --backup-name manual-backup-$(date +%Y%m%d)
-
-# List backups
-az postgres flexible-server backup list \
-  --resource-group rg-threehorizons-dev \
-  --name psql-threehorizons-dev \
-  --output table
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    DISASTER RECOVERY STEPS                                  │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. ASSESS THE SITUATION                                                   │
+│     □ What was lost? (cluster, namespace, specific app?)                   │
+│     □ What's the Recovery Point Objective (RPO)?                          │
+│     □ What's the Recovery Time Objective (RTO)?                           │
+│                                                                             │
+│  2. IDENTIFY THE BACKUP                                                    │
+│     □ List available backups: velero backup get                           │
+│     □ Choose appropriate backup (before incident)                         │
+│     □ Verify backup integrity: velero backup describe <name>              │
+│                                                                             │
+│  3. COMMUNICATE                                                            │
+│     □ Notify stakeholders of recovery timeline                            │
+│     □ Update status page                                                   │
+│     □ Create incident ticket                                               │
+│                                                                             │
+│  4. RESTORE                                                                │
+│     □ If cluster lost: Recreate with Terraform                            │
+│     □ Restore Velero itself (bootstrap)                                   │
+│     □ Restore workloads from backup                                        │
+│                                                                             │
+│  5. VERIFY                                                                 │
+│     □ Run health check script                                              │
+│     □ Verify all applications are running                                  │
+│     □ Test critical user flows                                             │
+│                                                                             │
+│  6. POST-INCIDENT                                                          │
+│     □ Write post-mortem                                                    │
+│     □ Update procedures if needed                                          │
+│     □ Close incident ticket                                                │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 5. Secret Management
+## 6. Secret Management
 
-### 5.1 Adding New Secrets
+### 6.1 Understanding Secret Flow
+
+> 💡 **Where Secrets Live**
+>
+> - **Azure Key Vault:** Source of truth for all secrets
+> - **External Secrets Operator:** Syncs secrets to Kubernetes
+> - **Kubernetes Secrets:** What applications actually read
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    SECRET MANAGEMENT FLOW                                    │
+│                                                                              │
+│   1. Admin creates secret     2. ESO syncs        3. App uses secret        │
+│   in Key Vault                to K8s              from K8s Secret           │
+│                                                                              │
+│   ┌──────────────┐           ┌──────────────┐         ┌──────────────┐      │
+│   │  Key Vault   │   ──►     │   External   │   ──►   │  Kubernetes  │      │
+│   │              │           │   Secrets    │         │    Secret    │      │
+│   │ db-password  │           │   Operator   │         │              │      │
+│   │ api-key      │           │              │         │ data:        │      │
+│   │ cert.pem     │           │ Polls every  │         │   password:  │      │
+│   │              │           │ 1 hour       │         │   api-key:   │      │
+│   └──────────────┘           └──────────────┘         └──────────────┘      │
+│                                                              │               │
+│                                                              ▼               │
+│                                                       ┌──────────────┐      │
+│                                                       │     Pod      │      │
+│                                                       │              │      │
+│                                                       │ env:         │      │
+│                                                       │   DB_PASS:   │      │
+│                                                       │     from:    │      │
+│                                                       │     secret   │      │
+│                                                       └──────────────┘      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.2 Managing Secrets in Key Vault
+
+**Add a new secret:**
 
 ```bash
-# Add secret to Key Vault
+# Set secret in Key Vault
 az keyvault secret set \
   --vault-name kv-threehorizons-dev \
-  --name "new-api-key" \
-  --value "secret-value-here"
+  --name "database-password" \
+  --value "super-secret-password-123"
 
-# Create ExternalSecret to sync
-cat <<EOF | kubectl apply -f -
+# Verify secret was created
+az keyvault secret show \
+  --vault-name kv-threehorizons-dev \
+  --name "database-password" \
+  --query "value"
+```
+
+**Create ExternalSecret to sync it:**
+
+```yaml
+# externalsecret.yaml
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: new-api-key
-  namespace: default
+  name: my-app-secrets
+  namespace: my-app
 spec:
+  # How often to sync
   refreshInterval: 1h
+
+  # Which secret store to use
   secretStoreRef:
     kind: ClusterSecretStore
     name: azure-key-vault
+
+  # Target Kubernetes Secret
   target:
-    name: new-api-key
-    creationPolicy: Owner
+    name: my-app-secrets
+
+  # What to sync
   data:
-    - secretKey: apiKey
+    # Local key name : Key Vault secret name
+    - secretKey: DATABASE_PASSWORD
       remoteRef:
-        key: new-api-key
-EOF
+        key: database-password
 
-# Verify sync
-kubectl get externalsecret new-api-key
-kubectl get secret new-api-key
+    - secretKey: API_KEY
+      remoteRef:
+        key: my-app-api-key
 ```
 
-### 5.2 Rotating Secrets
+**Apply and verify:**
 
 ```bash
-# 1. Update in Key Vault
-az keyvault secret set \
-  --vault-name kv-threehorizons-dev \
-  --name "db-password" \
-  --value "new-password-here"
+# Apply the ExternalSecret
+kubectl apply -f externalsecret.yaml
 
-# 2. Force refresh of ExternalSecret
-kubectl annotate externalsecret db-password \
-  force-sync=$(date +%s) --overwrite
+# Check sync status
+kubectl get externalsecret my-app-secrets -n my-app
 
-# 3. Restart pods to pick up new secret
-kubectl rollout restart deployment/my-app -n default
+# Verify Kubernetes Secret was created
+kubectl get secret my-app-secrets -n my-app
 
-# 4. Verify
-kubectl get secret db-password -o jsonpath='{.data.password}' | base64 -d
+# View secret contents (base64 encoded)
+kubectl get secret my-app-secrets -n my-app -o jsonpath='{.data.DATABASE_PASSWORD}' | base64 -d
 ```
 
-### 5.3 Secret Audit
+### 6.3 Secret Rotation
 
-```bash
-# List all secrets in Key Vault
-az keyvault secret list \
-  --vault-name kv-threehorizons-dev \
-  --output table
+> 💡 **Why Rotate Secrets?**
+>
+> - Compliance requirements
+> - After personnel changes
+> - After suspected compromise
+> - Best practice: every 90 days
 
-# Check secret versions
-az keyvault secret list-versions \
-  --vault-name kv-threehorizons-dev \
-  --name "db-password" \
-  --output table
+**Secret rotation procedure:**
 
-# Audit logs
-az monitor activity-log list \
-  --resource-group rg-threehorizons-dev \
-  --resource-type Microsoft.KeyVault/vaults \
-  --output table
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    SECRET ROTATION PROCEDURE                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. CREATE NEW VERSION IN KEY VAULT                                        │
+│     az keyvault secret set \                                               │
+│       --vault-name kv-XXX \                                                │
+│       --name "database-password" \                                         │
+│       --value "new-password-456"                                           │
+│                                                                             │
+│  2. WAIT FOR ESO TO SYNC (up to 1 hour)                                   │
+│     OR force immediate sync:                                               │
+│     kubectl annotate externalsecret my-app-secrets \                       │
+│       force-sync=$(date +%s) -n my-app                                    │
+│                                                                             │
+│  3. VERIFY SECRET UPDATED                                                  │
+│     kubectl get secret my-app-secrets -n my-app \                         │
+│       -o jsonpath='{.metadata.annotations}'                                │
+│                                                                             │
+│  4. RESTART APPLICATIONS (if they don't watch for changes)                │
+│     kubectl rollout restart deployment/my-app -n my-app                   │
+│                                                                             │
+│  5. VERIFY APPLICATION HEALTH                                              │
+│     kubectl get pods -n my-app                                             │
+│     kubectl logs deployment/my-app -n my-app | tail -20                   │
+│                                                                             │
+│  6. DISABLE OLD SECRET VERSION (optional, after verification)              │
+│     az keyvault secret set-attributes \                                    │
+│       --vault-name kv-XXX \                                                │
+│       --name "database-password" \                                         │
+│       --version <old-version-id> \                                         │
+│       --enabled false                                                       │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 6. User Management
+## 7. User Management
 
-### 6.1 AKS RBAC
+### 7.1 Access Control Model
+
+> 💡 **RBAC (Role-Based Access Control)**
+>
+> We use RBAC at two levels:
+> - **Azure RBAC:** Who can access Azure resources
+> - **Kubernetes RBAC:** Who can access Kubernetes resources
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ACCESS CONTROL HIERARCHY                                  │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    AZURE AD GROUPS                                   │   │
+│   │                                                                      │   │
+│   │  Platform-Admins          Platform-Operators      Platform-Viewers  │   │
+│   │  ────────────────        ──────────────────      ────────────────   │   │
+│   │  Full access             Operations access       Read-only access   │   │
+│   │  (Owner role)            (Contributor role)     (Reader role)       │   │
+│   │                                                                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                         │
+│                                    ▼                                         │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    KUBERNETES RBAC                                   │   │
+│   │                                                                      │   │
+│   │  cluster-admin            edit                    view               │   │
+│   │  ────────────            ────                    ────               │   │
+│   │  All K8s access          Create/update          Read-only          │   │
+│   │  All namespaces          Limited namespaces     All namespaces     │   │
+│   │                                                                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 7.2 Adding a New User
+
+**Step 1: Add to Azure AD Group**
 
 ```bash
-# Get current cluster admin config
-az aks get-credentials \
-  --resource-group rg-threehorizons-dev \
-  --name aks-threehorizons-dev \
-  --admin
+# Get user's Object ID
+az ad user show --id "user@company.com" --query id -o tsv
 
-# Create ClusterRole for developers
-cat <<EOF | kubectl apply -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: developer
-rules:
-  - apiGroups: [""]
-    resources: ["pods", "services", "configmaps"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["pods/log", "pods/exec"]
-    verbs: ["get", "create"]
-EOF
+# Add to appropriate group
+# For operators:
+az ad group member add \
+  --group "Platform-Operators" \
+  --member-id "user-object-id"
 
-# Bind role to Azure AD group
-cat <<EOF | kubectl apply -f -
+# For admins:
+az ad group member add \
+  --group "Platform-Admins" \
+  --member-id "user-object-id"
+```
+
+**Step 2: Create Kubernetes RoleBinding (if namespace-specific)**
+
+```yaml
+# rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
-  name: developer-binding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: developer
+  name: team-alpha-access
+  namespace: team-alpha
 subjects:
+  # Bind to Azure AD group
   - kind: Group
-    name: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # Azure AD Group Object ID
+    name: "team-alpha-developers"  # Azure AD group name
     apiGroup: rbac.authorization.k8s.io
-EOF
+roleRef:
+  kind: ClusterRole
+  name: edit  # Kubernetes built-in role
+  apiGroup: rbac.authorization.k8s.io
 ```
 
-### 6.2 ArgoCD Users
-
-```yaml
-# argocd/argocd-cm.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: argocd
-data:
-  accounts.developer: login
-  accounts.readonly: login
-```
-
-```yaml
-# argocd/argocd-rbac-cm.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-rbac-cm
-  namespace: argocd
-data:
-  policy.csv: |
-    # Developers can sync apps in their namespaces
-    p, role:developer, applications, sync, */*, allow
-    p, role:developer, applications, get, */*, allow
-
-    # Read-only role
-    p, role:readonly, applications, get, */*, allow
-    p, role:readonly, logs, get, */*, allow
-
-    # Group bindings
-    g, developers, role:developer
-    g, viewers, role:readonly
-```
-
-### 6.3 Grafana Users
+**Step 3: Verify access**
 
 ```bash
-# Access Grafana admin
-kubectl port-forward svc/prometheus-grafana -n observability 3000:80
+# User should run:
+az aks get-credentials --resource-group rg-XXX --name aks-XXX
 
-# In Grafana UI:
-# 1. Go to Configuration > Users
-# 2. Add new user or configure LDAP/OAuth
+# Test access
+kubectl auth can-i create pods -n team-alpha
+# Expected: yes
 
-# Or via API:
-curl -X POST http://localhost:3000/api/admin/users \
-  -H "Content-Type: application/json" \
-  -u admin:$GRAFANA_PASSWORD \
-  -d '{
-    "name": "New Developer",
-    "email": "dev@company.com",
-    "login": "newdev",
-    "password": "initial-password"
-  }'
+kubectl auth can-i create pods -n other-team
+# Expected: no
+```
+
+### 7.3 Removing User Access
+
+```bash
+# Remove from Azure AD group
+az ad group member remove \
+  --group "Platform-Operators" \
+  --member-id "user-object-id"
+
+# Verify removal
+az ad group member check \
+  --group "Platform-Operators" \
+  --member-id "user-object-id"
+# Expected: false
+
+# User's access will be revoked next time they try to authenticate
+# For immediate revocation, delete their kubeconfig credentials
 ```
 
 ---
 
-## 7. Certificate Management
+## 8. Certificate Management
 
-### 7.1 Check Certificate Status
+### 8.1 Certificate Types
+
+| Certificate Type | Purpose | Managed By | Rotation |
+|-----------------|---------|------------|----------|
+| **TLS for Ingress** | HTTPS for web apps | cert-manager | Auto (Let's Encrypt) |
+| **Kubernetes CA** | Internal cluster TLS | AKS | Auto (Azure) |
+| **Key Vault Certs** | Custom certificates | Key Vault | Manual or auto |
+
+### 8.2 Checking Certificate Status
 
 ```bash
-# List all certificates
+# List all certificates managed by cert-manager
 kubectl get certificates -A
 
-# Check certificate details
-kubectl describe certificate tls-cert -n default
+# Check specific certificate details
+kubectl describe certificate my-tls-cert -n my-app
 
-# Check cert-manager status
-kubectl get challenges -A
-kubectl get orders -A
+# Check certificate expiry
+kubectl get certificate -A -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.status.notAfter}{"\n"}{end}'
 ```
 
-### 7.2 Renew Certificate Manually
+### 8.3 Certificate Renewal
+
+**Automatic renewal (cert-manager):**
+
+cert-manager automatically renews certificates 30 days before expiry. If renewal fails:
 
 ```bash
-# Delete the secret to force renewal
-kubectl delete secret tls-cert -n default
+# Check cert-manager logs
+kubectl logs -n cert-manager deployment/cert-manager
 
-# cert-manager will automatically recreate it
-kubectl get certificate tls-cert -n default -w
+# Force renewal
+kubectl delete certificate my-tls-cert -n my-app
+# cert-manager will recreate it
+
+# Or delete the secret to trigger re-issuance
+kubectl delete secret my-tls-cert -n my-app
 ```
 
-### 7.3 Create New Certificate
+**Manual renewal (Key Vault certificates):**
 
-```yaml
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: app-tls
-  namespace: default
-spec:
-  secretName: app-tls-secret
-  duration: 2160h  # 90 days
-  renewBefore: 360h  # 15 days before expiry
-  issuerRef:
-    name: letsencrypt-prod
-    kind: ClusterIssuer
-  dnsNames:
-    - app.example.com
-    - www.app.example.com
+```bash
+# Check certificate expiry
+az keyvault certificate show \
+  --vault-name kv-XXX \
+  --name my-cert \
+  --query "attributes.expires"
+
+# Create new version (CSR or import)
+az keyvault certificate create \
+  --vault-name kv-XXX \
+  --name my-cert \
+  --policy @cert-policy.json
 ```
 
 ---
 
-## 8. Cost Management
+## 9. Cost Management
 
-### 8.1 View Current Costs
+### 9.1 Understanding Costs
+
+> 💡 **Major Cost Drivers**
+>
+> In order of typical impact:
+> 1. **AKS Node VMs:** 60-70% of cost
+> 2. **Azure OpenAI:** Variable based on usage
+> 3. **Storage:** Disks, blobs, logs
+> 4. **Network:** Egress traffic
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    TYPICAL COST BREAKDOWN                                    │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                                                                      │   │
+│   │  ████████████████████████████████████████████░░░░░░░░░░  AKS (65%)  │   │
+│   │  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  AI (15%)             │   │
+│   │  ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Storage (10%)        │   │
+│   │  ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Network (5%)         │   │
+│   │  ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Other (5%)           │   │
+│   │                                                                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 9.2 Cost Monitoring
+
+**Check current spend:**
 
 ```bash
-# Azure Cost Management
+# Get current month spend
 az consumption usage list \
   --subscription $SUBSCRIPTION_ID \
-  --start-date $(date -d "-30 days" +%Y-%m-%d) \
+  --start-date $(date -v-30d +%Y-%m-%d) \
   --end-date $(date +%Y-%m-%d) \
-  --output table
-
-# Resource costs by tag
-az consumption usage list \
-  --subscription $SUBSCRIPTION_ID \
-  --query "[?tags.Project=='ThreeHorizons']" \
+  --query "[].{Name:instanceName, Cost:pretaxCost}" \
   --output table
 ```
 
-### 8.2 Budget Alerts
+**Set up budget alerts:**
 
 ```bash
-# Create budget
+# Create budget with alerts
 az consumption budget create \
-  --budget-name threehorizons-monthly \
-  --resource-group rg-threehorizons-dev \
+  --budget-name "platform-monthly" \
   --amount 5000 \
+  --category Cost \
   --time-grain Monthly \
-  --start-date 2025-01-01 \
+  --start-date 2024-01-01 \
   --end-date 2025-12-31 \
-  --category Cost
-```
-
-### 8.3 Cost Optimization Tasks
-
-| Task | Frequency | Script |
-|------|-----------|--------|
-| Review idle resources | Weekly | `./scripts/cost-idle-resources.sh` |
-| Right-size VMs | Monthly | `./scripts/cost-rightsizing.sh` |
-| Reserved Instances | Quarterly | Azure Portal |
-| Delete old snapshots | Weekly | `./scripts/cost-cleanup-snapshots.sh` |
-
-### 8.4 Infracost Integration
-
-```bash
-# Run Infracost on Terraform
-cd terraform
-infracost breakdown --path . --format table
-
-# Compare with previous
-infracost diff --path . --compare-to infracost-base.json
-```
-
----
-
-## 9. Security Operations
-
-### 9.1 Defender for Cloud Review
-
-```bash
-# Get security recommendations
-az security assessment list \
-  --subscription $SUBSCRIPTION_ID \
-  --output table
-
-# Get security alerts
-az security alert list \
-  --subscription $SUBSCRIPTION_ID \
-  --output table
-```
-
-### 9.2 Vulnerability Scanning
-
-```bash
-# Scan container images in ACR
-az acr task run \
-  --registry acrthreehorizonsdev \
-  --name vulnerability-scan
-
-# List vulnerability results
-az acr repository show-manifests \
-  --name acrthreehorizonsdev \
-  --repository my-app \
-  --detail
-```
-
-### 9.3 Network Policy Audit
-
-```bash
-# List all network policies
-kubectl get networkpolicies -A
-
-# Verify policy is working
-kubectl run test-pod --image=busybox --rm -it --restart=Never -- \
-  wget -qO- --timeout=2 http://service.namespace.svc.cluster.local || echo "Blocked"
-```
-
-### 9.4 Gatekeeper Policy Violations
-
-```bash
-# Check violations
-kubectl get constraints -o custom-columns=NAME:.metadata.name,VIOLATIONS:.status.totalViolations
-
-# Get violation details
-kubectl describe k8srequiredlabels require-labels
-```
-
----
-
-## 10. Maintenance Windows
-
-### 10.1 AKS Upgrade
-
-```bash
-# Check available versions
-az aks get-upgrades \
   --resource-group rg-threehorizons-dev \
-  --name aks-threehorizons-dev \
-  --output table
-
-# Start upgrade (during maintenance window)
-az aks upgrade \
-  --resource-group rg-threehorizons-dev \
-  --name aks-threehorizons-dev \
-  --kubernetes-version 1.30.0 \
-  --yes
-
-# Monitor upgrade
-watch kubectl get nodes
+  --notification-key-1 80Percent \
+  --notification-threshold 80 \
+  --notification-operator GreaterThan \
+  --contact-emails "platform-team@company.com" \
+  --notification-enabled true
 ```
 
-### 10.2 Node Pool Upgrade
+### 9.3 Cost Optimization Tips
 
-```bash
-# Upgrade specific node pool
-az aks nodepool upgrade \
-  --resource-group rg-threehorizons-dev \
-  --cluster-name aks-threehorizons-dev \
-  --name user \
-  --kubernetes-version 1.30.0
-```
+| Optimization | Savings | Effort | Risk |
+|--------------|---------|--------|------|
+| **Spot instances for workload pool** | 60-80% | Low | Medium (interruptions) |
+| **Reserved instances (1 year)** | 30-40% | Low | Low |
+| **Scale down dev at night** | 50% | Medium | Low |
+| **Right-size VMs** | 10-30% | Medium | Low |
+| **Optimize AI model usage** | Variable | High | Low |
 
-### 10.3 Scheduled Maintenance
-
-Configure in Terraform:
+**Implement spot instances:**
 
 ```hcl
-resource "azurerm_kubernetes_cluster" "main" {
-  # ... other config ...
-
-  maintenance_window {
-    allowed {
-      day   = "Sunday"
-      hours = [2, 3, 4]
-    }
-  }
-
-  maintenance_window_auto_upgrade {
-    frequency   = "Weekly"
-    interval    = 1
-    day_of_week = "Sunday"
-    start_time  = "02:00"
-    utc_offset  = "-03:00"
-    duration    = 4
+# In terraform/terraform.tfvars
+additional_node_pools = {
+  spot = {
+    vm_size = "Standard_D4s_v5"
+    count   = 3
+    priority = "Spot"
+    eviction_policy = "Delete"
+    spot_max_price = -1  # Pay up to on-demand price
   }
 }
 ```
 
 ---
 
-## 11. Incident Response
+## 10. Security Operations
 
-### 11.1 Incident Severity Levels
+### 10.1 Security Monitoring
 
-| Level | Description | Response Time | Example |
-|-------|-------------|---------------|---------|
-| **SEV1** | Platform down | 15 min | All nodes NotReady |
-| **SEV2** | Major degradation | 30 min | 50% pods failing |
-| **SEV3** | Minor impact | 2 hours | Single app issues |
-| **SEV4** | Low impact | 24 hours | Non-critical warnings |
-
-### 11.2 SEV1 Response Checklist
+**Daily security checks:**
 
 ```bash
-# 1. Immediate triage
-kubectl get nodes
-kubectl get pods -A | grep -v Running
+# Check Defender for Cloud recommendations
+az security assessment list \
+  --query "[?status.code=='Unhealthy'].{Name:displayName, Status:status.code}" \
+  --output table
 
-# 2. Check control plane
-kubectl cluster-info
-az aks show -g rg-threehorizons-dev -n aks-threehorizons-dev --query "powerState"
-
-# 3. Check recent changes
-kubectl get events -A --sort-by='.lastTimestamp' | tail -50
-argocd app list
-
-# 4. Rollback if needed
-argocd app rollback <app-name> <previous-revision>
-
-# 5. Scale up if resource constrained
-az aks nodepool scale -g rg-threehorizons-dev --cluster-name aks-threehorizons-dev -n user --node-count 5
+# Check for security events in past 24 hours
+az monitor activity-log list \
+  --start-time $(date -v-1d +%Y-%m-%dT%H:%M:%SZ) \
+  --query "[?authorization.action contains 'Microsoft.Security'].{Time:eventTimestamp, Action:authorization.action}" \
+  --output table
 ```
 
-### 11.3 Post-Incident Review Template
+### 10.2 Security Incident Response
 
-```markdown
-# Incident Review: [TITLE]
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    SECURITY INCIDENT RESPONSE                               │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SEVERITY 1 (Critical) - Immediate Response                                │
+│  Examples: Data breach, active attack, compromised credentials             │
+│                                                                             │
+│  IMMEDIATE ACTIONS:                                                         │
+│  □ Alert security team and management                                      │
+│  □ Isolate affected systems (if safe to do so)                            │
+│  □ Preserve evidence (don't delete logs)                                   │
+│  □ Rotate compromised credentials                                          │
+│  □ Engage incident response retainer (if available)                        │
+│                                                                             │
+│  ──────────────────────────────────────────────────────────────────────────│
+│                                                                             │
+│  SEVERITY 2 (High) - Same Day Response                                     │
+│  Examples: Vulnerability in production, suspicious activity                │
+│                                                                             │
+│  ACTIONS:                                                                   │
+│  □ Assess scope and impact                                                 │
+│  □ Implement mitigation if available                                       │
+│  □ Create incident ticket                                                  │
+│  □ Schedule remediation                                                    │
+│                                                                             │
+│  ──────────────────────────────────────────────────────────────────────────│
+│                                                                             │
+│  SEVERITY 3 (Medium) - This Week Response                                  │
+│  Examples: Missing patches, configuration drift                            │
+│                                                                             │
+│  ACTIONS:                                                                   │
+│  □ Document in backlog                                                     │
+│  □ Schedule for next sprint                                                │
+│  □ Monitor for escalation                                                  │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 11. Maintenance Windows
+
+### 11.1 Scheduled Maintenance
+
+| Maintenance Type | Frequency | Window | Duration | Impact |
+|-----------------|-----------|--------|----------|--------|
+| **AKS Upgrades** | Quarterly | Saturday 2-6 AM | 2-4 hours | Rolling (minimal) |
+| **Node Pool Updates** | Monthly | Saturday 2-4 AM | 1-2 hours | Rolling |
+| **Certificate Rotation** | As needed | Any time | Minutes | None |
+| **Helm Chart Updates** | Weekly | Wednesday 10 PM | 30 min | Rolling |
+
+### 11.2 Pre-Maintenance Checklist
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    PRE-MAINTENANCE CHECKLIST                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1 WEEK BEFORE:                                                            │
+│  □ Send maintenance notification to stakeholders                           │
+│  □ Review change request / approval                                        │
+│  □ Test procedure in staging environment                                   │
+│  □ Verify backup is current                                                │
+│                                                                             │
+│  1 DAY BEFORE:                                                             │
+│  □ Send reminder notification                                              │
+│  □ Confirm on-call personnel                                               │
+│  □ Review rollback procedure                                               │
+│  □ Prepare status page update                                              │
+│                                                                             │
+│  DURING MAINTENANCE:                                                        │
+│  □ Update status page to "maintenance"                                     │
+│  □ Execute change following procedure                                      │
+│  □ Document any deviations                                                 │
+│  □ Run health checks after each step                                       │
+│                                                                             │
+│  AFTER MAINTENANCE:                                                         │
+│  □ Run full health check                                                   │
+│  □ Update status page to "operational"                                     │
+│  □ Send completion notification                                            │
+│  □ Document lessons learned                                                │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 12. Incident Response
+
+### 12.1 Incident Severity Levels
+
+| Level | Definition | Response Time | Examples |
+|-------|------------|---------------|----------|
+| **SEV1** | Platform down | 15 min | Cluster unreachable, data loss |
+| **SEV2** | Major degradation | 1 hour | Multiple apps failing, high error rate |
+| **SEV3** | Minor degradation | 4 hours | Single app affected, non-critical |
+| **SEV4** | Informational | Next business day | Cosmetic issues, questions |
+
+### 12.2 Incident Response Procedure
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    INCIDENT RESPONSE TIMELINE                               │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  T+0 min     DETECT                                                        │
+│              • Alert received or customer report                           │
+│              • Open incident channel (#inc-YYYYMMDD-XXX)                   │
+│              • Page incident commander (if SEV1/2)                         │
+│                                                                             │
+│  T+5 min     TRIAGE                                                        │
+│              • Assess severity                                              │
+│              • Identify affected systems                                    │
+│              • Determine scope of impact                                    │
+│                                                                             │
+│  T+15 min    COMMUNICATE                                                   │
+│              • Update status page                                           │
+│              • Notify stakeholders                                          │
+│              • Assign roles (IC, Comms, Tech Lead)                         │
+│                                                                             │
+│  T+30 min    MITIGATE                                                      │
+│              • Implement quick fixes                                        │
+│              • Rollback if necessary                                        │
+│              • Scale resources if needed                                    │
+│                                                                             │
+│  T+??        RESOLVE                                                       │
+│              • Root cause addressed                                         │
+│              • Service restored                                             │
+│              • Monitoring confirms stability                               │
+│                                                                             │
+│  T+24h       POST-INCIDENT                                                 │
+│              • Write post-mortem                                            │
+│              • Identify action items                                        │
+│              • Schedule review meeting                                      │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 13. Runbook: Common Procedures
+
+### 13.1 Restart a Stuck Deployment
+
+```bash
+# Check current status
+kubectl get deployment my-app -n production
+
+# Restart all pods (rolling)
+kubectl rollout restart deployment/my-app -n production
+
+# Watch rollout progress
+kubectl rollout status deployment/my-app -n production
+
+# If rollout fails, rollback
+kubectl rollout undo deployment/my-app -n production
+```
+
+### 13.2 Force Sync ArgoCD Application
+
+```bash
+# Hard refresh - re-read from Git
+kubectl patch application my-app -n argocd --type merge \
+  -p '{"operation": {"initiatedBy": {"username": "admin"}, "sync": {"syncStrategy": {"apply": {"force": true}}}}}'
+
+# Or use ArgoCD CLI
+argocd app sync my-app --force
+```
+
+### 13.3 Drain and Cordon a Node
+
+```bash
+# Mark node as unschedulable (cordon)
+kubectl cordon node-name
+
+# Safely evict pods (drain)
+kubectl drain node-name --ignore-daemonsets --delete-emptydir-data
+
+# After maintenance, uncordon
+kubectl uncordon node-name
+```
+
+### 13.4 Emergency Scale Up
+
+```bash
+# Immediately add nodes
+az aks nodepool scale \
+  --resource-group rg-XXX \
+  --cluster-name aks-XXX \
+  --name workload \
+  --node-count 10
+
+# Scale specific deployment
+kubectl scale deployment my-app -n production --replicas=10
+```
+
+### 13.5 View and Follow Logs
+
+```bash
+# Follow logs for a deployment
+kubectl logs -f deployment/my-app -n production
+
+# View logs from crashed pod
+kubectl logs deployment/my-app -n production --previous
+
+# View logs with timestamps
+kubectl logs -f deployment/my-app -n production --timestamps
+
+# View logs from specific container in multi-container pod
+kubectl logs -f deployment/my-app -n production -c sidecar-container
+```
+
+### 13.6 Emergency Rollback
+
+```bash
+# View rollout history
+kubectl rollout history deployment/my-app -n production
+
+# Rollback to previous version
+kubectl rollout undo deployment/my-app -n production
+
+# Rollback to specific version
+kubectl rollout undo deployment/my-app -n production --to-revision=3
+
+# Verify rollback
+kubectl rollout status deployment/my-app -n production
+```
+
+---
 
 ## Summary
-- **Date:** YYYY-MM-DD
-- **Duration:** X hours
-- **Severity:** SEV-X
-- **Impact:** Description of user impact
 
-## Timeline
-- HH:MM - Issue detected
-- HH:MM - Investigation started
-- HH:MM - Root cause identified
-- HH:MM - Fix applied
-- HH:MM - Service restored
+This Administrator Guide covered:
 
-## Root Cause
-[Description of what caused the incident]
+1. **Daily Operations:** Health checks, monitoring, checklists
+2. **Monitoring:** Accessing Grafana, Prometheus, ArgoCD
+3. **Scaling:** Manual and automatic scaling procedures
+4. **Backup/Recovery:** Velero operations, disaster recovery
+5. **Secrets:** Key Vault and External Secrets management
+6. **Users:** RBAC and access control
+7. **Certificates:** TLS and cert-manager
+8. **Costs:** Monitoring and optimization
+9. **Security:** Monitoring and incident response
+10. **Maintenance:** Windows and procedures
+11. **Incidents:** Response and escalation
+12. **Runbooks:** Common operational procedures
 
-## Resolution
-[Steps taken to resolve]
-
-## Action Items
-- [ ] Action 1 - Owner - Due Date
-- [ ] Action 2 - Owner - Due Date
-
-## Lessons Learned
-[What we learned and how to prevent recurrence]
-```
+For specific troubleshooting scenarios, see the [Troubleshooting Guide](./TROUBLESHOOTING_GUIDE.md).
 
 ---
 
-## 12. Runbook: Common Procedures
-
-### 12.1 Deploy New Application
-
-```bash
-# 1. Create namespace
-kubectl create namespace my-new-app
-
-# 2. Create ArgoCD Application
-cat <<EOF | kubectl apply -f -
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: my-new-app
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/org/my-new-app.git
-    targetRevision: main
-    path: k8s
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: my-new-app
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-EOF
-
-# 3. Verify deployment
-argocd app get my-new-app
-kubectl get pods -n my-new-app
-```
-
-### 12.2 Drain Node for Maintenance
-
-```bash
-# 1. Cordon node (prevent new pods)
-kubectl cordon aks-user-12345678-vmss000001
-
-# 2. Drain pods
-kubectl drain aks-user-12345678-vmss000001 \
-  --ignore-daemonsets \
-  --delete-emptydir-data \
-  --force
-
-# 3. Perform maintenance...
-
-# 4. Uncordon node
-kubectl uncordon aks-user-12345678-vmss000001
-```
-
-### 12.3 Force Delete Stuck Namespace
-
-```bash
-# Get namespace in Terminating state
-kubectl get namespace stuck-namespace -o json > ns.json
-
-# Remove finalizers
-jq '.spec.finalizers = []' ns.json > ns-clean.json
-
-# Apply via API
-kubectl proxy &
-curl -k -H "Content-Type: application/json" \
-  -X PUT --data-binary @ns-clean.json \
-  http://127.0.0.1:8001/api/v1/namespaces/stuck-namespace/finalize
-```
-
-### 12.4 Restart All Pods in Namespace
-
-```bash
-# Restart all deployments
-kubectl rollout restart deployment -n my-namespace
-
-# Restart all statefulsets
-kubectl rollout restart statefulset -n my-namespace
-
-# Restart all daemonsets
-kubectl rollout restart daemonset -n my-namespace
-```
-
-### 12.5 Emergency Rollback
-
-```bash
-# Via ArgoCD
-argocd app history my-app
-argocd app rollback my-app <revision>
-
-# Via kubectl
-kubectl rollout history deployment/my-app -n my-namespace
-kubectl rollout undo deployment/my-app -n my-namespace --to-revision=2
-```
-
-### 12.6 Export All Resources from Namespace
-
-```bash
-# Export all resources
-kubectl get all,configmap,secret,pvc,ingress,networkpolicy -n my-namespace -o yaml > namespace-backup.yaml
-```
-
----
-
-## Quick Reference
-
-### Essential Commands
-
-```bash
-# Cluster info
-kubectl cluster-info
-kubectl get nodes -o wide
-
-# Pod troubleshooting
-kubectl logs <pod> -n <namespace> -f
-kubectl exec -it <pod> -n <namespace> -- /bin/sh
-kubectl describe pod <pod> -n <namespace>
-
-# Resource usage
-kubectl top nodes
-kubectl top pods -A
-
-# Events
-kubectl get events -A --sort-by='.lastTimestamp'
-
-# ArgoCD
-argocd app list
-argocd app sync <app>
-argocd app diff <app>
-```
-
-### Important Paths
-
-| Path | Description |
-|------|-------------|
-| `terraform/` | Infrastructure as Code |
-| `argocd/apps/` | Application definitions |
-| `prometheus/alerting-rules.yaml` | Alert configurations |
-| `grafana/dashboards/` | Dashboard JSON files |
-| `scripts/` | Automation scripts |
-
----
-
-**Document Version:** 1.0.0
+**Document Version:** 2.0.0
 **Last Updated:** December 2025
 **Maintainer:** Platform Engineering Team

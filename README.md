@@ -93,6 +93,18 @@ vim customer-config/customer.tfvars
 
 ## 📚 Documentation
 
+### 📖 Step-by-Step Guides
+
+| Guide | Description |
+|-------|-------------|
+| [🚀 Deployment Guide](./docs/guides/DEPLOYMENT_GUIDE.md) | Complete step-by-step deployment instructions |
+| [🏗️ Architecture Guide](./docs/guides/ARCHITECTURE_GUIDE.md) | Three Horizons architecture explained |
+| [🔧 Administrator Guide](./docs/guides/ADMINISTRATOR_GUIDE.md) | Day-2 operations and maintenance |
+| [📦 Module Reference](./docs/guides/MODULE_REFERENCE.md) | All Terraform modules with examples |
+| [🔍 Troubleshooting Guide](./docs/guides/TROUBLESHOOTING_GUIDE.md) | Problem diagnosis and resolution |
+
+### 📋 Reference Documentation
+
 - [Enterprise Review](./ENTERPRISE_REVIEW.md) - Architecture decisions
 - [Inventory](./INVENTORY_v4.md) - Complete component list
 - [Agent Catalog](./AGENT_CATALOG.md) - AI agent documentation

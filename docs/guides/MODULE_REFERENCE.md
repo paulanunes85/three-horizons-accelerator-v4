@@ -2,277 +2,761 @@
 
 > **Version:** 4.0.0
 > **Last Updated:** December 2025
+> **Audience:** Platform Engineers, DevOps Engineers, Infrastructure Architects
 
 ---
 
 ## Table of Contents
 
-1. [Module Overview](#1-module-overview)
-2. [H1 Foundation Modules](#2-h1-foundation-modules)
-3. [H2 Enhancement Modules](#3-h2-enhancement-modules)
-4. [H3 Innovation Modules](#4-h3-innovation-modules)
-5. [Cross-Cutting Modules](#5-cross-cutting-modules)
-6. [Module Dependencies](#6-module-dependencies)
-7. [Usage Examples](#7-usage-examples)
+1. [Understanding Terraform Modules](#1-understanding-terraform-modules)
+2. [Module Overview](#2-module-overview)
+3. [H1 Foundation Modules](#3-h1-foundation-modules)
+4. [H2 Enhancement Modules](#4-h2-enhancement-modules)
+5. [H3 Innovation Modules](#5-h3-innovation-modules)
+6. [Cross-Cutting Modules](#6-cross-cutting-modules)
+7. [Module Dependencies and Execution Order](#7-module-dependencies-and-execution-order)
+8. [Common Usage Patterns](#8-common-usage-patterns)
+9. [Troubleshooting Module Issues](#9-troubleshooting-module-issues)
 
 ---
 
-## 1. Module Overview
+## 1. Understanding Terraform Modules
 
-### Module Directory Structure
+Before diving into the specific modules, let's understand what Terraform modules are and why we use them.
 
+### 1.1 What is a Terraform Module?
+
+> 💡 **Concept: Terraform Modules**
+>
+> Think of a Terraform module like a **LEGO building set**:
+> - Each set (module) contains all the pieces needed to build something specific
+> - You can combine multiple sets to build something bigger
+> - Each set has clear instructions (inputs/outputs) for how to use it
+> - You can use the same set multiple times in different builds
+>
+> In technical terms: A module is a **container for multiple resources** that are used together. It's a way to package and reuse infrastructure code.
+
+**Without modules** (everything in one file):
 ```
-terraform/modules/
-├── naming/              # Naming conventions
-├── networking/          # VNet, subnets, NSGs
-├── aks-cluster/         # Kubernetes cluster
-├── container-registry/  # Azure Container Registry
-├── databases/           # PostgreSQL, Redis
-├── security/            # Key Vault, identities
-├── defender/            # Defender for Cloud
-├── purview/             # Microsoft Purview
-├── observability/       # Azure Monitor
-├── argocd/              # ArgoCD setup
-├── external-secrets/    # External Secrets Operator
-├── github-runners/      # Self-hosted runners
-├── cost-management/     # Budgets and alerts
-├── disaster-recovery/   # DR configuration
-├── ai-foundry/          # Azure OpenAI
-└── rhdh/                # Red Hat Developer Hub
+main.tf (3000 lines)
+├── VNet configuration
+├── Subnets
+├── NSGs
+├── AKS cluster
+├── Node pools
+├── Key Vault
+├── ACR
+└── ... (hard to maintain, hard to reuse)
 ```
 
-### Standard Module Structure
+**With modules** (organized and reusable):
+```
+main.tf (100 lines - just module calls)
+│
+├── module "networking"  → Creates VNet, subnets, NSGs
+├── module "aks"         → Creates AKS cluster
+├── module "security"    → Creates Key Vault, identities
+└── module "acr"         → Creates Container Registry
+```
 
-Each module follows this pattern:
+### 1.2 Module Structure
+
+Every module in this accelerator follows a standard structure:
 
 ```
 module-name/
-├── main.tf          # Resource definitions
-├── variables.tf     # Input variables
-├── outputs.tf       # Output values
-├── versions.tf      # Provider requirements
+├── main.tf          # The actual resource definitions
+├── variables.tf     # Input parameters you can configure
+├── outputs.tf       # Values the module returns for use elsewhere
+├── versions.tf      # Required provider versions
 └── README.md        # Module documentation
 ```
 
+> 💡 **Understanding the Files**
+>
+> | File | Purpose | Analogy |
+> |------|---------|---------|
+> | `variables.tf` | Inputs you provide | The order form - what do you want? |
+> | `main.tf` | The infrastructure logic | The factory - builds your order |
+> | `outputs.tf` | Values returned to you | The receipt - what you got |
+> | `versions.tf` | Required versions | Compatibility requirements |
+
+### 1.3 How Modules Connect
+
+Modules communicate through **inputs (variables)** and **outputs**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Your main.tf                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  module "networking" {                                           │
+│    source = "./modules/networking"                               │
+│    vnet_cidr = "10.0.0.0/16"         ◄─── INPUT: You provide    │
+│  }                                                               │
+│  # networking creates VNet and outputs subnet_id                 │
+│                                                                  │
+│  module "aks" {                                                  │
+│    source = "./modules/aks-cluster"                              │
+│    subnet_id = module.networking.aks_subnet_id  ◄─── Uses OUTPUT │
+│  }                                                               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+DATA FLOW:
+
+  Your Config    ─────►  networking  ─────►  aks
+  (vnet_cidr)            module             module
+                    creates VNet       uses subnet_id
+                    outputs subnet_id  creates cluster
+```
+
+### 1.4 When to Use Which Module
+
+Here's a decision guide for which modules to use:
+
+```
+START: What do you need?
+         │
+         ├─► "I need consistent resource names"
+         │   └─► Use: naming module (always use first!)
+         │
+         ├─► "I need network infrastructure"
+         │   └─► Use: networking module
+         │
+         ├─► "I need a Kubernetes cluster"
+         │   └─► Use: aks-cluster module
+         │       Prerequisites: networking
+         │
+         ├─► "I need to store container images"
+         │   └─► Use: container-registry module
+         │       Prerequisites: networking (for private endpoint)
+         │
+         ├─► "I need secrets management"
+         │   └─► Use: security module
+         │       Prerequisites: networking
+         │
+         ├─► "I need databases"
+         │   └─► Use: databases module
+         │       Prerequisites: networking, security
+         │
+         ├─► "I need GitOps"
+         │   └─► Use: argocd module
+         │       Prerequisites: aks-cluster
+         │
+         ├─► "I need Kubernetes secrets from Azure"
+         │   └─► Use: external-secrets module
+         │       Prerequisites: aks-cluster, security
+         │
+         ├─► "I need AI/ML capabilities"
+         │   └─► Use: ai-foundry module
+         │       Prerequisites: networking
+         │
+         └─► "I need cost monitoring"
+             └─► Use: cost-management module
+                 No prerequisites
+```
+
 ---
 
-## 2. H1 Foundation Modules
+## 2. Module Overview
 
-### 2.1 Naming Module
+### 2.1 Module Directory Structure
+
+```
+terraform/modules/
+│
+├── H1 - FOUNDATION (Core Infrastructure)
+│   ├── naming/              # Generate consistent resource names
+│   ├── networking/          # VNet, subnets, NSGs, DNS
+│   ├── aks-cluster/         # Kubernetes cluster
+│   ├── container-registry/  # Azure Container Registry
+│   ├── databases/           # PostgreSQL, Redis
+│   ├── security/            # Key Vault, managed identities
+│   ├── defender/            # Microsoft Defender for Cloud
+│   └── purview/             # Data governance
+│
+├── H2 - ENHANCEMENT (Operations & Automation)
+│   ├── argocd/              # GitOps deployments
+│   ├── external-secrets/    # Secrets synchronization
+│   ├── observability/       # Monitoring & logging
+│   └── github-runners/      # CI/CD runners
+│
+├── H3 - INNOVATION (Advanced Capabilities)
+│   ├── ai-foundry/          # Azure OpenAI
+│   └── rhdh/                # Red Hat Developer Hub
+│
+└── CROSS-CUTTING (Platform Support)
+    ├── cost-management/     # Budgets and alerts
+    └── disaster-recovery/   # DR configuration
+```
+
+### 2.2 Module Categories Explained
+
+> 💡 **Three Horizons Model**
+>
+> The modules are organized into "horizons" based on their purpose:
+>
+> | Horizon | Purpose | When to Deploy | Examples |
+> |---------|---------|----------------|----------|
+> | **H1** | Foundation | Always first | Network, AKS, Security |
+> | **H2** | Enhancement | After H1 is stable | GitOps, Monitoring |
+> | **H3** | Innovation | When ready for AI/ML | Azure OpenAI |
+>
+> Think of it like building a house:
+> - H1 = Foundation and walls (must have)
+> - H2 = Electrical and plumbing (makes it functional)
+> - H3 = Smart home features (nice to have)
+
+---
+
+## 3. H1 Foundation Modules
+
+These modules create the core infrastructure that everything else depends on.
+
+---
+
+### 3.1 Naming Module
 
 **Path:** `terraform/modules/naming`
-**Purpose:** Generate consistent resource names following Azure naming conventions.
+
+> 💡 **Why This Module Exists**
+>
+> Azure has specific naming rules for each resource type:
+> - Storage accounts: max 24 characters, lowercase, no hyphens
+> - Key Vault: max 24 characters
+> - ACR: no hyphens allowed
+>
+> This module automatically generates **compliant names** for all resources,
+> ensuring consistency and preventing deployment failures.
+
+#### The Problem It Solves
+
+```
+WITHOUT naming module:
+─────────────────────
+storage_account_name = "contoso-dev-storage"     ❌ Fails (has hyphens)
+key_vault_name = "contoso-development-keyvault"  ❌ Fails (>24 chars)
+acr_name = "contoso-dev-acr"                     ❌ Fails (has hyphens)
+
+WITH naming module:
+──────────────────
+All names are automatically generated correctly!
+```
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `customer_name` | string | yes | - | Customer identifier (max 12 chars) |
-| `environment` | string | yes | - | Environment (dev/staging/prod) |
-| `region` | string | yes | - | Azure region |
-| `project` | string | no | "platform" | Project name |
+| `customer_name` | string | **Yes** | - | Customer identifier (max 12 characters, lowercase) |
+| `environment` | string | **Yes** | - | Environment: `dev`, `staging`, or `prod` |
+| `region` | string | **Yes** | - | Azure region (e.g., `brazilsouth`, `eastus`) |
+| `project` | string | No | `"platform"` | Project or workload name |
+
+> ⚠️ **Important Constraints**
+>
+> - `customer_name` must be **12 characters or less** (Azure imposes limits)
+> - Use **lowercase** only
+> - Avoid special characters
 
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `resource_group_name` | Generated resource group name |
-| `aks_cluster_name` | Generated AKS cluster name |
-| `storage_account_name` | Generated storage account name (24 char max) |
-| `container_registry_name` | Generated ACR name (no hyphens) |
-| `key_vault_name` | Generated Key Vault name (24 char max) |
-| `region_short` | 3-letter region code |
+| Output | Description | Example Value |
+|--------|-------------|---------------|
+| `resource_group_name` | Resource group name | `rg-contoso-dev-brs` |
+| `aks_cluster_name` | AKS cluster name | `aks-contoso-dev-brs` |
+| `storage_account_name` | Storage (24 char, no hyphens) | `stcontosodevbrs` |
+| `container_registry_name` | ACR (no hyphens) | `acrcontosodevbrs` |
+| `key_vault_name` | Key Vault (24 char max) | `kv-contoso-dev-brs` |
+| `region_short` | 3-letter region code | `brs` (for brazilsouth) |
 
-#### Usage
+#### Usage Example
 
 ```hcl
+# Step 1: Create the naming module (ALWAYS FIRST!)
 module "naming" {
   source = "./modules/naming"
 
-  customer_name = "contoso"
-  environment   = "dev"
-  region        = "brazilsouth"
-  project       = "platform"
+  customer_name = "contoso"      # Your company/customer name
+  environment   = "dev"          # dev, staging, or prod
+  region        = "brazilsouth"  # Azure region
+  project       = "platform"     # Optional: project name
 }
 
-# Use outputs
+# Step 2: Use the generated names everywhere
 resource "azurerm_resource_group" "main" {
-  name     = module.naming.resource_group_name
+  name     = module.naming.resource_group_name  # "rg-contoso-dev-brs"
   location = var.location
+}
+
+module "security" {
+  source = "./modules/security"
+
+  key_vault_name = module.naming.key_vault_name  # "kv-contoso-dev-brs"
+  # ... other variables
+}
+
+module "acr" {
+  source = "./modules/container-registry"
+
+  name = module.naming.container_registry_name  # "acrcontosodevbrs"
+  # ... other variables
 }
 ```
 
+#### How Names Are Generated
+
+```
+Input: customer_name = "contoso", environment = "dev", region = "brazilsouth"
+
+                    ┌─────────────────────────────────────┐
+                    │         Naming Logic                │
+                    ├─────────────────────────────────────┤
+Region Mapping:     │ brazilsouth → brs                   │
+                    │ eastus → eus                        │
+                    │ westeurope → weu                    │
+                    ├─────────────────────────────────────┤
+Resource Patterns:  │                                     │
+                    │ Resource Group: rg-{customer}-{env}-{region}
+                    │ Example: rg-contoso-dev-brs         │
+                    │                                     │
+                    │ Storage: st{customer}{env}{region}  │
+                    │ Example: stcontosodevbrs            │
+                    │                                     │
+                    │ Key Vault: kv-{customer}-{env}-{region}
+                    │ Example: kv-contoso-dev-brs         │
+                    └─────────────────────────────────────┘
+```
+
+#### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "Name too long" | customer_name > 12 chars | Shorten customer_name |
+| "Invalid characters" | Uppercase or special chars | Use lowercase, alphanumeric only |
+| "Name already exists" | Storage/ACR names are global | Add unique suffix or change customer_name |
+
 ---
 
-### 2.2 Networking Module
+### 3.2 Networking Module
 
 **Path:** `terraform/modules/networking`
-**Purpose:** Create VNet, subnets, NSGs, and private DNS zones.
+
+> 💡 **Why This Module Exists**
+>
+> Every Azure resource needs a network. This module creates a **secure, production-ready network** with:
+> - Virtual Network (VNet) - Your private network in Azure
+> - Subnets - Logical divisions of the VNet
+> - NSGs - Firewalls that control traffic
+> - Private DNS - Internal name resolution
+>
+> Think of it as creating the **roads, neighborhoods, and addresses** for your infrastructure.
+
+#### Network Architecture Created
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                       VNet: 10.0.0.0/16                            │
+│                    (65,536 IP addresses)                           │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  ┌─────────────────────┐  ┌─────────────────────────────────────┐ │
+│  │  AKS Nodes Subnet   │  │  AKS Pods Subnet (CNI Overlay)      │ │
+│  │  10.0.0.0/22        │  │  10.0.16.0/20                       │ │
+│  │  (1,024 addresses)  │  │  (4,096 addresses for pods)         │ │
+│  │                     │  │                                     │ │
+│  │  ┌─────┐ ┌─────┐   │  │  Used by Kubernetes for pod IPs     │ │
+│  │  │Node1│ │Node2│   │  │                                     │ │
+│  │  └─────┘ └─────┘   │  │                                     │ │
+│  └─────────────────────┘  └─────────────────────────────────────┘ │
+│                                                                    │
+│  ┌─────────────────────┐  ┌─────────────────────────────────────┐ │
+│  │  Private Endpoints  │  │  Bastion Subnet (optional)          │ │
+│  │  10.0.4.0/24        │  │  10.0.5.0/26                        │ │
+│  │  (256 addresses)    │  │  (64 addresses)                     │ │
+│  │                     │  │                                     │ │
+│  │  For: Key Vault,    │  │  Secure access to VMs               │ │
+│  │  ACR, PostgreSQL    │  │  without public IPs                 │ │
+│  └─────────────────────┘  └─────────────────────────────────────┘ │
+│                                                                    │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │  App Gateway Subnet (optional)                               │  │
+│  │  10.0.6.0/24 (256 addresses)                                 │  │
+│  │  For ingress traffic to applications                         │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `customer_name` | string | yes | - | Customer identifier |
-| `environment` | string | yes | - | Environment |
-| `location` | string | yes | - | Azure region |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `vnet_cidr` | string | yes | - | VNet address space |
-| `subnet_config` | object | no | See below | Subnet CIDRs |
-| `enable_bastion` | bool | no | false | Enable Azure Bastion |
-| `enable_app_gateway` | bool | no | false | Enable App Gateway subnet |
-| `dns_zone_name` | string | yes | - | DNS zone name |
-| `create_dns_zone` | bool | no | false | Create public DNS zone |
-| `tags` | map(string) | no | {} | Resource tags |
+| `customer_name` | string | **Yes** | - | Customer identifier |
+| `environment` | string | **Yes** | - | Environment (dev/staging/prod) |
+| `location` | string | **Yes** | - | Azure region |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `vnet_cidr` | string | **Yes** | - | VNet address space (e.g., "10.0.0.0/16") |
+| `subnet_config` | object | No | See below | Custom subnet CIDRs |
+| `enable_bastion` | bool | No | `false` | Create Azure Bastion for secure VM access |
+| `enable_app_gateway` | bool | No | `false` | Create App Gateway subnet |
+| `dns_zone_name` | string | **Yes** | - | DNS zone name for services |
+| `create_dns_zone` | bool | No | `false` | Create public DNS zone |
+| `tags` | map(string) | No | `{}` | Resource tags |
 
-#### Subnet Config Object
+#### Subnet Configuration Object
+
+> 💡 **Understanding CIDR Notation**
+>
+> CIDR notation like `10.0.0.0/22` defines a range of IP addresses:
+> - `/16` = 65,536 addresses (e.g., 10.0.0.0 - 10.0.255.255)
+> - `/20` = 4,096 addresses
+> - `/22` = 1,024 addresses
+> - `/24` = 256 addresses
+> - `/26` = 64 addresses
 
 ```hcl
 subnet_config = {
-  aks_nodes_cidr         = "10.0.0.0/22"
-  aks_pods_cidr          = "10.0.16.0/20"
-  private_endpoints_cidr = "10.0.4.0/24"
-  bastion_cidr           = "10.0.5.0/26"
-  app_gateway_cidr       = "10.0.6.0/24"
+  # AKS nodes - one IP per VM node
+  aks_nodes_cidr = "10.0.0.0/22"           # 1,024 IPs for nodes
+
+  # AKS pods (with CNI Overlay) - one IP per pod
+  aks_pods_cidr = "10.0.16.0/20"           # 4,096 IPs for pods
+
+  # Private endpoints - for secure Azure service connections
+  private_endpoints_cidr = "10.0.4.0/24"   # 256 IPs
+
+  # Azure Bastion - secure remote access
+  bastion_cidr = "10.0.5.0/26"             # 64 IPs (Azure requirement)
+
+  # Application Gateway - ingress traffic
+  app_gateway_cidr = "10.0.6.0/24"         # 256 IPs
 }
 ```
 
+> ⚠️ **CIDR Planning Warning**
+>
+> Plan your CIDRs carefully! Changing them later requires destroying and recreating resources.
+>
+> **Recommended sizes by environment:**
+>
+> | Environment | VNet CIDR | Nodes Subnet | Pods Subnet |
+> |-------------|-----------|--------------|-------------|
+> | Dev | /16 | /22 (1K IPs) | /20 (4K IPs) |
+> | Staging | /16 | /21 (2K IPs) | /19 (8K IPs) |
+> | Prod | /15 | /20 (4K IPs) | /18 (16K IPs) |
+
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `vnet_id` | Virtual network resource ID |
-| `vnet_name` | Virtual network name |
-| `aks_nodes_subnet_id` | AKS nodes subnet ID |
-| `aks_pods_subnet_id` | AKS pods subnet ID |
-| `private_endpoints_subnet_id` | Private endpoints subnet ID |
-| `bastion_subnet_id` | Bastion subnet ID |
-| `nsg_aks_nodes_id` | AKS nodes NSG ID |
-| `private_dns_zone_ids` | Map of private DNS zone IDs |
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `vnet_id` | VNet resource ID | AKS, Private Endpoints |
+| `vnet_name` | VNet name | Reference |
+| `aks_nodes_subnet_id` | Subnet ID for AKS nodes | AKS module |
+| `aks_pods_subnet_id` | Subnet ID for pods | AKS module (CNI Overlay) |
+| `private_endpoints_subnet_id` | Subnet for private endpoints | ACR, Key Vault, PostgreSQL |
+| `bastion_subnet_id` | Bastion subnet ID | VM access |
+| `nsg_aks_nodes_id` | NSG for AKS nodes | Security rules |
+| `private_dns_zone_ids` | Map of DNS zone IDs | Private endpoint DNS |
 
-#### Usage
+#### Usage Example
 
 ```hcl
+# Create the networking infrastructure
 module "networking" {
   source = "./modules/networking"
 
+  # Basic identification
   customer_name       = "contoso"
   environment         = "dev"
   location            = "brazilsouth"
   resource_group_name = azurerm_resource_group.main.name
-  vnet_cidr           = "10.0.0.0/16"
-  dns_zone_name       = "contoso.example.com"
-  enable_bastion      = true
-  create_dns_zone     = false
+
+  # Network configuration
+  vnet_cidr     = "10.0.0.0/16"
+  dns_zone_name = "contoso.internal"
+
+  # Optional features
+  enable_bastion    = true   # Enable if you need VM access
+  enable_app_gateway = false  # Enable if using App Gateway ingress
+  create_dns_zone   = false  # Set true if you own the DNS zone
+
+  # Custom subnet sizes (optional - defaults shown)
+  subnet_config = {
+    aks_nodes_cidr         = "10.0.0.0/22"
+    aks_pods_cidr          = "10.0.16.0/20"
+    private_endpoints_cidr = "10.0.4.0/24"
+    bastion_cidr           = "10.0.5.0/26"
+    app_gateway_cidr       = "10.0.6.0/24"
+  }
 
   tags = var.tags
 }
 ```
 
+#### NSG Rules Created
+
+The module creates Network Security Groups with these default rules:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   NSG: AKS Nodes                            │
+├─────────────────────────────────────────────────────────────┤
+│ INBOUND:                                                    │
+│   ✓ Allow Azure Load Balancer health probes                │
+│   ✓ Allow internal VNet traffic                            │
+│   ✓ Allow pod-to-node communication                        │
+│   ✗ Deny all other inbound traffic                         │
+│                                                             │
+│ OUTBOUND:                                                   │
+│   ✓ Allow HTTPS (443) - for Azure services                 │
+│   ✓ Allow DNS (53) - for name resolution                   │
+│   ✓ Allow NTP (123) - for time sync                        │
+│   ✓ Allow internal VNet traffic                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Private DNS Zones Created
+
+The module creates private DNS zones for Azure services:
+
+| DNS Zone | Purpose |
+|----------|---------|
+| `privatelink.azurecr.io` | Azure Container Registry |
+| `privatelink.vaultcore.azure.net` | Azure Key Vault |
+| `privatelink.postgres.database.azure.com` | PostgreSQL |
+| `privatelink.redis.cache.windows.net` | Redis Cache |
+| `privatelink.blob.core.windows.net` | Blob Storage |
+
+> 💡 **What Private DNS Zones Do**
+>
+> When you access a resource like `mykeyvault.vault.azure.net` from within the VNet,
+> the private DNS zone resolves it to the **private IP** instead of the public IP.
+>
+> ```
+> From Internet:    mykeyvault.vault.azure.net → 52.x.x.x (public)
+> From VNet:        mykeyvault.vault.azure.net → 10.0.4.5 (private)
+> ```
+
 ---
 
-### 2.3 AKS Cluster Module
+### 3.3 AKS Cluster Module
 
 **Path:** `terraform/modules/aks-cluster`
-**Purpose:** Deploy Azure Kubernetes Service cluster.
+
+> 💡 **Why This Module Exists**
+>
+> Azure Kubernetes Service (AKS) is the heart of the platform. This module creates a
+> **production-ready Kubernetes cluster** with:
+> - Multiple node pools for different workloads
+> - Workload identity for secure Azure access
+> - Network configuration for security
+> - Automatic scaling
+>
+> Think of AKS as the **operating system** for running your containerized applications.
+
+#### Cluster Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         AKS Cluster                                     │
+│                    (Kubernetes Control Plane)                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│   ┌──────────────────────────────────────────────────────────────────┐ │
+│   │                    SYSTEM NODE POOL                               │ │
+│   │                 (Critical cluster components)                     │ │
+│   │                                                                   │ │
+│   │   ┌─────────┐   ┌─────────┐   ┌─────────┐                        │ │
+│   │   │ Node 1  │   │ Node 2  │   │ Node 3  │   VM Size: D4s_v5     │ │
+│   │   │ Zone 1  │   │ Zone 2  │   │ Zone 3  │   Fixed: 3 nodes      │ │
+│   │   └─────────┘   └─────────┘   └─────────┘                        │ │
+│   │                                                                   │ │
+│   │   Runs: CoreDNS, kube-proxy, Azure CNI, metrics-server          │ │
+│   │   Taint: CriticalAddonsOnly (no user workloads here)            │ │
+│   └──────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│   ┌──────────────────────────────────────────────────────────────────┐ │
+│   │                    USER NODE POOL                                 │ │
+│   │                 (Your application workloads)                      │ │
+│   │                                                                   │ │
+│   │   ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌───┐               │ │
+│   │   │ Node 1  │   │ Node 2  │   │ Node 3  │   │...│  Autoscale   │ │
+│   │   │ Zone 1  │   │ Zone 2  │   │ Zone 3  │   │   │  3-10 nodes  │ │
+│   │   └─────────┘   └─────────┘   └─────────┘   └───┘               │ │
+│   │                                                                   │ │
+│   │   VM Size: D8s_v5 | Runs your applications                       │ │
+│   └──────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│   ┌──────────────────────────────────────────────────────────────────┐ │
+│   │                    GPU NODE POOL (Optional)                       │ │
+│   │                 (AI/ML workloads)                                 │ │
+│   │                                                                   │ │
+│   │   ┌─────────┐   ┌─────────┐                                      │ │
+│   │   │ GPU     │   │ GPU     │   VM Size: NC6s_v3                  │ │
+│   │   │ Node 1  │   │ Node 2  │   Scale: 0-5 (scale to 0!)          │ │
+│   │   └─────────┘   └─────────┘   Taint: gpu=true:NoSchedule        │ │
+│   │                                                                   │ │
+│   └──────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region |
-| `customer_name` | string | yes | - | Customer identifier |
-| `environment` | string | yes | - | Environment |
-| `kubernetes_version` | string | no | "1.29" | Kubernetes version |
-| `sku_tier` | string | no | "Standard" | AKS SKU (Free/Standard/Premium) |
-| `vnet_subnet_id` | string | yes | - | Subnet ID for AKS nodes |
-| `pod_subnet_id` | string | no | null | Subnet ID for pods (CNI Overlay) |
-| `system_node_pool` | object | no | See below | System node pool config |
-| `user_node_pools` | list(object) | no | [] | User node pool configs |
-| `acr_id` | string | no | null | ACR ID for pull permissions |
-| `key_vault_id` | string | no | null | Key Vault ID for secrets |
-| `log_analytics_id` | string | no | null | Log Analytics workspace ID |
-| `addons` | object | no | See below | AKS addon configuration |
-| `workload_identity` | bool | no | true | Enable workload identity |
-| `tags` | map(string) | no | {} | Resource tags |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `location` | string | **Yes** | - | Azure region |
+| `customer_name` | string | **Yes** | - | Customer identifier |
+| `environment` | string | **Yes** | - | Environment |
+| `kubernetes_version` | string | No | `"1.29"` | Kubernetes version |
+| `sku_tier` | string | No | `"Standard"` | SKU tier (Free/Standard/Premium) |
+| `vnet_subnet_id` | string | **Yes** | - | Subnet for AKS nodes |
+| `pod_subnet_id` | string | No | `null` | Subnet for pods (CNI Overlay) |
+| `system_node_pool` | object | No | See below | System pool config |
+| `user_node_pools` | list(object) | No | `[]` | User pool configs |
+| `acr_id` | string | No | `null` | ACR for image pulling |
+| `key_vault_id` | string | No | `null` | Key Vault for secrets |
+| `log_analytics_id` | string | No | `null` | For container insights |
+| `addons` | object | No | See below | AKS addons |
+| `workload_identity` | bool | No | `true` | Enable workload identity |
+| `tags` | map(string) | No | `{}` | Resource tags |
 
-#### System Node Pool Object
+#### SKU Tier Explanation
+
+> 💡 **Understanding AKS SKU Tiers**
+>
+> | Tier | SLA | Cost | Features | Use Case |
+> |------|-----|------|----------|----------|
+> | **Free** | None | Free | Basic features | Development, testing |
+> | **Standard** | 99.95% | ~$73/month | + Financial SLA, + Cluster Autoscaler improvements | Production workloads |
+> | **Premium** | 99.99% | ~$292/month | + Long-term support, + Azure CNI Overlay advanced | Mission-critical |
+>
+> **Recommendation:** Use Standard for production, Free for dev/test.
+
+#### System Node Pool Configuration
 
 ```hcl
+# This pool runs Kubernetes system components
 system_node_pool = {
-  name       = "system"
-  vm_size    = "Standard_D4s_v5"
-  node_count = 3
-  zones      = ["1", "2", "3"]
+  name       = "system"          # Pool name
+  vm_size    = "Standard_D4s_v5" # 4 vCPU, 16 GB RAM
+  node_count = 3                 # Fixed count (no autoscaling)
+  zones      = ["1", "2", "3"]   # Spread across availability zones
 }
 ```
 
-#### User Node Pool Object
+> 💡 **Why System Node Pool is Special**
+>
+> - Runs critical components: CoreDNS, kube-proxy, metrics-server
+> - Has a **CriticalAddonsOnly** taint - user workloads won't be scheduled here
+> - Should have **fixed count** (3 nodes) for stability
+> - Spread across **3 zones** for high availability
+
+#### User Node Pool Configuration
 
 ```hcl
 user_node_pools = [
   {
+    # General purpose workloads
     name      = "user"
-    vm_size   = "Standard_D8s_v5"
-    min_count = 3
-    max_count = 10
-    zones     = ["1", "2", "3"]
-    labels    = { workload = "general" }
-    taints    = []
+    vm_size   = "Standard_D8s_v5"  # 8 vCPU, 32 GB RAM
+    min_count = 3                   # Minimum nodes
+    max_count = 10                  # Maximum nodes (autoscale!)
+    zones     = ["1", "2", "3"]     # High availability
+    labels    = {
+      workload = "general"
+    }
+    taints    = []                  # No taints - accepts all pods
   },
   {
+    # GPU workloads (optional)
     name      = "gpu"
-    vm_size   = "Standard_NC6s_v3"
-    min_count = 0
+    vm_size   = "Standard_NC6s_v3"  # NVIDIA V100 GPU
+    min_count = 0                    # Can scale to zero!
     max_count = 5
-    zones     = ["1"]
-    labels    = { workload = "gpu", accelerator = "nvidia" }
-    taints    = ["gpu=true:NoSchedule"]
+    zones     = ["1"]                # GPUs often limited to 1 zone
+    labels    = {
+      workload    = "gpu"
+      accelerator = "nvidia"
+    }
+    taints    = ["gpu=true:NoSchedule"]  # Only GPU pods scheduled here
   }
 ]
 ```
 
-#### Addons Object
+> 💡 **Understanding Taints and Tolerations**
+>
+> **Taints** on nodes repel pods that don't have matching **tolerations**.
+>
+> ```
+> Node with taint:          Pod without toleration:
+> gpu=true:NoSchedule  →    ❌ Won't be scheduled
+>
+> Node with taint:          Pod with toleration:
+> gpu=true:NoSchedule  →    ✅ Will be scheduled
+> ```
+>
+> This ensures only GPU workloads run on expensive GPU nodes!
+
+#### Addons Configuration
 
 ```hcl
 addons = {
-  azure_policy           = true
-  azure_keyvault_secrets = true
-  oms_agent              = true
+  azure_policy           = true   # Enforce governance policies
+  azure_keyvault_secrets = true   # CSI driver for secrets
+  oms_agent              = true   # Container Insights monitoring
 }
 ```
 
+| Addon | What It Does | When to Enable |
+|-------|--------------|----------------|
+| `azure_policy` | Enforces Kubernetes policies via Azure Policy | Always (security) |
+| `azure_keyvault_secrets` | Mounts Key Vault secrets as volumes | If using native secret mounting |
+| `oms_agent` | Sends container logs to Log Analytics | Always (observability) |
+
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `cluster_id` | AKS cluster resource ID |
-| `cluster_name` | AKS cluster name |
-| `cluster_fqdn` | AKS cluster FQDN |
-| `kube_config` | Kubeconfig for cluster access |
-| `kubelet_identity_id` | Kubelet managed identity ID |
-| `oidc_issuer_url` | OIDC issuer URL for workload identity |
-| `node_resource_group` | Auto-created node resource group |
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `cluster_id` | AKS cluster resource ID | Observability, RBAC |
+| `cluster_name` | AKS cluster name | kubectl configuration |
+| `cluster_fqdn` | API server FQDN | Client configuration |
+| `kube_config` | Kubeconfig for cluster access | kubectl, Helm |
+| `kubelet_identity_id` | Managed identity for nodes | ACR pull permissions |
+| `oidc_issuer_url` | OIDC URL for workload identity | Security module |
+| `node_resource_group` | Auto-created MC_* resource group | Reference |
 
-#### Usage
+#### Usage Example
 
 ```hcl
 module "aks" {
   source = "./modules/aks-cluster"
 
+  # Basic configuration
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
   customer_name       = var.customer_name
   environment         = var.environment
-  kubernetes_version  = "1.29"
-  sku_tier            = "Standard"
-  vnet_subnet_id      = module.networking.aks_nodes_subnet_id
-  pod_subnet_id       = module.networking.aks_pods_subnet_id
-  acr_id              = module.acr.acr_id
-  key_vault_id        = module.security.key_vault_id
-  workload_identity   = true
 
+  # Kubernetes version
+  kubernetes_version = "1.29"
+  sku_tier           = "Standard"  # Use "Free" for dev
+
+  # Network - connect to networking module
+  vnet_subnet_id = module.networking.aks_nodes_subnet_id
+  pod_subnet_id  = module.networking.aks_pods_subnet_id
+
+  # Integrations
+  acr_id           = module.acr.acr_id             # For pulling images
+  key_vault_id     = module.security.key_vault_id  # For secrets
+  log_analytics_id = module.observability.log_analytics_workspace_id
+
+  # Enable workload identity (recommended)
+  workload_identity = true
+
+  # System node pool (fixed size, critical components)
   system_node_pool = {
     name       = "system"
     vm_size    = "Standard_D4s_v5"
@@ -280,101 +764,278 @@ module "aks" {
     zones      = ["1", "2", "3"]
   }
 
-  user_node_pools = var.user_node_pools
-  addons          = var.aks_addons
-  tags            = var.tags
-}
-```
+  # User node pools (autoscaling, your workloads)
+  user_node_pools = [
+    {
+      name      = "user"
+      vm_size   = "Standard_D8s_v5"
+      min_count = 3
+      max_count = 10
+      zones     = ["1", "2", "3"]
+      labels    = { workload = "general" }
+      taints    = []
+    }
+  ]
 
----
-
-### 2.4 Container Registry Module
-
-**Path:** `terraform/modules/container-registry`
-**Purpose:** Deploy Azure Container Registry.
-
-#### Inputs
-
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `name` | string | yes | - | ACR name (alphanumeric only) |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region |
-| `sku` | string | no | "Premium" | ACR SKU |
-| `admin_enabled` | bool | no | false | Enable admin user |
-| `public_network_access_enabled` | bool | no | false | Enable public access |
-| `zone_redundancy_enabled` | bool | no | true | Enable zone redundancy |
-| `georeplications` | list(object) | no | [] | Geo-replication config |
-| `private_endpoint_subnet_id` | string | no | null | Subnet for private endpoint |
-| `private_dns_zone_id` | string | no | null | Private DNS zone ID |
-| `tags` | map(string) | no | {} | Resource tags |
-
-#### Outputs
-
-| Output | Description |
-|--------|-------------|
-| `acr_id` | ACR resource ID |
-| `acr_name` | ACR name |
-| `login_server` | ACR login server URL |
-| `admin_username` | Admin username (if enabled) |
-| `admin_password` | Admin password (if enabled) |
-
-#### Usage
-
-```hcl
-module "acr" {
-  source = "./modules/container-registry"
-
-  name                = module.naming.container_registry_name
-  resource_group_name = azurerm_resource_group.main.name
-  location            = var.location
-  sku                 = "Premium"
-
-  public_network_access_enabled = false
-  private_endpoint_subnet_id    = module.networking.private_endpoints_subnet_id
-  private_dns_zone_id           = module.networking.private_dns_zone_ids["acr"]
+  # Addons
+  addons = {
+    azure_policy           = true
+    azure_keyvault_secrets = true
+    oms_agent              = true
+  }
 
   tags = var.tags
 }
 ```
 
+#### After Deployment: Connect to the Cluster
+
+```bash
+# Get credentials for kubectl
+az aks get-credentials \
+  --resource-group "rg-contoso-dev-brs" \
+  --name "aks-contoso-dev-brs"
+
+# Verify connection
+kubectl get nodes
+
+# Expected output:
+# NAME                              STATUS   ROLES   AGE   VERSION
+# aks-system-12345678-vmss000000    Ready    agent   1d    v1.29.0
+# aks-system-12345678-vmss000001    Ready    agent   1d    v1.29.0
+# aks-system-12345678-vmss000002    Ready    agent   1d    v1.29.0
+# aks-user-12345678-vmss000000      Ready    agent   1d    v1.29.0
+# aks-user-12345678-vmss000001      Ready    agent   1d    v1.29.0
+# aks-user-12345678-vmss000002      Ready    agent   1d    v1.29.0
+```
+
 ---
 
-### 2.5 Security Module
+### 3.4 Container Registry Module
 
-**Path:** `terraform/modules/security`
-**Purpose:** Deploy Key Vault and managed identities.
+**Path:** `terraform/modules/container-registry`
+
+> 💡 **Why This Module Exists**
+>
+> Applications running on Kubernetes need container images. Azure Container Registry (ACR)
+> provides a **private, secure registry** for your images, integrated with Azure AD
+> and accessible via private endpoints.
+>
+> Think of ACR as your **private Docker Hub** - only your authorized users and systems
+> can push/pull images.
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `customer_name` | string | yes | - | Customer identifier |
-| `environment` | string | yes | - | Environment |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region |
-| `key_vault_name` | string | yes | - | Key Vault name |
-| `tenant_id` | string | yes | - | Azure AD tenant ID |
-| `enable_rbac_authorization` | bool | no | true | Use RBAC for Key Vault |
-| `private_endpoint_subnet_id` | string | no | null | Subnet for private endpoint |
-| `private_dns_zone_id` | string | no | null | Private DNS zone ID |
-| `create_workload_identity` | bool | no | true | Create workload identity |
-| `aks_oidc_issuer_url` | string | no | null | AKS OIDC issuer for federation |
-| `tags` | map(string) | no | {} | Resource tags |
+| `name` | string | **Yes** | - | ACR name (alphanumeric only, globally unique) |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `location` | string | **Yes** | - | Azure region |
+| `sku` | string | No | `"Premium"` | SKU: Basic, Standard, Premium |
+| `admin_enabled` | bool | No | `false` | Enable admin user (not recommended) |
+| `public_network_access_enabled` | bool | No | `false` | Allow public access |
+| `zone_redundancy_enabled` | bool | No | `true` | Multi-zone storage |
+| `georeplications` | list(object) | No | `[]` | Replicate to other regions |
+| `private_endpoint_subnet_id` | string | No | `null` | For private access |
+| `private_dns_zone_id` | string | No | `null` | Private DNS zone |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### SKU Comparison
+
+> 💡 **Choosing ACR SKU**
+>
+> | Feature | Basic | Standard | Premium |
+> |---------|-------|----------|---------|
+> | Storage | 10 GB | 100 GB | 500 GB |
+> | Webhooks | 2 | 10 | 500 |
+> | Geo-replication | ❌ | ❌ | ✅ |
+> | Private endpoints | ❌ | ❌ | ✅ |
+> | Content trust | ❌ | ❌ | ✅ |
+> | Customer-managed keys | ❌ | ❌ | ✅ |
+> | Price (approx) | $5/mo | $20/mo | $50/mo |
+>
+> **Recommendation:** Use **Premium** for production (private endpoints required for security).
+
+> ⚠️ **Important: ACR Naming Rules**
+>
+> - Must be **globally unique** across all of Azure
+> - **Alphanumeric only** (no hyphens, underscores)
+> - 5-50 characters
+> - Use the naming module to generate compliant names!
 
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `key_vault_id` | Key Vault resource ID |
-| `key_vault_name` | Key Vault name |
-| `key_vault_uri` | Key Vault URI |
-| `aks_identity_id` | AKS managed identity ID |
-| `aks_identity_principal_id` | AKS identity principal ID |
-| `workload_identity_id` | Workload identity ID |
-| `workload_identity_client_id` | Workload identity client ID |
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `acr_id` | ACR resource ID | AKS (pull permissions) |
+| `acr_name` | ACR name | Image tagging |
+| `login_server` | ACR URL (e.g., `contoso.azurecr.io`) | Docker push/pull |
+| `admin_username` | Admin username (if enabled) | Emergency access |
+| `admin_password` | Admin password (if enabled) | Emergency access |
 
-#### Usage
+#### Usage Example
+
+```hcl
+module "acr" {
+  source = "./modules/container-registry"
+
+  # Use naming module for compliant name
+  name                = module.naming.container_registry_name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = var.location
+
+  # Production settings
+  sku = "Premium"  # Required for private endpoints
+
+  # Security: disable public access
+  admin_enabled                 = false  # Don't use admin account
+  public_network_access_enabled = false  # Only private access
+
+  # High availability
+  zone_redundancy_enabled = true
+
+  # Private endpoint configuration
+  private_endpoint_subnet_id = module.networking.private_endpoints_subnet_id
+  private_dns_zone_id        = module.networking.private_dns_zone_ids["acr"]
+
+  tags = var.tags
+}
+```
+
+#### How AKS Pulls Images from ACR
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     IMAGE PULL FLOW                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. You push an image:                                              │
+│     docker push contoso.azurecr.io/myapp:v1                         │
+│                                                                     │
+│  2. You deploy to Kubernetes:                                       │
+│     image: contoso.azurecr.io/myapp:v1                              │
+│                                                                     │
+│  3. AKS kubelet needs to pull the image:                            │
+│                                                                     │
+│     ┌──────────────┐    Managed Identity    ┌───────────────┐      │
+│     │  AKS Node    │  ─────────────────────► │     ACR       │      │
+│     │  (Kubelet)   │    AcrPull Role         │   (Premium)   │      │
+│     └──────────────┘                         └───────────────┘      │
+│           │                                         │               │
+│           │         Private Endpoint               │               │
+│           └────────────────────────────────────────┘               │
+│                    (No internet needed!)                            │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+The AKS module automatically:
+1. Creates a managed identity for kubelet
+2. Assigns `AcrPull` role to that identity on your ACR
+3. Configures AKS to use that identity
+
+---
+
+### 3.5 Security Module
+
+**Path:** `terraform/modules/security`
+
+> 💡 **Why This Module Exists**
+>
+> Security is foundational. This module creates:
+> - **Key Vault**: Secure storage for secrets, keys, and certificates
+> - **Managed Identities**: Passwordless authentication for Azure resources
+> - **Workload Identity**: Allows Kubernetes pods to authenticate to Azure
+>
+> Think of this module as the **security backbone** - it enables Zero Trust architecture
+> where nothing trusts anything by default.
+
+#### What This Module Creates
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                    Security Module Resources                        │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  ┌────────────────────────────────────────────────────────────┐   │
+│  │                    Azure Key Vault                          │   │
+│  │                                                             │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐    │   │
+│  │  │   Secrets   │  │    Keys     │  │  Certificates   │    │   │
+│  │  │             │  │             │  │                 │    │   │
+│  │  │ - DB pass   │  │ - Encrypt   │  │ - TLS certs     │    │   │
+│  │  │ - API keys  │  │ - Sign      │  │ - mTLS          │    │   │
+│  │  │ - Tokens    │  │             │  │                 │    │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────────┘    │   │
+│  │                                                             │   │
+│  │  Access: RBAC (recommended) or Access Policies             │   │
+│  │  Network: Private endpoint only (no public access)          │   │
+│  └────────────────────────────────────────────────────────────┘   │
+│                                                                    │
+│  ┌────────────────────────────────────────────────────────────┐   │
+│  │              User-Assigned Managed Identity                 │   │
+│  │                                                             │   │
+│  │  For: AKS cluster to access Azure resources                │   │
+│  │  Roles: Network Contributor, Key Vault Reader               │   │
+│  └────────────────────────────────────────────────────────────┘   │
+│                                                                    │
+│  ┌────────────────────────────────────────────────────────────┐   │
+│  │                   Workload Identity                         │   │
+│  │                                                             │   │
+│  │  Allows Kubernetes pods to authenticate as Azure AD         │   │
+│  │  identities using federated credentials (no secrets!)       │   │
+│  └────────────────────────────────────────────────────────────┘   │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+#### Inputs
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `customer_name` | string | **Yes** | - | Customer identifier |
+| `environment` | string | **Yes** | - | Environment |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `location` | string | **Yes** | - | Azure region |
+| `key_vault_name` | string | **Yes** | - | Key Vault name |
+| `tenant_id` | string | **Yes** | - | Azure AD tenant ID |
+| `enable_rbac_authorization` | bool | No | `true` | Use RBAC for Key Vault |
+| `private_endpoint_subnet_id` | string | No | `null` | For private access |
+| `private_dns_zone_id` | string | No | `null` | Private DNS zone |
+| `create_workload_identity` | bool | No | `true` | Create workload identity |
+| `aks_oidc_issuer_url` | string | No | `null` | AKS OIDC URL for federation |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### Key Vault Access: RBAC vs Access Policies
+
+> 💡 **Understanding Key Vault Access Models**
+>
+> **RBAC Authorization** (Recommended):
+> - Uses Azure RBAC roles (Key Vault Administrator, Key Vault Secrets User, etc.)
+> - Permissions managed at Azure level
+> - Easier to audit and manage
+> - Works with Managed Identities seamlessly
+>
+> **Access Policies** (Legacy):
+> - Each identity needs a policy configured in Key Vault
+> - More complex to manage
+> - Being phased out by Microsoft
+>
+> **Always use RBAC** (`enable_rbac_authorization = true`) for new deployments.
+
+#### Outputs
+
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `key_vault_id` | Key Vault resource ID | AKS, External Secrets |
+| `key_vault_name` | Key Vault name | Secret references |
+| `key_vault_uri` | Key Vault URL | SDK configuration |
+| `aks_identity_id` | AKS managed identity ID | AKS module |
+| `aks_identity_principal_id` | Identity principal ID | RBAC assignments |
+| `workload_identity_id` | Workload identity ID | Pod authentication |
+| `workload_identity_client_id` | Client ID for pods | ServiceAccount annotation |
+
+#### Usage Example
 
 ```hcl
 module "security" {
@@ -384,14 +1045,317 @@ module "security" {
   environment         = var.environment
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  key_vault_name      = module.naming.key_vault_name
-  tenant_id           = data.azurerm_client_config.current.tenant_id
 
-  enable_rbac_authorization     = true
-  private_endpoint_subnet_id    = module.networking.private_endpoints_subnet_id
-  private_dns_zone_id           = module.networking.private_dns_zone_ids["keyvault"]
-  create_workload_identity      = true
-  aks_oidc_issuer_url           = module.aks.oidc_issuer_url
+  # Key Vault configuration
+  key_vault_name            = module.naming.key_vault_name
+  tenant_id                 = data.azurerm_client_config.current.tenant_id
+  enable_rbac_authorization = true  # Always use RBAC
+
+  # Private endpoint for security
+  private_endpoint_subnet_id = module.networking.private_endpoints_subnet_id
+  private_dns_zone_id        = module.networking.private_dns_zone_ids["keyvault"]
+
+  # Workload Identity for Kubernetes pods
+  create_workload_identity = true
+  aks_oidc_issuer_url      = module.aks.oidc_issuer_url  # From AKS module
+
+  tags = var.tags
+}
+```
+
+#### How Workload Identity Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                  WORKLOAD IDENTITY FLOW                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TRADITIONAL (with secrets - NOT recommended):                      │
+│  ─────────────────────────────────────────────                      │
+│  Pod → Reads secret from env → Authenticates with secret → Azure   │
+│        ⚠️ Secret can be leaked!                                     │
+│                                                                     │
+│  WORKLOAD IDENTITY (passwordless - RECOMMENDED):                    │
+│  ────────────────────────────────────────────────                   │
+│                                                                     │
+│  1. Pod has ServiceAccount with annotation:                         │
+│     azure.workload.identity/client-id: <client-id>                  │
+│                                                                     │
+│  2. Pod requests token from Azure:                                  │
+│     ┌──────┐         ┌──────────────┐        ┌───────────────┐     │
+│     │ Pod  │ ──1──►  │ Kubernetes   │ ──2──► │   Azure AD    │     │
+│     │      │         │ Token Server │        │               │     │
+│     │      │ ◄──3──  │              │        │ Verifies via  │     │
+│     │      │ JWT     │              │        │ OIDC issuer   │     │
+│     └──────┘ token   └──────────────┘        └───────────────┘     │
+│        │                                                            │
+│        │  4. Use JWT to access Azure resources                     │
+│        └────────────────────────────►  Key Vault / Storage / etc   │
+│                                                                     │
+│  ✅ No secrets stored anywhere!                                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 3.6 Databases Module
+
+**Path:** `terraform/modules/databases`
+
+> 💡 **Why This Module Exists**
+>
+> Applications need persistent data storage. This module creates:
+> - **PostgreSQL Flexible Server**: Relational database for structured data
+> - **Redis Cache**: In-memory cache for high-performance access
+>
+> Both are configured with **high availability**, **private endpoints**, and
+> **credentials stored in Key Vault**.
+
+#### Inputs
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `customer_name` | string | **Yes** | - | Customer identifier |
+| `environment` | string | **Yes** | - | Environment |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `location` | string | **Yes** | - | Azure region |
+| `enable_postgresql` | bool | No | `true` | Create PostgreSQL |
+| `postgresql_config` | object | No | See below | PostgreSQL settings |
+| `enable_redis` | bool | No | `false` | Create Redis Cache |
+| `redis_config` | object | No | See below | Redis settings |
+| `private_endpoint_subnet_id` | string | No | `null` | For private access |
+| `private_dns_zone_ids` | map(string) | No | `{}` | DNS zones |
+| `key_vault_id` | string | No | `null` | For storing credentials |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### PostgreSQL Configuration
+
+```hcl
+postgresql_config = {
+  # VM size for the database server
+  sku_name = "GP_Standard_D2s_v3"  # General Purpose, 2 vCPUs, 8GB RAM
+
+  # Storage configuration
+  storage_mb = 32768  # 32 GB (can be increased, never decreased)
+
+  # PostgreSQL version
+  version = "15"  # Latest stable
+
+  # Backup configuration
+  backup_retention_days = 7   # Days to keep backups (7-35)
+  geo_redundant_backup  = false  # Replicate backups to another region
+
+  # High availability mode
+  # "Disabled" = Single server
+  # "ZoneRedundant" = Replica in another availability zone
+  # "SameZone" = Replica in same zone (faster failover)
+  high_availability_mode = "ZoneRedundant"
+
+  # Databases to create
+  databases = ["app_db", "analytics_db"]
+}
+```
+
+> 💡 **PostgreSQL SKU Naming**
+>
+> SKU format: `{Tier}_{VM}_{Version}`
+>
+> | Tier | Description | Use Case | Example |
+> |------|-------------|----------|---------|
+> | B | Burstable | Dev/test | B_Standard_B1ms |
+> | GP | General Purpose | Production | GP_Standard_D2s_v3 |
+> | MO | Memory Optimized | Heavy workloads | MO_Standard_E4s_v3 |
+
+#### Redis Configuration
+
+```hcl
+redis_config = {
+  # Cache capacity (0-6 for Basic/Standard, 1-5 for Premium)
+  capacity = 1
+
+  # SKU family: C (Basic/Standard) or P (Premium)
+  family = "P"
+
+  # SKU name: Basic, Standard, Premium
+  sku_name = "Premium"
+
+  # Number of shards (Premium only)
+  shard_count = 1
+
+  # Cluster mode (Premium only)
+  enable_cluster = false
+}
+```
+
+> 💡 **When to Use Redis**
+>
+> Redis is an **optional** component. Enable it when you need:
+> - **Session storage** across multiple app instances
+> - **High-speed caching** for frequently accessed data
+> - **Real-time features** like leaderboards or pub/sub
+> - **Rate limiting** for APIs
+
+#### Outputs
+
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `postgresql_server_id` | PostgreSQL resource ID | Monitoring |
+| `postgresql_server_name` | Server name | Connection strings |
+| `postgresql_fqdn` | Full DNS name for connection | Applications |
+| `redis_id` | Redis resource ID | Monitoring |
+| `redis_hostname` | Redis hostname | Applications |
+
+#### Usage Example
+
+```hcl
+module "databases" {
+  source = "./modules/databases"
+
+  customer_name       = var.customer_name
+  environment         = var.environment
+  resource_group_name = azurerm_resource_group.main.name
+  location            = var.location
+
+  # Enable PostgreSQL
+  enable_postgresql = true
+  postgresql_config = {
+    sku_name               = "GP_Standard_D2s_v3"
+    storage_mb             = 32768
+    version                = "15"
+    backup_retention_days  = 7
+    geo_redundant_backup   = false
+    high_availability_mode = "ZoneRedundant"
+    databases              = ["app_db"]
+  }
+
+  # Enable Redis (optional)
+  enable_redis = true
+  redis_config = {
+    capacity      = 1
+    family        = "P"
+    sku_name      = "Premium"
+    shard_count   = 1
+    enable_cluster = false
+  }
+
+  # Private networking
+  private_endpoint_subnet_id = module.networking.private_endpoints_subnet_id
+  private_dns_zone_ids = {
+    postgresql = module.networking.private_dns_zone_ids["postgresql"]
+    redis      = module.networking.private_dns_zone_ids["redis"]
+  }
+
+  # Store credentials in Key Vault
+  key_vault_id = module.security.key_vault_id
+
+  tags = var.tags
+}
+```
+
+#### Database Connection Security
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 DATABASE CONNECTION FLOW                            │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Application Pod                                                    │
+│       │                                                             │
+│       │ 1. Gets credentials from Key Vault                          │
+│       │    (via External Secrets Operator)                          │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │ Connection String:                                           │   │
+│  │ postgres://user:pass@psql-xxx.postgres.database.azure.com   │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│       │                                                             │
+│       │ 2. Connects via Private Endpoint                           │
+│       │    (Traffic stays in VNet)                                  │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                 PostgreSQL Flexible Server                   │   │
+│  │                                                               │   │
+│  │  ❌ Public IP: Disabled                                       │   │
+│  │  ✅ Private Endpoint: 10.0.4.x                                │   │
+│  │  ✅ SSL: Required                                              │   │
+│  │  ✅ High Availability: Zone Redundant                          │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 3.7 Defender Module
+
+**Path:** `terraform/modules/defender`
+
+> 💡 **Why This Module Exists**
+>
+> Microsoft Defender for Cloud provides **threat detection** and **security posture management**.
+> This module enables Defender plans for your resources, giving you:
+> - Vulnerability scanning for containers
+> - Threat detection for databases
+> - Security recommendations
+> - Compliance reporting
+
+#### Inputs
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `subscription_id` | string | **Yes** | - | Azure subscription ID |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `location` | string | **Yes** | - | Azure region |
+| `enable_container_plan` | bool | No | `true` | Defender for Containers |
+| `enable_keyvault_plan` | bool | No | `true` | Defender for Key Vault |
+| `enable_storage_plan` | bool | No | `true` | Defender for Storage |
+| `enable_database_plan` | bool | No | `true` | Defender for Databases |
+| `security_contact_email` | string | **Yes** | - | Email for alerts |
+| `alert_notifications` | bool | No | `true` | Send email alerts |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### Defender Plans Explained
+
+| Plan | What It Protects | Key Features | Cost Impact |
+|------|------------------|--------------|-------------|
+| **Containers** | AKS, ACR | Image vulnerability scanning, runtime threat detection | ~$7/vCPU/month |
+| **Key Vault** | Secrets | Unusual access detection, threat alerts | ~$0.02/10K operations |
+| **Storage** | Blob/Files | Malware scanning, anomaly detection | ~$0.02/10K transactions |
+| **Databases** | SQL, PostgreSQL | SQL injection detection, anomaly detection | ~$15/server/month |
+
+> ⚠️ **Cost Consideration**
+>
+> Defender plans have ongoing costs. For development environments,
+> you might want to disable some plans:
+>
+> ```hcl
+> # Development - minimal Defender
+> enable_container_plan = true   # Keep for image scanning
+> enable_keyvault_plan  = false
+> enable_storage_plan   = false
+> enable_database_plan  = false
+> ```
+
+#### Usage Example
+
+```hcl
+module "defender" {
+  source = "./modules/defender"
+
+  subscription_id         = data.azurerm_subscription.current.subscription_id
+  resource_group_name     = azurerm_resource_group.main.name
+  location                = var.location
+
+  # Enable Defender plans
+  enable_container_plan = true   # For AKS and ACR
+  enable_keyvault_plan  = true   # For Key Vault
+  enable_storage_plan   = true   # For Storage Accounts
+  enable_database_plan  = true   # For PostgreSQL
+
+  # Security contact
+  security_contact_email = "security@contoso.com"
+  alert_notifications    = true
 
   tags = var.tags
 }
@@ -399,248 +1363,621 @@ module "security" {
 
 ---
 
-### 2.6 Databases Module
+### 3.8 Purview Module
 
-**Path:** `terraform/modules/databases`
-**Purpose:** Deploy PostgreSQL Flexible Server and Redis Cache.
+**Path:** `terraform/modules/purview`
 
-#### Inputs
+> 💡 **Why This Module Exists**
+>
+> Microsoft Purview provides **data governance** capabilities:
+> - Data discovery and cataloging
+> - Data classification (PII, financial, etc.)
+> - Data lineage tracking
+>
+> This module also creates **LATAM-specific classifications** for regional compliance
+> (CPF, CNPJ, RUT, etc.).
 
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `customer_name` | string | yes | - | Customer identifier |
-| `environment` | string | yes | - | Environment |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region |
-| `enable_postgresql` | bool | no | true | Enable PostgreSQL |
-| `postgresql_config` | object | no | See below | PostgreSQL configuration |
-| `enable_redis` | bool | no | false | Enable Redis |
-| `redis_config` | object | no | See below | Redis configuration |
-| `private_endpoint_subnet_id` | string | no | null | Subnet for private endpoints |
-| `private_dns_zone_ids` | map(string) | no | {} | Private DNS zone IDs |
-| `key_vault_id` | string | no | null | Key Vault for storing credentials |
-| `tags` | map(string) | no | {} | Resource tags |
+#### LATAM Data Classifications
 
-#### PostgreSQL Config Object
+When `enable_latam_classifications = true`, the module creates these custom classifications:
+
+| Classification | Country | Format | Example |
+|----------------|---------|--------|---------|
+| CPF | Brazil | XXX.XXX.XXX-XX | 123.456.789-00 |
+| CNPJ | Brazil | XX.XXX.XXX/XXXX-XX | 12.345.678/0001-00 |
+| RUT | Chile | XX.XXX.XXX-X | 12.345.678-9 |
+| RFC | Mexico | XXXX-XXXXXX-XXX | GODE561231GR8 |
+| DNI | Argentina | XX.XXX.XXX | 12.345.678 |
+
+#### Usage Example
 
 ```hcl
-postgresql_config = {
-  sku_name               = "GP_Standard_D2s_v3"
-  storage_mb             = 32768
-  version                = "15"
-  backup_retention_days  = 7
-  geo_redundant_backup   = false
-  high_availability_mode = "ZoneRedundant"
-  databases              = ["app_db"]
+module "purview" {
+  source = "./modules/purview"
+
+  name                         = "pv-${var.customer_name}-${var.environment}"
+  resource_group_name          = azurerm_resource_group.main.name
+  location                     = var.location
+
+  # Managed resources
+  managed_resource_group_name = "rg-purview-managed"
+
+  # Network security
+  public_network_enabled       = false
+  private_endpoint_subnet_id   = module.networking.private_endpoints_subnet_id
+
+  # LATAM classifications
+  enable_latam_classifications = true
+
+  tags = var.tags
 }
 ```
 
-#### Outputs
+---
 
-| Output | Description |
-|--------|-------------|
-| `postgresql_server_id` | PostgreSQL server ID |
-| `postgresql_server_name` | PostgreSQL server name |
-| `postgresql_fqdn` | PostgreSQL FQDN |
-| `redis_id` | Redis Cache ID |
-| `redis_hostname` | Redis hostname |
+## 4. H2 Enhancement Modules
+
+These modules add operational capabilities on top of the H1 foundation.
 
 ---
 
-### 2.7 Defender Module
-
-**Path:** `terraform/modules/defender`
-**Purpose:** Configure Microsoft Defender for Cloud.
-
-#### Inputs
-
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `subscription_id` | string | yes | - | Azure subscription ID |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region |
-| `enable_container_plan` | bool | no | true | Enable Defender for Containers |
-| `enable_keyvault_plan` | bool | no | true | Enable Defender for Key Vault |
-| `enable_storage_plan` | bool | no | true | Enable Defender for Storage |
-| `enable_database_plan` | bool | no | true | Enable Defender for Databases |
-| `security_contact_email` | string | yes | - | Security contact email |
-| `alert_notifications` | bool | no | true | Enable alert notifications |
-| `tags` | map(string) | no | {} | Resource tags |
-
-#### Outputs
-
-| Output | Description |
-|--------|-------------|
-| `defender_plans_enabled` | List of enabled Defender plans |
-
----
-
-### 2.8 Purview Module
-
-**Path:** `terraform/modules/purview`
-**Purpose:** Deploy Microsoft Purview for data governance.
-
-#### Inputs
-
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `name` | string | yes | - | Purview account name |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region |
-| `managed_resource_group_name` | string | no | null | Managed RG name |
-| `public_network_enabled` | bool | no | false | Enable public access |
-| `private_endpoint_subnet_id` | string | no | null | Subnet for private endpoint |
-| `enable_latam_classifications` | bool | no | true | Enable LATAM data types |
-| `tags` | map(string) | no | {} | Resource tags |
-
-#### LATAM Classifications
-
-When `enable_latam_classifications = true`, creates custom classifications for:
-- CPF (Brazil)
-- CNPJ (Brazil)
-- RUT (Chile)
-- RFC (Mexico)
-- DNI (Argentina)
-
----
-
-## 3. H2 Enhancement Modules
-
-### 3.1 ArgoCD Module
+### 4.1 ArgoCD Module
 
 **Path:** `terraform/modules/argocd`
-**Purpose:** Configure ArgoCD for GitOps deployments.
+
+> 💡 **Why This Module Exists**
+>
+> ArgoCD enables **GitOps** - a practice where Git is the single source of truth
+> for your infrastructure and applications. With ArgoCD:
+> - Changes in Git automatically deploy to Kubernetes
+> - You can see what's deployed vs what's in Git
+> - Rollbacks are just `git revert`
+>
+> Think of ArgoCD as a **continuous deployment robot** that watches your Git repos
+> and keeps your cluster in sync.
+
+#### How GitOps Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      GitOps with ArgoCD                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  DEVELOPER WORKFLOW:                                                │
+│  ──────────────────                                                 │
+│                                                                     │
+│  1. Developer commits manifest change to Git                        │
+│                                                                     │
+│     git commit -m "Update app to v2"                                │
+│     git push origin main                                            │
+│                                                                     │
+│  2. ArgoCD detects the change                                       │
+│                                                                     │
+│     ┌──────────┐     watches     ┌──────────────────────────┐      │
+│     │  ArgoCD  │ ◄─────────────── │  Git Repository          │      │
+│     │          │                  │  kubernetes/             │      │
+│     │ Compares │                  │  └── deployment.yaml     │      │
+│     │ Git vs   │                  │      image: myapp:v2     │      │
+│     │ Cluster  │                  └──────────────────────────┘      │
+│     └────┬─────┘                                                    │
+│          │                                                          │
+│          │ 3. Syncs: applies changes to cluster                    │
+│          ▼                                                          │
+│     ┌──────────────────────────────────────────────┐               │
+│     │              Kubernetes Cluster               │               │
+│     │                                               │               │
+│     │   deployment/myapp                           │               │
+│     │   image: myapp:v2  ✅ Now running v2          │               │
+│     │                                               │               │
+│     └──────────────────────────────────────────────┘               │
+│                                                                     │
+│  BENEFITS:                                                          │
+│  ✅ Git history = deployment history                                │
+│  ✅ Pull request = deployment approval                               │
+│  ✅ Rollback = git revert                                            │
+│  ✅ Audit trail built-in                                             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `namespace` | string | no | "argocd" | Kubernetes namespace |
-| `version` | string | no | "2.9.0" | ArgoCD version |
-| `admin_password` | string | no | null | Admin password (auto-generated if null) |
-| `github_org` | string | yes | - | GitHub organization |
-| `github_client_id` | string | no | null | GitHub OAuth client ID |
-| `github_client_secret` | string | no | null | GitHub OAuth secret |
-| `enable_notifications` | bool | no | true | Enable notifications |
-| `notification_webhooks` | map(string) | no | {} | Webhook URLs |
+| `namespace` | string | No | `"argocd"` | Kubernetes namespace |
+| `version` | string | No | `"2.9.0"` | ArgoCD version |
+| `admin_password` | string | No | `null` | Admin password (auto-generated if null) |
+| `github_org` | string | **Yes** | - | GitHub organization |
+| `github_client_id` | string | No | `null` | For GitHub SSO |
+| `github_client_secret` | string | No | `null` | For GitHub SSO |
+| `enable_notifications` | bool | No | `true` | Enable notifications |
+| `notification_webhooks` | map(string) | No | `{}` | Slack/Teams webhooks |
 
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `argocd_server_url` | ArgoCD server URL |
-| `admin_password` | Admin password (sensitive) |
-| `namespace` | ArgoCD namespace |
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `argocd_server_url` | ArgoCD web UI URL | Developers |
+| `admin_password` | Admin password | Initial setup |
+| `namespace` | ArgoCD namespace | Resource references |
+
+#### Usage Example
+
+```hcl
+module "argocd" {
+  source = "./modules/argocd"
+
+  namespace = "argocd"
+  version   = "2.9.0"
+
+  # GitHub integration
+  github_org           = "my-org"
+  github_client_id     = var.github_oauth_client_id      # From GitHub OAuth App
+  github_client_secret = var.github_oauth_client_secret
+
+  # Notifications
+  enable_notifications = true
+  notification_webhooks = {
+    slack = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+  }
+}
+```
+
+#### Accessing ArgoCD UI
+
+After deployment:
+
+```bash
+# Get ArgoCD server URL
+kubectl get svc argocd-server -n argocd
+
+# Port forward to access locally
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Open in browser
+# https://localhost:8080
+
+# Login with admin and the generated password
+# (Get password from Terraform output or Key Vault)
+```
 
 ---
 
-### 3.2 External Secrets Module
+### 4.2 External Secrets Module
 
 **Path:** `terraform/modules/external-secrets`
-**Purpose:** Deploy External Secrets Operator.
+
+> 💡 **Why This Module Exists**
+>
+> Kubernetes Secrets store sensitive data, but managing them is hard:
+> - Where do the secrets come from?
+> - How do you rotate them?
+> - How do you sync across environments?
+>
+> External Secrets Operator (ESO) solves this by **syncing secrets from Azure Key Vault
+> to Kubernetes automatically**.
+
+#### How External Secrets Work
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 EXTERNAL SECRETS FLOW                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  WITHOUT External Secrets:                                          │
+│  ─────────────────────────                                          │
+│  Developer manually creates K8s secrets ❌                          │
+│  kubectl create secret generic db-creds --from-literal=pass=xxx    │
+│  - Secrets in plain text in CI/CD                                   │
+│  - No automatic rotation                                            │
+│  - Manual sync across clusters                                       │
+│                                                                     │
+│  WITH External Secrets:                                              │
+│  ──────────────────────                                              │
+│                                                                     │
+│  ┌────────────────┐                    ┌────────────────────────┐  │
+│  │  Azure Key     │                    │  Kubernetes Cluster    │  │
+│  │  Vault         │                    │                        │  │
+│  │                │  ──── syncs ────►  │  Secrets created       │  │
+│  │  db-password   │  automatically     │  automatically         │  │
+│  │  api-key       │                    │                        │  │
+│  │  tls-cert      │                    │  my-secret:            │  │
+│  │                │                    │    db-password: xxx    │  │
+│  └────────────────┘                    │    api-key: yyy        │  │
+│         ▲                              │                        │  │
+│         │                              └────────────────────────┘  │
+│         │ Source of truth                        │                 │
+│         │                                        │                 │
+│    ┌────┴────┐                            ┌──────┴───────┐        │
+│    │ DevOps  │ manages secrets here        │ Application │        │
+│    │ Team    │                             │ Pod         │        │
+│    └─────────┘                             │             │        │
+│                                            │ Mounts secret│        │
+│                                            │ as env vars  │        │
+│                                            └──────────────┘        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `namespace` | string | no | "external-secrets" | Kubernetes namespace |
-| `version` | string | no | "0.9.0" | ESO Helm chart version |
-| `key_vault_name` | string | yes | - | Azure Key Vault name |
-| `key_vault_url` | string | yes | - | Key Vault URL |
-| `tenant_id` | string | yes | - | Azure AD tenant ID |
-| `workload_identity_client_id` | string | yes | - | Workload identity client ID |
+| `namespace` | string | No | `"external-secrets"` | Operator namespace |
+| `version` | string | No | `"0.9.0"` | Helm chart version |
+| `key_vault_name` | string | **Yes** | - | Azure Key Vault name |
+| `key_vault_url` | string | **Yes** | - | Key Vault URL |
+| `tenant_id` | string | **Yes** | - | Azure AD tenant ID |
+| `workload_identity_client_id` | string | **Yes** | - | Identity for access |
 
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `namespace` | ESO namespace |
-| `cluster_secret_store_name` | ClusterSecretStore name |
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `namespace` | ESO namespace | Configuration |
+| `cluster_secret_store_name` | ClusterSecretStore name | ExternalSecret resources |
+
+#### Usage Example
+
+```hcl
+module "external_secrets" {
+  source = "./modules/external-secrets"
+
+  namespace = "external-secrets"
+  version   = "0.9.0"
+
+  # Key Vault connection
+  key_vault_name = module.security.key_vault_name
+  key_vault_url  = module.security.key_vault_uri
+  tenant_id      = data.azurerm_client_config.current.tenant_id
+
+  # Workload identity for Key Vault access
+  workload_identity_client_id = module.security.workload_identity_client_id
+}
+```
+
+#### Creating ExternalSecrets
+
+After the module is deployed, create `ExternalSecret` resources:
+
+```yaml
+# external-secret.yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-credentials
+  namespace: production
+spec:
+  refreshInterval: 1h           # Sync every hour
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: azure-keyvault        # From module output
+  target:
+    name: db-credentials        # K8s Secret name
+    creationPolicy: Owner
+  data:
+    - secretKey: username       # Key in K8s Secret
+      remoteRef:
+        key: db-username        # Key in Key Vault
+    - secretKey: password
+      remoteRef:
+        key: db-password
+```
 
 ---
 
-### 3.3 Observability Module
+### 4.3 Observability Module
 
 **Path:** `terraform/modules/observability`
-**Purpose:** Deploy Azure Monitor and configure Prometheus/Grafana.
+
+> 💡 **Why This Module Exists**
+>
+> You can't fix what you can't see. This module creates a complete observability stack:
+> - **Azure Monitor**: Cloud-native metrics and logs
+> - **Prometheus**: Kubernetes metrics collection
+> - **Grafana**: Visualization dashboards
+>
+> Think of observability as the **nervous system** of your platform - it tells you
+> what's healthy and what needs attention.
+
+#### Observability Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                   OBSERVABILITY STACK                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  DATA SOURCES:                    COLLECTION:         VISUALIZATION:│
+│  ─────────────                    ───────────         ──────────────│
+│                                                                     │
+│  ┌─────────────┐                 ┌─────────────┐    ┌─────────────┐│
+│  │ Kubernetes  │────────────────►│ Prometheus  │───►│   Grafana   ││
+│  │ Metrics     │  scrapes        │             │    │             ││
+│  │ (cpu, mem)  │                 │ 15-day      │    │ Dashboards  ││
+│  └─────────────┘                 │ retention   │    │ for:        ││
+│                                  └─────────────┘    │ - Cluster   ││
+│  ┌─────────────┐                                    │ - Nodes     ││
+│  │ Application │                 ┌─────────────┐    │ - Pods      ││
+│  │ Logs        │────────────────►│    Azure    │    │ - Apps      ││
+│  │ (stdout)    │  ships          │   Monitor   │───►│             ││
+│  └─────────────┘                 │             │    │ Pre-built   ││
+│                                  │ Log         │    │ dashboards  ││
+│  ┌─────────────┐                 │ Analytics   │    │             ││
+│  │ Azure       │────────────────►│             │    └─────────────┘│
+│  │ Resources   │  diagnostic     │ Workspace   │                   │
+│  │ Metrics     │  settings       └─────────────┘                   │
+│  └─────────────┘                       │                           │
+│                                        │                           │
+│                                        ▼                           │
+│                               ┌─────────────────┐                  │
+│                               │     ALERTS      │                  │
+│                               │ Email / Slack   │                  │
+│                               │ Teams / PagerD  │                  │
+│                               └─────────────────┘                  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `customer_name` | string | yes | - | Customer identifier |
-| `environment` | string | yes | - | Environment |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region |
-| `aks_cluster_id` | string | yes | - | AKS cluster ID |
-| `enable_azure_monitor` | bool | no | true | Enable Azure Monitor |
-| `enable_prometheus` | bool | no | true | Enable Prometheus |
-| `enable_grafana` | bool | no | true | Enable Grafana |
-| `log_retention_days` | number | no | 30 | Log retention period |
-| `tags` | map(string) | no | {} | Resource tags |
+| `customer_name` | string | **Yes** | - | Customer identifier |
+| `environment` | string | **Yes** | - | Environment |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `location` | string | **Yes** | - | Azure region |
+| `aks_cluster_id` | string | **Yes** | - | AKS cluster ID |
+| `enable_azure_monitor` | bool | No | `true` | Enable Azure Monitor |
+| `enable_prometheus` | bool | No | `true` | Enable Prometheus |
+| `enable_grafana` | bool | No | `true` | Enable Grafana |
+| `log_retention_days` | number | No | `30` | Log retention period |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### Log Retention Considerations
+
+> 💡 **Log Retention vs Cost**
+>
+> | Retention | Cost Impact | Use Case |
+> |-----------|-------------|----------|
+> | 30 days | Low | Development, troubleshooting |
+> | 90 days | Medium | Production standard |
+> | 180 days | High | Compliance requirements |
+> | 365 days | Very High | Regulatory/audit requirements |
+>
+> **Recommendation:** Start with 30 days, increase if compliance requires it.
 
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `log_analytics_workspace_id` | Log Analytics workspace ID |
-| `prometheus_endpoint` | Prometheus endpoint URL |
-| `grafana_endpoint` | Grafana endpoint URL |
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `log_analytics_workspace_id` | Log Analytics ID | AKS Container Insights |
+| `prometheus_endpoint` | Prometheus URL | Grafana data source |
+| `grafana_endpoint` | Grafana web UI URL | Developers, SRE |
+
+#### Usage Example
+
+```hcl
+module "observability" {
+  source = "./modules/observability"
+
+  customer_name       = var.customer_name
+  environment         = var.environment
+  resource_group_name = azurerm_resource_group.main.name
+  location            = var.location
+
+  # AKS integration
+  aks_cluster_id = module.aks.cluster_id
+
+  # Enable all observability components
+  enable_azure_monitor = true
+  enable_prometheus    = true
+  enable_grafana       = true
+
+  # Log retention (30 days default)
+  log_retention_days = 30
+
+  tags = var.tags
+}
+```
+
+#### Pre-configured Grafana Dashboards
+
+The module includes these dashboards:
+
+| Dashboard | What It Shows |
+|-----------|---------------|
+| Kubernetes Cluster | Overall cluster health, node status, resource usage |
+| Kubernetes Pods | Pod CPU/memory, restarts, status |
+| Kubernetes Namespaces | Per-namespace resource consumption |
+| Node Exporter | Detailed node metrics (disk, network) |
+| PostgreSQL | Database connections, query performance |
+| ArgoCD | Application sync status, deployment frequency |
 
 ---
 
-### 3.4 GitHub Runners Module
+### 4.4 GitHub Runners Module
 
 **Path:** `terraform/modules/github-runners`
-**Purpose:** Deploy self-hosted GitHub Actions runners on AKS.
+
+> 💡 **Why This Module Exists**
+>
+> GitHub Actions workflows run on GitHub-hosted runners by default, but:
+> - They can't access your private network (VNet)
+> - They have limited resources
+> - You pay per-minute for heavy usage
+>
+> Self-hosted runners on AKS solve these problems by running your CI/CD
+> **inside your cluster**.
+
+#### Runner Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 SELF-HOSTED RUNNERS ON AKS                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  GitHub.com                           Your AKS Cluster              │
+│  ───────────                          ─────────────────             │
+│                                                                     │
+│  ┌───────────────────┐               ┌─────────────────────────┐   │
+│  │  GitHub Actions   │               │   Runner Scale Set      │   │
+│  │                   │  ◄──────────► │                         │   │
+│  │  workflow.yaml    │   connects    │  ┌──────┐  ┌──────┐     │   │
+│  │  runs-on: self-   │   via HTTPS   │  │Runner│  │Runner│     │   │
+│  │  hosted           │               │  │ Pod  │  │ Pod  │     │   │
+│  │                   │               │  └──────┘  └──────┘     │   │
+│  └───────────────────┘               │         ...             │   │
+│                                      │  Auto-scales 1-10       │   │
+│                                      │                         │   │
+│                                      │  Benefits:              │   │
+│                                      │  ✅ Access to VNet       │   │
+│                                      │  ✅ Can reach databases  │   │
+│                                      │  ✅ Can push to ACR      │   │
+│                                      │  ✅ Custom tools         │   │
+│                                      │  ✅ More resources       │   │
+│                                      └─────────────────────────┘   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `namespace` | string | no | "github-runners" | Kubernetes namespace |
-| `github_org` | string | yes | - | GitHub organization |
-| `github_app_id` | string | yes | - | GitHub App ID |
-| `github_app_installation_id` | string | yes | - | App installation ID |
-| `github_app_private_key` | string | yes | - | App private key |
-| `runner_scale_set_name` | string | no | "arc-runners" | Scale set name |
-| `min_runners` | number | no | 1 | Minimum runners |
-| `max_runners` | number | no | 10 | Maximum runners |
-| `runner_image` | string | no | "ghcr.io/actions/runner:latest" | Runner image |
+| `namespace` | string | No | `"github-runners"` | Kubernetes namespace |
+| `github_org` | string | **Yes** | - | GitHub organization |
+| `github_app_id` | string | **Yes** | - | GitHub App ID |
+| `github_app_installation_id` | string | **Yes** | - | App installation ID |
+| `github_app_private_key` | string | **Yes** | - | App private key (PEM) |
+| `runner_scale_set_name` | string | No | `"arc-runners"` | Scale set name |
+| `min_runners` | number | No | `1` | Minimum runners |
+| `max_runners` | number | No | `10` | Maximum runners |
+| `runner_image` | string | No | See below | Runner container image |
+
+#### Setting Up GitHub App
+
+> 💡 **Creating a GitHub App for Runners**
+>
+> 1. Go to GitHub Organization → Settings → Developer settings → GitHub Apps
+> 2. Create new GitHub App with these permissions:
+>    - Repository: Actions (Read-only)
+>    - Organization: Self-hosted runners (Read and write)
+> 3. Install the app in your organization
+> 4. Note the App ID and Installation ID
+> 5. Generate and download the private key
+
+#### Usage Example
+
+```hcl
+module "github_runners" {
+  source = "./modules/github-runners"
+
+  namespace = "github-runners"
+
+  # GitHub App authentication
+  github_org                 = "my-org"
+  github_app_id              = var.github_app_id
+  github_app_installation_id = var.github_app_installation_id
+  github_app_private_key     = var.github_app_private_key  # Store in Key Vault!
+
+  # Scaling configuration
+  runner_scale_set_name = "arc-runners"
+  min_runners           = 1    # Always have 1 ready
+  max_runners           = 10   # Scale up to 10 for busy periods
+
+  # Custom runner image (optional)
+  runner_image = "ghcr.io/actions/runner:latest"
+}
+```
+
+#### Using Self-Hosted Runners in Workflows
+
+```yaml
+# .github/workflows/deploy.yaml
+name: Deploy Application
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: arc-runners  # Your self-hosted runner scale set name!
+    steps:
+      - uses: actions/checkout@v4
+
+      # Can access private resources!
+      - name: Connect to database
+        run: |
+          psql "postgres://user@psql-xxx.postgres.database.azure.com/db"
+
+      - name: Push to ACR
+        run: |
+          az acr login --name myacr
+          docker push myacr.azurecr.io/myapp:${{ github.sha }}
+```
 
 ---
 
-## 4. H3 Innovation Modules
+## 5. H3 Innovation Modules
 
-### 4.1 AI Foundry Module
+These modules add advanced AI/ML capabilities.
+
+---
+
+### 5.1 AI Foundry Module
 
 **Path:** `terraform/modules/ai-foundry`
-**Purpose:** Deploy Azure OpenAI and AI services.
+
+> 💡 **Why This Module Exists**
+>
+> Azure OpenAI provides access to powerful AI models (GPT-4, embeddings, etc.).
+> This module creates:
+> - Cognitive Services account for Azure OpenAI
+> - Model deployments (GPT-4o, embeddings, etc.)
+> - Private endpoint for secure access
+> - API key stored in Key Vault
 
 #### Inputs
 
 | Variable | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `name` | string | yes | - | Cognitive Services account name |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `location` | string | yes | - | Azure region (use eastus2 for full models) |
-| `sku` | string | no | "S0" | Pricing SKU |
-| `public_network_access_enabled` | bool | no | false | Enable public access |
-| `private_endpoint_subnet_id` | string | no | null | Subnet for private endpoint |
-| `private_dns_zone_id` | string | no | null | Private DNS zone ID |
-| `model_deployments` | list(object) | no | See below | Model deployments |
-| `key_vault_id` | string | no | null | Key Vault for storing API key |
-| `tags` | map(string) | no | {} | Resource tags |
+| `name` | string | **Yes** | - | Cognitive Services name |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `location` | string | **Yes** | - | Region (use eastus2 for all models) |
+| `sku` | string | No | `"S0"` | Pricing SKU |
+| `public_network_access_enabled` | bool | No | `false` | Public access |
+| `private_endpoint_subnet_id` | string | No | `null` | Private endpoint subnet |
+| `private_dns_zone_id` | string | No | `null` | Private DNS zone |
+| `model_deployments` | list(object) | No | `[]` | Model deployments |
+| `key_vault_id` | string | No | `null` | For storing API key |
+| `tags` | map(string) | No | `{}` | Resource tags |
 
-#### Model Deployments Object
+#### Region Availability
+
+> ⚠️ **Important: Azure OpenAI Regional Availability**
+>
+> Not all models are available in all regions!
+>
+> | Model | Brazil South | East US 2 | West Europe |
+> |-------|--------------|-----------|-------------|
+> | GPT-4o | ❌ | ✅ | ✅ |
+> | GPT-4o-mini | ❌ | ✅ | ✅ |
+> | GPT-4 Turbo | ❌ | ✅ | ✅ |
+> | GPT-3.5 Turbo | ✅ | ✅ | ✅ |
+> | text-embedding-3-large | ❌ | ✅ | ✅ |
+>
+> **Recommendation:** Deploy AI Foundry in **East US 2** for best model availability.
+
+#### Model Deployments Configuration
 
 ```hcl
 model_deployments = [
   {
-    name          = "gpt-4o"
-    model_name    = "gpt-4o"
-    model_version = "2024-05-13"
-    capacity      = 10
+    name          = "gpt-4o"               # Deployment name
+    model_name    = "gpt-4o"               # Azure model name
+    model_version = "2024-05-13"           # Model version
+    capacity      = 10                      # TPM (tokens per minute) in thousands
   },
   {
     name          = "gpt-4o-mini"
@@ -657,173 +1994,668 @@ model_deployments = [
 ]
 ```
 
+> 💡 **Understanding TPM (Tokens Per Minute)**
+>
+> - `capacity = 10` means 10,000 tokens per minute
+> - GPT-4o: ~750 words ≈ 1,000 tokens
+> - Start low and increase as needed (you can change this without redeploying)
+>
+> | Use Case | Recommended TPM |
+> |----------|-----------------|
+> | Development | 10 (10K TPM) |
+> | Small production | 30 (30K TPM) |
+> | Large production | 100+ (100K+ TPM) |
+
 #### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `cognitive_account_id` | Cognitive Services account ID |
-| `endpoint` | API endpoint URL |
-| `primary_key` | Primary API key (sensitive) |
-| `deployment_ids` | Map of deployment names to IDs |
+| Output | Description | Used By |
+|--------|-------------|---------|
+| `cognitive_account_id` | Account resource ID | Monitoring |
+| `endpoint` | API endpoint URL | Applications |
+| `primary_key` | API key (sensitive) | Applications |
+| `deployment_ids` | Map of deployment IDs | Reference |
 
----
-
-## 5. Cross-Cutting Modules
-
-### 5.1 Cost Management Module
-
-**Path:** `terraform/modules/cost-management`
-**Purpose:** Configure budgets and cost alerts.
-
-#### Inputs
-
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `resource_group_name` | string | yes | - | Resource group name |
-| `subscription_id` | string | yes | - | Subscription ID |
-| `budget_amount` | number | yes | - | Monthly budget in USD |
-| `alert_thresholds` | list(number) | no | [50, 75, 90, 100] | Alert percentages |
-| `alert_emails` | list(string) | yes | - | Alert email addresses |
-| `tags` | map(string) | no | {} | Resource tags |
-
----
-
-### 5.2 Disaster Recovery Module
-
-**Path:** `terraform/modules/disaster-recovery`
-**Purpose:** Configure DR resources and replication.
-
-#### Inputs
-
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `customer_name` | string | yes | - | Customer identifier |
-| `environment` | string | yes | - | Environment |
-| `primary_location` | string | yes | - | Primary region |
-| `secondary_location` | string | yes | - | DR region |
-| `resource_group_name` | string | yes | - | Resource group name |
-| `enable_aks_dr` | bool | no | false | Enable AKS DR cluster |
-| `enable_database_replication` | bool | no | true | Enable DB replication |
-| `enable_storage_replication` | bool | no | true | Enable storage GRS |
-| `tags` | map(string) | no | {} | Resource tags |
-
----
-
-## 6. Module Dependencies
-
-### Dependency Graph
-
-```
-                    ┌──────────┐
-                    │  naming  │
-                    └────┬─────┘
-                         │
-         ┌───────────────┼───────────────┐
-         │               │               │
-         ▼               ▼               ▼
-    ┌─────────┐    ┌──────────┐    ┌──────────┐
-    │networking│    │ security │    │ databases│
-    └────┬────┘    └────┬─────┘    └────┬─────┘
-         │              │               │
-         └──────┬───────┴───────┬───────┘
-                │               │
-                ▼               ▼
-         ┌───────────┐   ┌──────────────┐
-         │aks-cluster│   │container-reg │
-         └─────┬─────┘   └──────────────┘
-               │
-    ┌──────────┼──────────┬──────────┐
-    │          │          │          │
-    ▼          ▼          ▼          ▼
-┌───────┐ ┌────────┐ ┌─────────┐ ┌──────┐
-│argocd │ │external│ │observ-  │ │github│
-│       │ │secrets │ │ability  │ │runner│
-└───────┘ └────────┘ └─────────┘ └──────┘
-```
-
-### Required Order
+#### Usage Example
 
 ```hcl
-# 1. First: Naming (no dependencies)
+module "ai_foundry" {
+  source = "./modules/ai-foundry"
+
+  name                = "oai-${var.customer_name}-${var.environment}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = "eastus2"  # Use eastus2 for best model availability!
+  sku                 = "S0"
+
+  # Security: private access only
+  public_network_access_enabled = false
+  private_endpoint_subnet_id    = module.networking.private_endpoints_subnet_id
+  private_dns_zone_id           = module.networking.private_dns_zone_ids["openai"]
+
+  # Model deployments
+  model_deployments = [
+    {
+      name          = "gpt-4o"
+      model_name    = "gpt-4o"
+      model_version = "2024-05-13"
+      capacity      = 10
+    },
+    {
+      name          = "text-embedding-3-large"
+      model_name    = "text-embedding-3-large"
+      model_version = "1"
+      capacity      = 50
+    }
+  ]
+
+  # Store API key in Key Vault
+  key_vault_id = module.security.key_vault_id
+
+  tags = var.tags
+}
+```
+
+#### Using Azure OpenAI from Applications
+
+```python
+# Python example using Azure OpenAI SDK
+from openai import AzureOpenAI
+
+client = AzureOpenAI(
+    api_key=os.environ["AZURE_OPENAI_API_KEY"],  # From Key Vault
+    api_version="2024-02-01",
+    azure_endpoint="https://oai-contoso-dev.openai.azure.com"  # From module output
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",  # Deployment name
+    messages=[
+        {"role": "user", "content": "Hello, how are you?"}
+    ]
+)
+```
+
+---
+
+## 6. Cross-Cutting Modules
+
+These modules provide platform-wide functionality.
+
+---
+
+### 6.1 Cost Management Module
+
+**Path:** `terraform/modules/cost-management`
+
+> 💡 **Why This Module Exists**
+>
+> Cloud costs can spiral out of control quickly. This module:
+> - Creates **budgets** with spending limits
+> - Sends **alerts** when spending exceeds thresholds
+> - Helps prevent surprise bills
+
+#### Inputs
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `resource_group_name` | string | **Yes** | - | Resource group |
+| `subscription_id` | string | **Yes** | - | Subscription ID |
+| `budget_amount` | number | **Yes** | - | Monthly budget (USD) |
+| `alert_thresholds` | list(number) | No | `[50, 75, 90, 100]` | Alert percentages |
+| `alert_emails` | list(string) | **Yes** | - | Email recipients |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### How Alerts Work
+
+```
+Budget: $10,000/month
+Alert thresholds: [50, 75, 90, 100]
+
+                   ┌───────────────────────────────────────────────────┐
+                   │                 Monthly Budget                     │
+                   │               $10,000 USD                          │
+                   ├───────────────────────────────────────────────────┤
+                   │                                                    │
+ Day 1    $0      │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                   │                                                    │
+ Day 10   $5,000  │████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                   │                        ▲                           │
+                   │               📧 Alert: 50% reached                │
+                   │                                                    │
+ Day 18   $7,500  │████████████████████████████████████░░░░░░░░░░░░░░│
+                   │                                    ▲               │
+                   │                           📧 Alert: 75% reached    │
+                   │                                                    │
+ Day 24   $9,000  │█████████████████████████████████████████████░░░░░│
+                   │                                              ▲     │
+                   │                                     📧 90% alert   │
+                   │                                                    │
+ Day 28   $10,000 │████████████████████████████████████████████████│
+                   │                                                ▲   │
+                   │                              📧 BUDGET EXCEEDED!   │
+                   │                                                    │
+                   └───────────────────────────────────────────────────┘
+```
+
+#### Usage Example
+
+```hcl
+module "cost_management" {
+  source = "./modules/cost-management"
+
+  resource_group_name = azurerm_resource_group.main.name
+  subscription_id     = data.azurerm_subscription.current.subscription_id
+
+  # Monthly budget
+  budget_amount = 10000  # $10,000 USD
+
+  # Alert at these percentages
+  alert_thresholds = [50, 75, 90, 100]
+
+  # Who receives alerts
+  alert_emails = [
+    "finance@contoso.com",
+    "platform-team@contoso.com"
+  ]
+
+  tags = var.tags
+}
+```
+
+#### Budget Guidelines by Environment
+
+> 💡 **Recommended Budgets**
+>
+> | Environment | Typical Budget | Alert Action |
+> |-------------|----------------|--------------|
+> | Dev | $500-2,000 | Informational |
+> | Staging | $2,000-5,000 | Review usage |
+> | Production | $10,000+ | Investigate |
+
+---
+
+### 6.2 Disaster Recovery Module
+
+**Path:** `terraform/modules/disaster-recovery`
+
+> 💡 **Why This Module Exists**
+>
+> Disasters happen: region outages, data corruption, accidental deletions.
+> This module configures:
+> - **AKS DR cluster** in a secondary region
+> - **Database replication** for data redundancy
+> - **Storage geo-replication** for object data
+
+#### DR Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    DISASTER RECOVERY SETUP                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  PRIMARY REGION                    SECONDARY (DR) REGION            │
+│  (Brazil South)                    (East US 2)                      │
+│                                                                     │
+│  ┌────────────────────┐           ┌────────────────────┐           │
+│  │    AKS Cluster     │           │  AKS Cluster (DR)  │           │
+│  │    (Active)        │ ────────► │  (Standby)         │           │
+│  │                    │  Velero   │                    │           │
+│  │                    │  backups  │  Scaled to 0       │           │
+│  └────────────────────┘           └────────────────────┘           │
+│                                                                     │
+│  ┌────────────────────┐           ┌────────────────────┐           │
+│  │    PostgreSQL      │           │  PostgreSQL        │           │
+│  │    (Primary)       │ ────────► │  (Read Replica)    │           │
+│  │                    │  Async    │                    │           │
+│  │                    │  replica  │  Can be promoted   │           │
+│  └────────────────────┘           └────────────────────┘           │
+│                                                                     │
+│  ┌────────────────────┐           ┌────────────────────┐           │
+│  │    Storage (GRS)   │ ========► │  Storage (auto)    │           │
+│  │    Blobs, Files    │  Geo-     │  Replicated data   │           │
+│  │                    │  redundant│                    │           │
+│  └────────────────────┘           └────────────────────┘           │
+│                                                                     │
+│  RPO (data loss): < 1 hour                                          │
+│  RTO (recovery time): 4-8 hours                                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### Inputs
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `customer_name` | string | **Yes** | - | Customer identifier |
+| `environment` | string | **Yes** | - | Environment |
+| `primary_location` | string | **Yes** | - | Primary region |
+| `secondary_location` | string | **Yes** | - | DR region |
+| `resource_group_name` | string | **Yes** | - | Resource group |
+| `enable_aks_dr` | bool | No | `false` | Create DR AKS cluster |
+| `enable_database_replication` | bool | No | `true` | Enable DB replication |
+| `enable_storage_replication` | bool | No | `true` | Enable storage GRS |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### Usage Example
+
+```hcl
+module "disaster_recovery" {
+  source = "./modules/disaster-recovery"
+
+  customer_name       = var.customer_name
+  environment         = var.environment
+  resource_group_name = azurerm_resource_group.main.name
+
+  # Region pairing
+  primary_location   = "brazilsouth"
+  secondary_location = "eastus2"
+
+  # DR components
+  enable_aks_dr              = true   # Create standby AKS cluster
+  enable_database_replication = true   # PostgreSQL read replica
+  enable_storage_replication = true   # GRS storage
+
+  tags = var.tags
+}
+```
+
+#### DR Testing
+
+> 💡 **DR Testing Recommendations**
+>
+> | Test Type | Frequency | What to Test |
+> |-----------|-----------|--------------|
+> | Backup verification | Weekly | Verify backups are created |
+> | Restore test | Monthly | Restore to test namespace |
+> | Failover drill | Quarterly | Full failover to DR region |
+> | Documentation review | Quarterly | Update runbooks |
+
+---
+
+## 7. Module Dependencies and Execution Order
+
+### 7.1 Dependency Graph
+
+Understanding module dependencies is crucial for correct deployment:
+
+```
+                           ┌──────────────┐
+                           │    naming    │  ◄── START HERE
+                           └──────┬───────┘
+                                  │
+         ┌────────────────────────┼────────────────────────┐
+         │                        │                        │
+         ▼                        ▼                        ▼
+  ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+  │  networking │         │  security   │         │  defender   │
+  │  (VNet, DNS)│         │ (Key Vault) │         │  (optional) │
+  └──────┬──────┘         └──────┬──────┘         └─────────────┘
+         │                       │
+         │    ┌──────────────────┼──────────────────┐
+         │    │                  │                  │
+         ▼    ▼                  ▼                  ▼
+  ┌───────────────┐      ┌─────────────┐    ┌─────────────┐
+  │  aks-cluster  │      │  databases  │    │     acr     │
+  │  (Kubernetes) │      │  (Postgres) │    │  (Registry) │
+  └───────┬───────┘      └─────────────┘    └─────────────┘
+          │
+    ┌─────┴─────┬─────────────┬─────────────┐
+    │           │             │             │
+    ▼           ▼             ▼             ▼
+┌───────┐ ┌──────────┐ ┌───────────┐ ┌─────────────┐
+│argocd │ │ external │ │observabil │ │   github    │
+│       │ │ secrets  │ │   ity     │ │   runners   │
+└───────┘ └──────────┘ └───────────┘ └─────────────┘
+
+                    H3 MODULES (Independent after AKS):
+
+                    ┌─────────────┐
+                    │ ai-foundry  │
+                    └─────────────┘
+```
+
+### 7.2 Recommended Deployment Order
+
+```hcl
+# PHASE 1: Foundation (no dependencies)
 module "naming" { ... }
 
-# 2. Second: Networking (depends on naming outputs)
+# PHASE 2: Infrastructure (depends on naming)
 module "networking" {
   depends_on = [module.naming]
 }
 
-# 3. Third: Security (depends on networking for private endpoints)
 module "security" {
-  depends_on = [module.networking]
+  depends_on = [module.networking]  # For private endpoints
 }
 
-# 4. Fourth: AKS (depends on networking and security)
+module "acr" {
+  depends_on = [module.networking]  # For private endpoint
+}
+
+# PHASE 3: Compute (depends on infrastructure)
 module "aks" {
-  depends_on = [module.networking, module.security]
+  depends_on = [module.networking, module.security, module.acr]
 }
 
-# 5. Fifth: H2 modules (depends on AKS)
+module "databases" {
+  depends_on = [module.networking, module.security]  # For private endpoints and secrets
+}
+
+# PHASE 4: Platform Services (depends on compute)
 module "argocd" {
   depends_on = [module.aks]
 }
+
+module "external_secrets" {
+  depends_on = [module.aks, module.security]
+}
+
+module "observability" {
+  depends_on = [module.aks]
+}
+
+module "github_runners" {
+  depends_on = [module.aks]
+}
+
+# PHASE 5: Optional/Innovation
+module "ai_foundry" {
+  depends_on = [module.networking]  # Only needs network for private endpoint
+}
+
+module "cost_management" { ... }  # No dependencies
+module "defender" { ... }         # No dependencies
 ```
+
+### 7.3 Why Order Matters
+
+> ⚠️ **Deployment Order Violations**
+>
+> | Wrong Order | Error You'll See |
+> |-------------|------------------|
+> | AKS before networking | "Subnet not found" |
+> | External Secrets before security | "Key Vault not found" |
+> | Private endpoint before VNet | "Private endpoint subnet not found" |
+> | ArgoCD before AKS | "No Kubernetes cluster available" |
 
 ---
 
-## 7. Usage Examples
+## 8. Common Usage Patterns
 
-### Minimal Deployment (H1 Only)
+### 8.1 Minimal Development Environment
+
+For quick development setups:
 
 ```hcl
+# Just the essentials for development
 module "naming" {
   source        = "./modules/naming"
-  customer_name = "minimal"
+  customer_name = "dev"
   environment   = "dev"
   region        = "brazilsouth"
 }
 
 module "networking" {
   source              = "./modules/networking"
-  customer_name       = var.customer_name
-  environment         = var.environment
-  location            = var.location
+  customer_name       = "dev"
+  environment         = "dev"
+  location            = "brazilsouth"
   resource_group_name = azurerm_resource_group.main.name
   vnet_cidr           = "10.0.0.0/16"
-  dns_zone_name       = "minimal.internal"
+  dns_zone_name       = "dev.internal"
+  enable_bastion      = false  # Not needed for dev
 }
 
 module "aks" {
   source              = "./modules/aks-cluster"
   resource_group_name = azurerm_resource_group.main.name
-  location            = var.location
-  customer_name       = var.customer_name
-  environment         = var.environment
+  location            = "brazilsouth"
+  customer_name       = "dev"
+  environment         = "dev"
+  kubernetes_version  = "1.29"
+  sku_tier            = "Free"  # Free tier for dev!
   vnet_subnet_id      = module.networking.aks_nodes_subnet_id
+
+  system_node_pool = {
+    name       = "system"
+    vm_size    = "Standard_D2s_v5"  # Smaller VMs
+    node_count = 1                   # Single node
+    zones      = ["1"]               # Single zone
+  }
 }
+
+# Total estimated cost: ~$50-100/month
 ```
 
-### Full Platform Deployment
+### 8.2 Production Environment
+
+Full production setup with all security and resilience features:
 
 ```hcl
-# See terraform/main.tf for complete example
+# See terraform/main.tf for the complete implementation
+
 module "naming"           { ... }
-module "networking"       { ... }
-module "security"         { ... }
-module "aks"              { ... }
-module "acr"              { ... }
-module "databases"        { ... }
-module "defender"         { ... }
-module "purview"          { ... }
-module "observability"    { ... }
-module "argocd"           { ... }
+module "networking"       { enable_bastion = true, enable_app_gateway = true }
+module "security"         { enable_rbac_authorization = true }
+module "aks"              { sku_tier = "Standard", zones = ["1","2","3"] }
+module "acr"              { sku = "Premium", zone_redundancy_enabled = true }
+module "databases"        { high_availability_mode = "ZoneRedundant" }
+module "defender"         { enable_container_plan = true, ... }
+module "observability"    { log_retention_days = 90 }
+module "argocd"           { enable_notifications = true }
 module "external_secrets" { ... }
-module "github_runners"   { ... }
-module "cost_management"  { ... }
-module "ai_foundry"       { ... }  # Optional H3
+module "github_runners"   { min_runners = 2 }
+module "cost_management"  { budget_amount = 15000 }
+module "disaster_recovery" { enable_aks_dr = true }
+
+# Total estimated cost: $3,000-10,000/month depending on workload
+```
+
+### 8.3 AI/ML Focused Environment
+
+When AI capabilities are the priority:
+
+```hcl
+# Standard H1/H2 modules...
+
+# AI Foundry with multiple models
+module "ai_foundry" {
+  source   = "./modules/ai-foundry"
+  location = "eastus2"  # Best model availability
+
+  model_deployments = [
+    {
+      name          = "gpt-4o"
+      model_name    = "gpt-4o"
+      model_version = "2024-05-13"
+      capacity      = 30  # Higher capacity
+    },
+    {
+      name          = "gpt-4o-mini"
+      model_name    = "gpt-4o-mini"
+      model_version = "2024-07-18"
+      capacity      = 50
+    },
+    {
+      name          = "text-embedding-3-large"
+      model_name    = "text-embedding-3-large"
+      model_version = "1"
+      capacity      = 100  # High capacity for embeddings
+    }
+  ]
+}
+
+# AKS with GPU nodes for local inference
+module "aks" {
+  # ... standard config ...
+
+  user_node_pools = [
+    {
+      name      = "gpu"
+      vm_size   = "Standard_NC6s_v3"
+      min_count = 0
+      max_count = 5
+      labels    = { accelerator = "nvidia" }
+      taints    = ["gpu=true:NoSchedule"]
+    }
+  ]
+}
 ```
 
 ---
 
-**Document Version:** 1.0.0
+## 9. Troubleshooting Module Issues
+
+### 9.1 Common Errors and Solutions
+
+#### "Resource not found" Errors
+
+```
+Error: Resource group "rg-xxx" was not found
+
+CAUSE: Module dependency not satisfied
+SOLUTION: Add depends_on to ensure correct order
+
+module "networking" {
+  source = "./modules/networking"
+  depends_on = [azurerm_resource_group.main]  # Add this
+}
+```
+
+#### "Name already exists" Errors
+
+```
+Error: The storage account name "stcontoso" is already taken
+
+CAUSE: Global resources (storage, ACR) require globally unique names
+SOLUTION:
+1. Use naming module with unique customer_name
+2. Add random suffix: "stcontoso${random_string.suffix.result}"
+```
+
+#### "Subnet not found" Errors
+
+```
+Error: Subnet with ID ".../subnets/aks-nodes" was not found
+
+CAUSE: AKS module running before networking completes
+SOLUTION: Add explicit dependency
+
+module "aks" {
+  depends_on = [module.networking]
+}
+```
+
+#### "Insufficient quota" Errors
+
+```
+Error: Operation could not be completed as it results in exceeding quota
+
+CAUSE: Azure subscription limits
+SOLUTION:
+1. Check current usage: az vm list-usage --location brazilsouth
+2. Request quota increase via Azure Portal
+3. Or use smaller VM sizes
+```
+
+### 9.2 Module Upgrade Process
+
+When upgrading module versions:
+
+```bash
+# 1. Review changes in the new version
+git log --oneline modules/aks-cluster
+
+# 2. Plan changes (don't apply yet)
+terraform plan -target=module.aks
+
+# 3. Review the plan carefully
+# Look for: destroy/recreate vs in-place updates
+
+# 4. Apply during maintenance window
+terraform apply -target=module.aks
+
+# 5. Verify functionality
+kubectl get nodes
+kubectl get pods -A
+```
+
+### 9.3 State Management Issues
+
+```
+Error: Error acquiring the state lock
+
+CAUSE: Previous terraform command didn't complete
+SOLUTION:
+1. Wait for other operations to complete
+2. Or force unlock (CAREFUL!):
+   terraform force-unlock <LOCK_ID>
+```
+
+```
+Error: Resource already exists
+
+CAUSE: Resource created outside Terraform
+SOLUTION:
+1. Import existing resource:
+   terraform import module.aks.azurerm_kubernetes_cluster.main /subscriptions/.../aks
+2. Or delete resource and let Terraform create it
+```
+
+### 9.4 Getting Help
+
+If you encounter issues not covered here:
+
+1. **Check Azure activity logs**:
+   - Azure Portal → Resource Group → Activity Log
+   - Look for failed operations with error details
+
+2. **Review Terraform debug logs**:
+   ```bash
+   TF_LOG=DEBUG terraform apply 2>&1 | tee terraform.log
+   ```
+
+3. **Common documentation**:
+   - [Azure Provider Documentation](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
+   - [AKS Documentation](https://learn.microsoft.com/en-us/azure/aks/)
+   - [Terraform Best Practices](https://www.terraform.io/docs/cloud/guides/recommended-practices)
+
+---
+
+## Quick Reference Card
+
+### Module Cheat Sheet
+
+| Module | When to Use | Key Inputs |
+|--------|-------------|------------|
+| naming | Always first | customer_name, environment, region |
+| networking | Always | vnet_cidr, dns_zone_name |
+| security | Always | key_vault_name, tenant_id |
+| aks-cluster | Always | vnet_subnet_id, system_node_pool |
+| container-registry | Almost always | name, sku |
+| databases | If need SQL | enable_postgresql, postgresql_config |
+| argocd | For GitOps | github_org |
+| external-secrets | For secrets sync | key_vault_name, workload_identity_client_id |
+| observability | Always | aks_cluster_id |
+| github-runners | For private CI/CD | github_app_id, github_app_private_key |
+| ai-foundry | For AI/ML | model_deployments |
+| cost-management | Always | budget_amount, alert_emails |
+| disaster-recovery | For production | primary_location, secondary_location |
+
+### Environment Recommendations
+
+| Component | Dev | Staging | Production |
+|-----------|-----|---------|------------|
+| AKS SKU | Free | Standard | Standard/Premium |
+| Node count | 1-2 | 3 | 3+ (autoscale) |
+| Zones | 1 | 2 | 3 |
+| ACR SKU | Standard | Premium | Premium |
+| PostgreSQL HA | Disabled | SameZone | ZoneRedundant |
+| DR enabled | No | No | Yes |
+| Budget alerts | 50%, 100% | 75%, 100% | 50%, 75%, 90%, 100% |
+
+---
+
+**Document Version:** 2.0.0
 **Last Updated:** December 2025
 **Maintainer:** Platform Engineering Team

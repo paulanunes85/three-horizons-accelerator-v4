@@ -2,385 +2,1116 @@
 
 > **Version:** 4.0.0
 > **Last Updated:** December 2025
+> **Audience:** Platform Engineers, DevOps Engineers, Support Teams
 
 ---
 
 ## Table of Contents
 
-1. [Quick Diagnostics](#1-quick-diagnostics)
-2. [Terraform Issues](#2-terraform-issues)
-3. [AKS Cluster Issues](#3-aks-cluster-issues)
-4. [ArgoCD Issues](#4-argocd-issues)
-5. [Networking Issues](#5-networking-issues)
-6. [External Secrets Issues](#6-external-secrets-issues)
-7. [Observability Issues](#7-observability-issues)
-8. [AI Foundry Issues](#8-ai-foundry-issues)
-9. [Authentication Issues](#9-authentication-issues)
-10. [Performance Issues](#10-performance-issues)
-11. [Common Error Messages](#11-common-error-messages)
-12. [Support Escalation](#12-support-escalation)
+1. [How to Use This Guide](#1-how-to-use-this-guide)
+2. [Quick Diagnostics](#2-quick-diagnostics)
+3. [Terraform Issues](#3-terraform-issues)
+4. [AKS Cluster Issues](#4-aks-cluster-issues)
+5. [Pod and Workload Issues](#5-pod-and-workload-issues)
+6. [ArgoCD and GitOps Issues](#6-argocd-and-gitops-issues)
+7. [Networking Issues](#7-networking-issues)
+8. [External Secrets Issues](#8-external-secrets-issues)
+9. [Observability Issues](#9-observability-issues)
+10. [AI Foundry Issues](#10-ai-foundry-issues)
+11. [Authentication and Authorization Issues](#11-authentication-and-authorization-issues)
+12. [Performance Issues](#12-performance-issues)
+13. [Error Message Reference](#13-error-message-reference)
+14. [Support and Escalation](#14-support-and-escalation)
 
 ---
 
-## 1. Quick Diagnostics
+## 1. How to Use This Guide
 
-### Universal Diagnostic Script
+### 1.1 Troubleshooting Methodology
+
+Before diving into specific issues, understand the general approach:
+
+> 💡 **The IDEA Troubleshooting Method**
+>
+> **I**dentify → **D**iagnose → **E**xecute → **A**ssess
+>
+> 1. **Identify**: What's the symptom? What changed recently?
+> 2. **Diagnose**: Gather data, form hypothesis
+> 3. **Execute**: Apply the fix
+> 4. **Assess**: Did it work? Document for future reference
+
+### 1.2 Decision Tree: Where to Start
+
+```
+What's the problem?
+         │
+         ├─► "I can't deploy infrastructure"
+         │   └─► Go to Section 3 (Terraform Issues)
+         │
+         ├─► "I can't connect to the cluster"
+         │   └─► Go to Section 4 (AKS Cluster Issues)
+         │
+         ├─► "My pods aren't starting/running"
+         │   └─► Go to Section 5 (Pod Issues)
+         │
+         ├─► "My application isn't deploying via GitOps"
+         │   └─► Go to Section 6 (ArgoCD Issues)
+         │
+         ├─► "Services can't communicate"
+         │   └─► Go to Section 7 (Networking Issues)
+         │
+         ├─► "Secrets aren't syncing from Key Vault"
+         │   └─► Go to Section 8 (External Secrets Issues)
+         │
+         ├─► "I can't see metrics/logs"
+         │   └─► Go to Section 9 (Observability Issues)
+         │
+         ├─► "AI/OpenAI APIs aren't working"
+         │   └─► Go to Section 10 (AI Foundry Issues)
+         │
+         ├─► "Authentication/permission errors"
+         │   └─► Go to Section 11 (Auth Issues)
+         │
+         └─► "Things are slow"
+             └─► Go to Section 12 (Performance Issues)
+```
+
+### 1.3 Severity Classification
+
+> 💡 **Understanding Severity Levels**
+>
+> | Severity | Description | Response Time | Example |
+> |----------|-------------|---------------|---------|
+> | **SEV1** | Production down, all users affected | 15 minutes | Cluster unreachable |
+> | **SEV2** | Significant impact, workaround exists | 1 hour | Deployment failing |
+> | **SEV3** | Minor impact, one user/feature | 4 hours | Dashboard not loading |
+> | **SEV4** | Minimal impact | Next business day | Cosmetic issue |
+
+---
+
+## 2. Quick Diagnostics
+
+### 2.1 The 5-Minute Health Check
+
+Before investigating specific issues, run this quick check:
 
 ```bash
 #!/bin/bash
-# scripts/diagnose.sh - Run this first for any issue
+# Run this first for any issue
+# Save as: scripts/quick-check.sh
 
-echo "=== THREE HORIZONS DIAGNOSTIC REPORT ==="
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║          THREE HORIZONS - QUICK DIAGNOSTIC CHECK             ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo ""
 echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo ""
 
-# Cluster connectivity
-echo "--- Cluster Connectivity ---"
-kubectl cluster-info 2>&1 || echo "ERROR: Cannot connect to cluster"
+# 1. Can we reach the cluster?
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 1. CLUSTER CONNECTIVITY                                     │"
+echo "└─────────────────────────────────────────────────────────────┘"
+if kubectl cluster-info &> /dev/null; then
+    echo "✅ Cluster is reachable"
+    kubectl cluster-info | head -2
+else
+    echo "❌ CANNOT CONNECT TO CLUSTER"
+    echo "   → Check: kubectl config current-context"
+    echo "   → Try: az aks get-credentials -g <RG> -n <CLUSTER>"
+    exit 1
+fi
 echo ""
 
-# Node status
-echo "--- Node Status ---"
-kubectl get nodes -o wide 2>&1
+# 2. Are nodes healthy?
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 2. NODE STATUS                                              │"
+echo "└─────────────────────────────────────────────────────────────┘"
+NOT_READY=$(kubectl get nodes --no-headers | grep -v Ready | wc -l)
+if [ "$NOT_READY" -eq 0 ]; then
+    echo "✅ All nodes are Ready"
+else
+    echo "⚠️  $NOT_READY node(s) NOT Ready:"
+    kubectl get nodes | grep -v Ready
+fi
+kubectl get nodes -o wide
 echo ""
 
-# Pod issues
-echo "--- Non-Running Pods ---"
-kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded 2>&1
+# 3. Are there failing pods?
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 3. POD HEALTH                                               │"
+echo "└─────────────────────────────────────────────────────────────┘"
+FAILING=$(kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded --no-headers 2>/dev/null | wc -l)
+if [ "$FAILING" -eq 0 ]; then
+    echo "✅ All pods are Running or Succeeded"
+else
+    echo "⚠️  $FAILING pod(s) in problematic state:"
+    kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+fi
 echo ""
 
-# Recent events
-echo "--- Recent Warning Events (last 10) ---"
-kubectl get events -A --field-selector type=Warning --sort-by='.lastTimestamp' 2>&1 | tail -10
+# 4. Recent warning events
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 4. RECENT WARNING EVENTS (last 10)                          │"
+echo "└─────────────────────────────────────────────────────────────┘"
+WARNINGS=$(kubectl get events -A --field-selector type=Warning --no-headers 2>/dev/null | wc -l)
+if [ "$WARNINGS" -eq 0 ]; then
+    echo "✅ No warning events"
+else
+    echo "⚠️  Found $WARNINGS warning event(s). Most recent:"
+    kubectl get events -A --field-selector type=Warning --sort-by='.lastTimestamp' 2>&1 | tail -10
+fi
 echo ""
 
-# Resource pressure
-echo "--- Resource Usage ---"
-kubectl top nodes 2>&1 || echo "Metrics server not available"
+# 5. Resource utilization
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 5. RESOURCE UTILIZATION                                     │"
+echo "└─────────────────────────────────────────────────────────────┘"
+if kubectl top nodes &> /dev/null; then
+    kubectl top nodes
+else
+    echo "⚠️  Metrics server not available (kubectl top failed)"
+fi
 echo ""
 
-# ArgoCD status
-echo "--- ArgoCD Applications ---"
-kubectl get applications -n argocd 2>&1 || echo "ArgoCD not installed"
+# 6. ArgoCD status
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 6. ARGOCD APPLICATION STATUS                                │"
+echo "└─────────────────────────────────────────────────────────────┘"
+if kubectl get ns argocd &> /dev/null; then
+    UNHEALTHY=$(kubectl get applications -n argocd --no-headers 2>/dev/null | grep -v "Healthy" | wc -l)
+    if [ "$UNHEALTHY" -eq 0 ]; then
+        echo "✅ All ArgoCD applications healthy"
+    else
+        echo "⚠️  $UNHEALTHY application(s) not healthy:"
+    fi
+    kubectl get applications -n argocd 2>/dev/null
+else
+    echo "ℹ️  ArgoCD not installed"
+fi
 echo ""
 
-# External Secrets
-echo "--- External Secrets Status ---"
-kubectl get externalsecrets -A 2>&1 | head -10 || echo "ESO not installed"
+# 7. External Secrets status
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 7. EXTERNAL SECRETS STATUS                                  │"
+echo "└─────────────────────────────────────────────────────────────┘"
+if kubectl get ns external-secrets &> /dev/null; then
+    FAILING_ES=$(kubectl get externalsecrets -A --no-headers 2>/dev/null | grep -v "SecretSynced" | wc -l)
+    if [ "$FAILING_ES" -eq 0 ]; then
+        echo "✅ All ExternalSecrets synced"
+    else
+        echo "⚠️  $FAILING_ES ExternalSecret(s) not synced:"
+        kubectl get externalsecrets -A 2>/dev/null | grep -v "SecretSynced"
+    fi
+else
+    echo "ℹ️  External Secrets Operator not installed"
+fi
 echo ""
 
-echo "=== END DIAGNOSTIC REPORT ==="
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║                    END DIAGNOSTIC CHECK                      ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
 ```
 
-### Decision Tree
+### 2.2 Quick Diagnostic Commands Reference
 
-```
-Issue detected
-    │
-    ├─► Cannot connect to cluster?
-    │       └─► See Section 3.1 (Cluster Access)
-    │
-    ├─► Pods not starting?
-    │       └─► See Section 3.3 (Pod Issues)
-    │
-    ├─► Apps not syncing?
-    │       └─► See Section 4 (ArgoCD)
-    │
-    ├─► Secrets not syncing?
-    │       └─► See Section 6 (External Secrets)
-    │
-    ├─► Network connectivity?
-    │       └─► See Section 5 (Networking)
-    │
-    └─► Performance problems?
-            └─► See Section 10 (Performance)
-```
+| What to Check | Command | What It Shows |
+|---------------|---------|---------------|
+| Cluster access | `kubectl cluster-info` | API server connectivity |
+| Node status | `kubectl get nodes -o wide` | Node health and IPs |
+| All pods | `kubectl get pods -A` | Pod status across namespaces |
+| Events | `kubectl get events -A --sort-by='.lastTimestamp'` | Recent cluster events |
+| Resources | `kubectl top nodes && kubectl top pods -A` | CPU/memory usage |
+| Services | `kubectl get svc -A` | Service endpoints |
+| ArgoCD apps | `kubectl get applications -n argocd` | GitOps sync status |
+| Secrets sync | `kubectl get externalsecrets -A` | Secret sync status |
 
 ---
 
-## 2. Terraform Issues
+## 3. Terraform Issues
 
-### 2.1 Terraform Init Fails
+### 3.1 Understanding Terraform Errors
 
-**Symptom:**
+> 💡 **How Terraform Works**
+>
+> Terraform maintains a **state file** that tracks what resources exist.
+> When you run `terraform apply`, it:
+> 1. Reads the state file
+> 2. Compares with your `.tf` files
+> 3. Plans changes (create, update, delete)
+> 4. Applies changes to Azure
+> 5. Updates state file
+>
+> Most Terraform errors fall into these categories:
+> - **State issues**: State file out of sync with reality
+> - **Auth issues**: Can't authenticate to Azure
+> - **Conflict issues**: Resource already exists outside Terraform
+> - **Quota issues**: Azure limits exceeded
+
+### 3.2 "Failed to Get Existing Workspaces" Error
+
 ```
 Error: Failed to get existing workspaces: storage: service returned error
+StatusCode=403, ErrorCode=AuthorizationFailure
 ```
 
-**Causes & Solutions:**
+> 💡 **What This Means**
+>
+> Terraform stores its state in an Azure Storage Account. This error means
+> Terraform can't access that storage account.
+
+**Investigation Steps:**
+
+```bash
+# Step 1: Check if you're logged in
+az account show
+# If error: Run "az login"
+
+# Step 2: Verify subscription
+az account list --output table
+# Make sure the correct subscription is set
+
+# Step 3: Check storage account exists
+az storage account show \
+  --name $STORAGE_ACCOUNT_NAME \
+  --resource-group $RG_NAME
+
+# Step 4: Check your permissions
+az role assignment list \
+  --assignee $(az account show --query user.name -o tsv) \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG_NAME/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT_NAME"
+```
+
+**Solutions:**
 
 | Cause | Solution |
 |-------|----------|
-| Storage account not accessible | Check network/firewall rules |
-| Expired credentials | Run `az login` again |
-| Missing permissions | Verify Storage Blob Data Contributor role |
+| Not logged in | `az login && az account set -s $SUBSCRIPTION_ID` |
+| Wrong subscription | `az account set --subscription $CORRECT_SUBSCRIPTION` |
+| Missing permissions | Request "Storage Blob Data Contributor" role |
+| Firewall blocking | Add your IP to storage account firewall |
+| VPN required | Connect to VPN, then retry |
 
-**Fix:**
+**Fix Commands:**
+
 ```bash
-# Clear local cache
+# Clear and reinitialize
 rm -rf .terraform .terraform.lock.hcl
-
-# Re-authenticate
 az login
 az account set --subscription $SUBSCRIPTION_ID
-
-# Reinitialize
 terraform init -reconfigure
 ```
 
-### 2.2 Provider Authentication Failed
+### 3.3 "Error Acquiring the State Lock" Error
 
-**Symptom:**
-```
-Error: Error building AzureRM Client: obtain subscription() from Azure CLI
-```
-
-**Fix:**
-```bash
-# Check current authentication
-az account show
-
-# If using service principal
-export ARM_CLIENT_ID="xxx"
-export ARM_CLIENT_SECRET="xxx"
-export ARM_SUBSCRIPTION_ID="xxx"
-export ARM_TENANT_ID="xxx"
-
-# Verify
-terraform plan
-```
-
-### 2.3 State Lock Error
-
-**Symptom:**
 ```
 Error: Error acquiring the state lock
+
+Error message: state blob is already locked
+
+Lock Info:
+  ID:        xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  Created:   2024-01-15 10:30:00.000000000 +0000 UTC
 ```
 
-**Fix:**
+> 💡 **What This Means**
+>
+> Terraform uses locks to prevent concurrent modifications. This error occurs when:
+> - Another `terraform apply` is running
+> - A previous run crashed without releasing the lock
+> - Someone else is running Terraform on the same state
+
+**Investigation Steps:**
+
 ```bash
-# Force unlock (use with caution!)
-terraform force-unlock <LOCK_ID>
+# Step 1: Check if another process is running
+ps aux | grep terraform
 
-# If lock persists, check Azure Storage
-az storage blob lease break \
-  --blob-name terraform.tfstate \
-  --container-name tfstate \
-  --account-name $STORAGE_ACCOUNT
+# Step 2: Ask team members if they're running Terraform
+
+# Step 3: Check how old the lock is
+# (Look at the "Created" timestamp in the error message)
 ```
 
-### 2.4 Resource Already Exists
+**Decision Tree:**
 
-**Symptom:**
 ```
-Error: A resource with the ID "..." already exists
+Is another terraform process running?
+    │
+    ├─► YES: Wait for it to finish
+    │
+    └─► NO: How old is the lock?
+            │
+            ├─► Less than 30 minutes: Wait, might be in progress
+            │
+            └─► More than 30 minutes: Probably stale, force unlock
 ```
 
 **Solutions:**
+
 ```bash
-# Option 1: Import existing resource
-terraform import azurerm_resource_group.main /subscriptions/.../resourceGroups/rg-name
+# Option 1: Force unlock (use the ID from the error message)
+terraform force-unlock xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
-# Option 2: Remove from state (if orphaned)
-terraform state rm azurerm_resource_group.main
+# Option 2: Break lease directly in Azure
+az storage blob lease break \
+  --blob-name terraform.tfstate \
+  --container-name tfstate \
+  --account-name $STORAGE_ACCOUNT_NAME
 
-# Option 3: Delete in Azure and re-apply
-az group delete --name rg-name --yes --no-wait
-terraform apply
+# Then reinitialize
+terraform init
 ```
 
-### 2.5 Quota Exceeded
+> ⚠️ **Warning: Force Unlock**
+>
+> Only use `force-unlock` if you're CERTAIN no one else is running Terraform.
+> Running two applies simultaneously can corrupt your state!
 
-**Symptom:**
+### 3.4 "Resource Already Exists" Error
+
 ```
-Error: creating/updating ... QuotaExceeded
+Error: A resource with the ID "/subscriptions/.../resourceGroups/rg-contoso-dev"
+already exists - to be managed via Terraform this resource needs to be imported
+into the State.
 ```
 
-**Fix:**
+> 💡 **What This Means**
+>
+> Someone (or something) created a resource in Azure that Terraform wants to create.
+> Terraform sees the resource doesn't exist in state, but it does exist in Azure.
+
+**Investigation Steps:**
+
 ```bash
-# Check current usage
+# Step 1: Verify the resource exists in Azure
+az group show --name rg-contoso-dev
+
+# Step 2: Check if it's in Terraform state
+terraform state list | grep resource_group
+
+# Step 3: Understand who created it
+# Check Azure Activity Log in portal
+```
+
+**Solutions:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│           RESOURCE ALREADY EXISTS - Decision Tree                   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Was the resource created by Terraform that lost state?             │
+│      │                                                              │
+│      ├─► YES → Import it into state                                 │
+│      │         terraform import azurerm_resource_group.main \       │
+│      │           /subscriptions/.../resourceGroups/rg-name          │
+│      │                                                              │
+│      └─► NO → Was it created manually and should Terraform manage it?
+│               │                                                     │
+│               ├─► YES → Import it (same as above)                   │
+│               │                                                     │
+│               └─► NO → Should it be deleted?                        │
+│                       │                                             │
+│                       ├─► YES → Delete in Azure, then apply         │
+│                       │         az group delete -n rg-name --yes    │
+│                       │                                             │
+│                       └─► NO → Rename your Terraform resource       │
+│                                to avoid conflict                    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Import Examples:**
+
+```bash
+# Import resource group
+terraform import azurerm_resource_group.main \
+  /subscriptions/$SUB_ID/resourceGroups/rg-contoso-dev
+
+# Import AKS cluster
+terraform import module.aks.azurerm_kubernetes_cluster.main \
+  /subscriptions/$SUB_ID/resourceGroups/$RG/providers/Microsoft.ContainerService/managedClusters/$CLUSTER_NAME
+
+# Import Key Vault
+terraform import module.security.azurerm_key_vault.main \
+  /subscriptions/$SUB_ID/resourceGroups/$RG/providers/Microsoft.KeyVault/vaults/$KV_NAME
+```
+
+### 3.5 "Quota Exceeded" Error
+
+```
+Error: creating/updating Kubernetes Cluster: compute.VirtualMachineScaleSetsClient#CreateOrUpdate:
+Code="QuotaExceeded" Message="Quota for resource StandardDSv3Family exceeded."
+```
+
+> 💡 **What This Means**
+>
+> Every Azure subscription has quotas (limits) on resources. This error means
+> you've hit a limit - usually on VM cores.
+
+**Check Current Quotas:**
+
+```bash
+# Check VM quotas in your region
 az vm list-usage --location brazilsouth --output table
 
-# Request quota increase via Azure Portal
-# Or use smaller VM sizes temporarily
+# Look for the family mentioned in the error
+az vm list-usage --location brazilsouth --output table | grep "Standard DSv3"
+```
+
+**Solutions:**
+
+| Option | Steps |
+|--------|-------|
+| Request quota increase | Azure Portal → Subscriptions → Usage + quotas → Request increase |
+| Use different VM size | Change `vm_size` in Terraform to a family with available quota |
+| Use different region | Deploy to a region with more capacity |
+| Clean up unused VMs | Delete unused resources to free up quota |
+
+**Temporary Workaround - Use Smaller VMs:**
+
+```hcl
+# In terraform.tfvars, temporarily use smaller VMs
+system_node_pool = {
+  name       = "system"
+  vm_size    = "Standard_D2s_v5"  # Changed from D4s_v5
+  node_count = 2                   # Changed from 3
+  zones      = ["1", "2"]          # Changed from 3 zones
+}
 ```
 
 ---
 
-## 3. AKS Cluster Issues
+## 4. AKS Cluster Issues
 
-### 3.1 Cannot Connect to Cluster
+### 4.1 Cannot Connect to Cluster
 
-**Symptom:**
+**Symptoms:**
 ```
-Unable to connect to the server: dial tcp: lookup ... no such host
+Unable to connect to the server: dial tcp: lookup aks-xxx.hcp.brazilsouth.azmk8s.io: no such host
+```
+or
+```
+Unable to connect to the server: dial tcp 10.0.0.1:443: i/o timeout
 ```
 
-**Diagnostic:**
+> 💡 **Understanding Cluster Access**
+>
+> When you run `kubectl`, it:
+> 1. Reads `~/.kube/config` for cluster information
+> 2. Connects to the AKS API server
+> 3. Authenticates using Azure AD (for managed clusters)
+>
+> Connection failures happen when any of these steps fail.
+
+**Diagnostic Flowchart:**
+
+```
+Cannot connect to cluster
+         │
+         ├─► Step 1: Is kubeconfig correct?
+         │   kubectl config current-context
+         │   kubectl config view
+         │       │
+         │       └─► Wrong context? kubectl config use-context <name>
+         │
+         ├─► Step 2: Is the cluster running?
+         │   az aks show -g $RG -n $CLUSTER --query "powerState.code"
+         │       │
+         │       ├─► "Stopped" → az aks start -g $RG -n $CLUSTER
+         │       └─► "Running" → Continue to Step 3
+         │
+         ├─► Step 3: Are your credentials valid?
+         │   az aks get-credentials -g $RG -n $CLUSTER --overwrite-existing
+         │       │
+         │       └─► Retry kubectl command
+         │
+         ├─► Step 4: Is it a private cluster?
+         │   az aks show -g $RG -n $CLUSTER --query "apiServerAccessProfile"
+         │       │
+         │       └─► Private? Must connect via:
+         │           - Azure Bastion
+         │           - VPN to the VNet
+         │           - Authorized IP range
+         │
+         └─► Step 5: Check network
+             - Are you on VPN (if required)?
+             - Is your IP in authorized ranges?
+             - Check firewall/proxy settings
+```
+
+**Quick Fixes:**
+
 ```bash
-# Check kubeconfig
-kubectl config view
-kubectl config current-context
-
-# Verify AKS is running
-az aks show -g $RG -n $CLUSTER --query "powerState"
-```
-
-**Solutions:**
-
-| Cause | Solution |
-|-------|----------|
-| Wrong context | `kubectl config use-context <correct-context>` |
-| Expired credentials | `az aks get-credentials -g $RG -n $CLUSTER --overwrite-existing` |
-| Cluster stopped | `az aks start -g $RG -n $CLUSTER` |
-| Private cluster + no access | Connect via bastion or authorized IP |
-
-### 3.2 Nodes Not Ready
-
-**Symptom:**
-```
-NAME                 STATUS     ROLES   AGE
-aks-node-xxxxx       NotReady   agent   10d
-```
-
-**Diagnostic:**
-```bash
-# Get node details
-kubectl describe node aks-node-xxxxx
-
-# Check conditions
-kubectl get node aks-node-xxxxx -o jsonpath='{.status.conditions[*].message}'
-```
-
-**Common Causes:**
-
-| Condition | Cause | Solution |
-|-----------|-------|----------|
-| NetworkUnavailable | CNI issue | Restart kubelet, check NSG |
-| MemoryPressure | OOM | Scale up node size or add nodes |
-| DiskPressure | Disk full | Clean up images, expand disk |
-| PIDPressure | Too many processes | Investigate workloads |
-
-**Fix network issue:**
-```bash
-# Reimage the node
-az aks nodepool update \
+# Fix 1: Refresh credentials
+az aks get-credentials \
   --resource-group $RG \
-  --cluster-name $CLUSTER \
-  --name system \
-  --max-surge 1
+  --name $CLUSTER \
+  --overwrite-existing
 
-# Or cordon and drain
-kubectl cordon $NODE
-kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data
-az vmss reimage --instance-id X --name $VMSS --resource-group $MC_RG
-kubectl uncordon $NODE
+# Fix 2: Start stopped cluster
+az aks start --resource-group $RG --name $CLUSTER
+
+# Fix 3: Check and update authorized IPs
+MY_IP=$(curl -s https://ifconfig.me)
+az aks update \
+  --resource-group $RG \
+  --name $CLUSTER \
+  --api-server-authorized-ip-ranges "$MY_IP/32"
+
+# Fix 4: Use admin credentials (emergency only)
+az aks get-credentials \
+  --resource-group $RG \
+  --name $CLUSTER \
+  --admin
 ```
 
-### 3.3 Pods Stuck in Pending
+### 4.2 Nodes Not Ready
+
+**Symptom:**
+```
+NAME                              STATUS     ROLES   AGE   VERSION
+aks-system-12345678-vmss000000    Ready      agent   10d   v1.29.0
+aks-system-12345678-vmss000001    NotReady   agent   10d   v1.29.0
+aks-system-12345678-vmss000002    Ready      agent   10d   v1.29.0
+```
+
+> 💡 **Understanding Node Status**
+>
+> Kubernetes nodes report various "conditions" that affect their Ready status:
+>
+> | Condition | What It Means |
+> |-----------|---------------|
+> | Ready | Node is healthy and can accept pods |
+> | MemoryPressure | Node is running low on memory |
+> | DiskPressure | Node is running low on disk space |
+> | PIDPressure | Too many processes running |
+> | NetworkUnavailable | Network not configured correctly |
+>
+> If ANY condition (except Ready) is True, the node becomes NotReady.
+
+**Investigation:**
+
+```bash
+# Step 1: Get detailed node status
+kubectl describe node aks-system-12345678-vmss000001
+
+# Look for:
+# - Conditions section (what's wrong)
+# - Events section (recent issues)
+
+# Step 2: Check specific conditions
+kubectl get node aks-system-12345678-vmss000001 -o jsonpath='{.status.conditions[*]}' | jq .
+
+# Step 3: Check resource usage
+kubectl top node aks-system-12345678-vmss000001
+```
+
+**Solutions by Condition:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    NODE NOT READY - Solutions                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  NetworkUnavailable = True                                          │
+│  ───────────────────────                                            │
+│  Cause: CNI plugin issue, NSG blocking                              │
+│  Fix:                                                               │
+│    1. Check NSG rules allow node communication                      │
+│    2. Reimage the node (forces CNI reinstall):                      │
+│       az vmss reimage --instance-ids <ID> \                         │
+│         --name <VMSS_NAME> --resource-group <MC_RG>                 │
+│                                                                     │
+│  MemoryPressure = True                                              │
+│  ─────────────────────                                              │
+│  Cause: Workloads using too much memory                             │
+│  Fix:                                                               │
+│    1. Find memory-hungry pods:                                      │
+│       kubectl top pods -A --sort-by=memory | head -10               │
+│    2. Scale down or set memory limits                               │
+│    3. Add more nodes or use larger VM size                          │
+│                                                                     │
+│  DiskPressure = True                                                │
+│  ──────────────────                                                 │
+│  Cause: Disk full (usually container images)                        │
+│  Fix:                                                               │
+│    1. Clean up unused images:                                       │
+│       (AKS does this automatically, but you can trigger)            │
+│    2. Increase node disk size in Terraform                          │
+│    3. Use smaller container images                                  │
+│                                                                     │
+│  PIDPressure = True                                                 │
+│  ─────────────────                                                  │
+│  Cause: Too many processes (possible fork bomb or leak)             │
+│  Fix:                                                               │
+│    1. Identify pods with many processes                             │
+│    2. Check for runaway applications                                │
+│    3. Set PID limits in pod spec                                    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Emergency: Cordon, Drain, and Replace Node:**
+
+```bash
+# Step 1: Prevent new pods from scheduling
+kubectl cordon aks-system-12345678-vmss000001
+
+# Step 2: Safely evict existing pods
+kubectl drain aks-system-12345678-vmss000001 \
+  --ignore-daemonsets \
+  --delete-emptydir-data \
+  --force
+
+# Step 3: Get node VMSS info
+NODE_RG=$(az aks show -g $RG -n $CLUSTER --query nodeResourceGroup -o tsv)
+VMSS_NAME=$(kubectl get node aks-system-12345678-vmss000001 \
+  -o jsonpath='{.spec.providerID}' | cut -d'/' -f9)
+INSTANCE_ID=$(kubectl get node aks-system-12345678-vmss000001 \
+  -o jsonpath='{.spec.providerID}' | cut -d'/' -f11)
+
+# Step 4: Delete the problematic instance (new one will be created)
+az vmss delete-instances \
+  --resource-group $NODE_RG \
+  --name $VMSS_NAME \
+  --instance-ids $INSTANCE_ID
+
+# Step 5: Wait for new node and uncordon
+# (The nodepool will automatically create a replacement)
+```
+
+### 4.3 AKS Upgrade Issues
+
+**Symptom:**
+```
+Error: UpgradeFailed: Upgrade operation failed. Please check that your cluster
+is healthy before retrying the upgrade operation.
+```
+
+> 💡 **Understanding AKS Upgrades**
+>
+> AKS upgrades work by:
+> 1. Upgrading control plane (API server, etc.)
+> 2. Creating new nodes with new version (one at a time by default)
+> 3. Cordoning and draining old nodes
+> 4. Deleting old nodes
+>
+> Failures usually occur in step 3 when pods can't be drained.
+
+**Pre-Upgrade Checklist:**
+
+```bash
+# 1. Check current version and available upgrades
+az aks get-upgrades --resource-group $RG --name $CLUSTER --output table
+
+# 2. Check cluster health
+kubectl get nodes
+kubectl get pods -A | grep -v Running | grep -v Completed
+
+# 3. Check PodDisruptionBudgets (these can block drains)
+kubectl get pdb -A
+
+# 4. Check for stuck pods
+kubectl get pods -A --field-selector=status.phase=Pending
+kubectl get pods -A | grep -E "Terminating|Unknown"
+```
+
+**Fix Stuck Upgrade:**
+
+```bash
+# Step 1: Check what's blocking
+az aks show -g $RG -n $CLUSTER --query "provisioningState"
+
+# Step 2: If stuck on node drain, find problem pods
+kubectl get pods -A -o wide --field-selector spec.nodeName=$DRAINING_NODE
+
+# Step 3: Force delete stuck pods (if safe)
+kubectl delete pod $POD_NAME -n $NAMESPACE --force --grace-period=0
+
+# Step 4: Resume upgrade if needed
+az aks upgrade \
+  --resource-group $RG \
+  --name $CLUSTER \
+  --kubernetes-version $TARGET_VERSION
+```
+
+---
+
+## 5. Pod and Workload Issues
+
+### 5.1 Pod Status Reference
+
+> 💡 **Understanding Pod Statuses**
+>
+> ```
+> Pod Lifecycle:
+>
+> Pending ─────► Running ─────► Succeeded
+>     │             │              (for Jobs)
+>     │             │
+>     │             └─────► Failed
+>     │
+>     └─► (stuck) - See troubleshooting below
+>
+> Problematic Statuses:
+> - Pending: Waiting to be scheduled
+> - ImagePullBackOff: Can't pull container image
+> - CrashLoopBackOff: Container keeps crashing
+> - Error: Container exited with error
+> - Terminating: Pod stuck during deletion
+> ```
+
+### 5.2 Pods Stuck in Pending
 
 **Symptom:**
 ```
 NAME           READY   STATUS    RESTARTS   AGE
-my-pod         0/1     Pending   0          10m
+my-app-xxx     0/1     Pending   0          15m
 ```
 
-**Diagnostic:**
+**Investigation:**
+
 ```bash
-kubectl describe pod my-pod -n my-namespace
+# Step 1: Get events for the pod
+kubectl describe pod my-app-xxx -n my-namespace
+
+# Look for events like:
+# - "0/6 nodes are available: 3 Insufficient cpu, 3 Insufficient memory"
+# - "pod has unbound immediate PersistentVolumeClaims"
+# - "0/6 nodes are available: 6 node(s) didn't match node selector"
 ```
 
-**Solutions by Cause:**
+**Solutions by Event Message:**
 
-| Event Message | Cause | Solution |
-|--------------|-------|----------|
-| `Insufficient cpu` | Not enough CPU | Scale nodes or reduce requests |
-| `Insufficient memory` | Not enough memory | Scale nodes or reduce requests |
-| `no nodes available to schedule` | Taints/tolerations | Add tolerations or untaint nodes |
-| `PersistentVolumeClaim not found` | PVC missing | Create PVC first |
-| `0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims` | Storage class issue | Check storage class exists |
-
-**Quick fixes:**
-```bash
-# Scale up nodes
-az aks nodepool scale -g $RG --cluster-name $CLUSTER -n user --node-count 5
-
-# Check node taints
-kubectl describe nodes | grep Taints
-
-# Remove taint if needed
-kubectl taint nodes $NODE key=value:NoSchedule-
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PENDING POD - Solutions                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  "Insufficient cpu" or "Insufficient memory"                        │
+│  ───────────────────────────────────────────                        │
+│  Cause: Not enough resources on any node                            │
+│  Diagnosis:                                                         │
+│    kubectl describe nodes | grep -A 5 "Allocated resources"         │
+│  Fix:                                                               │
+│    1. Scale up nodes: az aks nodepool scale ...                     │
+│    2. Reduce pod requests in deployment                             │
+│    3. Delete unused pods to free resources                          │
+│                                                                     │
+│  "didn't match node selector"                                       │
+│  ────────────────────────────                                       │
+│  Cause: Pod requires specific node labels that don't exist          │
+│  Diagnosis:                                                         │
+│    kubectl get nodes --show-labels                                  │
+│  Fix:                                                               │
+│    1. Label a node: kubectl label node <name> <key>=<value>         │
+│    2. Remove nodeSelector from pod spec                             │
+│                                                                     │
+│  "didn't tolerate taint"                                            │
+│  ───────────────────────                                            │
+│  Cause: All nodes have taints the pod doesn't tolerate              │
+│  Diagnosis:                                                         │
+│    kubectl describe nodes | grep Taints                             │
+│  Fix:                                                               │
+│    1. Add toleration to pod spec                                    │
+│    2. Remove taint: kubectl taint node <name> <key>-                │
+│                                                                     │
+│  "pod has unbound immediate PersistentVolumeClaims"                 │
+│  ──────────────────────────────────────────────────                 │
+│  Cause: PVC can't be bound to a PV                                  │
+│  Diagnosis:                                                         │
+│    kubectl get pvc -n my-namespace                                  │
+│    kubectl describe pvc <pvc-name>                                  │
+│  Fix:                                                               │
+│    1. Check StorageClass exists                                     │
+│    2. Check storage quota                                           │
+│    3. For Azure Disk: Check disk is in same zone as pod             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.4 Pods Stuck in ImagePullBackOff
+### 5.3 ImagePullBackOff
 
 **Symptom:**
 ```
 NAME           READY   STATUS             RESTARTS   AGE
-my-pod         0/1     ImagePullBackOff   0          10m
+my-app-xxx     0/1     ImagePullBackOff   0          5m
 ```
 
-**Diagnostic:**
+> 💡 **What This Means**
+>
+> Kubernetes cannot pull the container image. The "BackOff" means it's
+> waiting with increasing delays between retry attempts.
+
+**Investigation:**
+
 ```bash
-kubectl describe pod my-pod | grep -A 5 "Events:"
+# Step 1: Get the exact error
+kubectl describe pod my-app-xxx -n my-namespace | grep -A 10 "Events:"
+
+# Common errors:
+# - "repository does not exist or may require authentication"
+# - "manifest for image:tag not found"
+# - "unauthorized: authentication required"
+```
+
+**Diagnostic Flow:**
+
+```
+ImagePullBackOff
+      │
+      ├─► "manifest not found"
+      │   └─► Image or tag doesn't exist
+      │       - Check: docker pull <image> (locally)
+      │       - Verify image name and tag are correct
+      │       - Check if image was pushed to registry
+      │
+      ├─► "unauthorized" or "authentication required"
+      │   └─► Registry authentication issue
+      │       - ACR: Check AKS-ACR attachment
+      │       - Private registry: Check imagePullSecrets
+      │
+      └─► "connection refused" or "timeout"
+          └─► Network issue
+              - Private registry: Check private endpoint
+              - Check NSG allows outbound to registry
+              - Check firewall rules
 ```
 
 **Solutions:**
 
-| Cause | Solution |
-|-------|----------|
-| Image doesn't exist | Check image name/tag, push to ACR |
-| ACR authentication | Attach ACR to AKS or create image pull secret |
-| Private registry | Create imagePullSecrets |
-| Network issue | Check NSG, private endpoint |
-
-**Fix ACR access:**
 ```bash
-# Attach ACR to AKS
-az aks update -g $RG -n $CLUSTER --attach-acr $ACR_NAME
+# Fix 1: Verify image exists
+az acr repository show-tags \
+  --name $ACR_NAME \
+  --repository myapp \
+  --output table
 
-# Or create pull secret manually
+# Fix 2: Attach ACR to AKS (if not already)
+az aks update \
+  --resource-group $RG \
+  --name $CLUSTER \
+  --attach-acr $ACR_NAME
+
+# Fix 3: Create imagePullSecret for private registry
 kubectl create secret docker-registry acr-secret \
-  --docker-server=$ACR_LOGIN_SERVER \
-  --docker-username=$SP_ID \
-  --docker-password=$SP_PASSWORD \
-  -n my-namespace
+  --docker-server=$ACR_NAME.azurecr.io \
+  --docker-username=$CLIENT_ID \
+  --docker-password=$CLIENT_SECRET \
+  --namespace=my-namespace
+
+# Then add to pod spec:
+# spec:
+#   imagePullSecrets:
+#     - name: acr-secret
+
+# Fix 4: Check private endpoint (if using Premium ACR)
+kubectl run debug --rm -it --image=busybox -- \
+  nslookup $ACR_NAME.azurecr.io
+# Should resolve to private IP (10.x.x.x)
 ```
 
-### 3.5 CrashLoopBackOff
+### 5.4 CrashLoopBackOff
 
 **Symptom:**
 ```
-NAME           READY   STATUS             RESTARTS   AGE
-my-pod         0/1     CrashLoopBackOff   5          10m
+NAME           READY   STATUS             RESTARTS     AGE
+my-app-xxx     0/1     CrashLoopBackOff   5 (2m ago)   10m
 ```
 
-**Diagnostic:**
+> 💡 **What This Means**
+>
+> The container starts but then crashes. Kubernetes keeps restarting it,
+> but with increasing delays (the "backoff" part):
+> - 1st crash: wait 10s
+> - 2nd crash: wait 20s
+> - 3rd crash: wait 40s
+> - ... up to 5 minutes between attempts
+
+**Investigation:**
+
 ```bash
-# Check logs
-kubectl logs my-pod -n my-namespace --previous
+# Step 1: Check current logs
+kubectl logs my-app-xxx -n my-namespace
 
-# Check events
-kubectl describe pod my-pod -n my-namespace
+# Step 2: Check logs from previous crash
+kubectl logs my-app-xxx -n my-namespace --previous
 
-# Get exit code
-kubectl get pod my-pod -o jsonpath='{.status.containerStatuses[0].lastState.terminated.exitCode}'
+# Step 3: Get exit code
+kubectl get pod my-app-xxx -n my-namespace \
+  -o jsonpath='{.status.containerStatuses[0].lastState.terminated.exitCode}'
+
+# Step 4: Check events
+kubectl describe pod my-app-xxx -n my-namespace | tail -20
 ```
 
-**Common Exit Codes:**
+**Exit Code Reference:**
 
-| Code | Meaning | Common Cause |
-|------|---------|--------------|
-| 0 | Success | App exited normally (check liveness probe) |
-| 1 | Error | Application error, check logs |
-| 137 | SIGKILL | OOMKilled, increase memory |
-| 143 | SIGTERM | Graceful shutdown timeout |
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    EXIT CODE MEANINGS                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Exit Code 0                                                        │
+│  ────────────                                                       │
+│  Meaning: Container exited successfully                             │
+│  Common cause: App finished (normal for Jobs), or crashed with      │
+│                graceful shutdown                                    │
+│  Check: Liveness probe might be restarting healthy container        │
+│                                                                     │
+│  Exit Code 1                                                        │
+│  ────────────                                                       │
+│  Meaning: General application error                                 │
+│  Common causes:                                                     │
+│    - Missing environment variable                                   │
+│    - Configuration error                                            │
+│    - Dependency not available (DB, service)                         │
+│  Check: Application logs                                            │
+│                                                                     │
+│  Exit Code 137                                                      │
+│  ─────────────                                                      │
+│  Meaning: SIGKILL (128 + 9)                                         │
+│  Common causes:                                                     │
+│    - OOMKilled (out of memory)                                      │
+│    - Liveness probe timeout                                         │
+│  Check: kubectl describe pod ... | grep OOM                         │
+│  Fix: Increase memory limits                                        │
+│                                                                     │
+│  Exit Code 143                                                      │
+│  ─────────────                                                      │
+│  Meaning: SIGTERM (128 + 15)                                        │
+│  Common cause: Graceful shutdown didn't complete in time            │
+│  Fix: Increase terminationGracePeriodSeconds                        │
+│                                                                     │
+│  Exit Code 126                                                      │
+│  ─────────────                                                      │
+│  Meaning: Command cannot be executed                                │
+│  Common cause: Permission issue, binary not executable              │
+│  Check: Container entrypoint/command                                │
+│                                                                     │
+│  Exit Code 127                                                      │
+│  ─────────────                                                      │
+│  Meaning: Command not found                                         │
+│  Common cause: Wrong entrypoint, missing binary                     │
+│  Check: Dockerfile CMD/ENTRYPOINT                                   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Solutions:**
+
+```bash
+# Fix 1: Debug interactively (override entrypoint)
+kubectl run debug --rm -it \
+  --image=$IMAGE \
+  --overrides='{"spec":{"containers":[{"name":"debug","command":["sleep","infinity"]}]}}' \
+  -- /bin/sh
+
+# Fix 2: Add more memory (for OOMKilled)
+# In deployment.yaml:
+# resources:
+#   limits:
+#     memory: "1Gi"  # Increase from previous value
+
+# Fix 3: Fix liveness probe (if exit code 137 not from OOM)
+# In deployment.yaml:
+# livenessProbe:
+#   initialDelaySeconds: 60  # Give app more time to start
+#   periodSeconds: 30
+#   failureThreshold: 3
+
+# Fix 4: Check required environment variables
+kubectl set env deployment/my-app --list -n my-namespace
+```
+
+### 5.5 Pods Stuck in Terminating
+
+**Symptom:**
+```
+NAME           READY   STATUS        RESTARTS   AGE
+my-app-xxx     0/1     Terminating   0          30m
+```
+
+> 💡 **What This Means**
+>
+> When you delete a pod, Kubernetes:
+> 1. Sends SIGTERM to containers
+> 2. Waits for graceful shutdown (default 30s)
+> 3. Sends SIGKILL if still running
+> 4. Removes the pod from API
+>
+> "Stuck in Terminating" usually means finalizers are blocking deletion
+> or the node is unreachable.
+
+**Investigation:**
+
+```bash
+# Check for finalizers
+kubectl get pod my-app-xxx -n my-namespace -o jsonpath='{.metadata.finalizers}'
+
+# Check which node the pod is on
+kubectl get pod my-app-xxx -n my-namespace -o jsonpath='{.spec.nodeName}'
+
+# Is the node reachable?
+kubectl get node <node-name>
+```
+
+**Solutions:**
+
+```bash
+# Option 1: Force delete (safe for stateless apps)
+kubectl delete pod my-app-xxx -n my-namespace --force --grace-period=0
+
+# Option 2: Remove finalizers (if that's blocking)
+kubectl patch pod my-app-xxx -n my-namespace \
+  -p '{"metadata":{"finalizers":[]}}' --type=merge
+
+# Option 3: If node is unreachable, delete the node
+# (Pods will be recreated on healthy nodes)
+kubectl delete node <unreachable-node>
+```
 
 ---
 
-## 4. ArgoCD Issues
+## 6. ArgoCD and GitOps Issues
 
-### 4.1 Application Out of Sync
+### 6.1 Understanding ArgoCD Sync Status
+
+> 💡 **ArgoCD Status Meanings**
+>
+> ```
+> ┌─────────────────────────────────────────────────────────────────┐
+> │                    ARGOCD STATUS MATRIX                         │
+> ├─────────────────────────────────────────────────────────────────┤
+> │                                                                 │
+> │  SYNC STATUS:                                                   │
+> │  ────────────                                                   │
+> │  Synced      = Git matches cluster (good!)                      │
+> │  OutOfSync   = Git differs from cluster                         │
+> │  Unknown     = ArgoCD can't determine status                    │
+> │                                                                 │
+> │  HEALTH STATUS:                                                 │
+> │  ──────────────                                                 │
+> │  Healthy     = All resources working (good!)                    │
+> │  Progressing = Resources are starting/updating                  │
+> │  Degraded    = Some resources have issues                       │
+> │  Suspended   = Resources are paused (e.g., scaling to 0)        │
+> │  Missing     = Resources don't exist in cluster                 │
+> │  Unknown     = Can't determine health                           │
+> │                                                                 │
+> │  COMMON COMBINATIONS:                                           │
+> │  ────────────────────                                           │
+> │  Synced + Healthy     = Everything working                      │
+> │  OutOfSync + Healthy  = Running old version, update available   │
+> │  Synced + Progressing = Just synced, waiting for rollout        │
+> │  Synced + Degraded    = Synced but app is broken                │
+> │  OutOfSync + Degraded = Need sync AND app is broken             │
+> │                                                                 │
+> └─────────────────────────────────────────────────────────────────┘
+> ```
+
+### 6.2 Application OutOfSync
 
 **Symptom:**
 ```
@@ -388,424 +1119,917 @@ NAME     SYNC STATUS   HEALTH STATUS
 my-app   OutOfSync     Healthy
 ```
 
-**Diagnostic:**
+**Investigation:**
+
 ```bash
-# Check diff
+# Step 1: See what's different
 argocd app diff my-app
 
-# Check events
+# Or via kubectl
+kubectl get application my-app -n argocd \
+  -o jsonpath='{.status.sync.status}'
+
+# Step 2: Check why it's out of sync
 argocd app get my-app --show-operation
 ```
 
-**Solutions:**
+**Common Causes and Solutions:**
 
-| Cause | Solution |
-|-------|----------|
-| Manual changes in cluster | Sync with `--prune` |
-| Git webhook not firing | Manual sync or check webhook |
-| Invalid manifest | Fix YAML in Git |
-| Resource conflict | Check for duplicate resources |
-
-**Fix:**
-```bash
-# Force sync
-argocd app sync my-app --force
-
-# Sync with prune (removes extra resources)
-argocd app sync my-app --prune
-
-# Hard refresh
-argocd app get my-app --hard-refresh
+```
+OutOfSync
+    │
+    ├─► Manual changes in cluster
+    │   Someone ran kubectl apply directly
+    │   Fix: argocd app sync my-app
+    │
+    ├─► Webhook didn't fire
+    │   Git changed but ArgoCD doesn't know
+    │   Fix: argocd app get my-app --hard-refresh
+    │
+    ├─► Resource in Git doesn't match expected
+    │   Image tag changed, values updated
+    │   Fix: Review diff, then sync
+    │
+    └─► Sync failed previously
+        Check: argocd app get my-app
+        Fix: Resolve error, then sync
 ```
 
-### 4.2 Application Stuck in Progressing
+**Sync Commands:**
 
-**Symptom:** App stays in "Progressing" health status.
-
-**Diagnostic:**
 ```bash
-# Check what's not ready
-kubectl get all -n my-app-namespace
-kubectl get pods -n my-app-namespace -o wide
+# Normal sync
+argocd app sync my-app
 
-# Check deployment rollout
-kubectl rollout status deployment/my-app -n my-app-namespace
+# Force sync (ignore hooks)
+argocd app sync my-app --force
+
+# Sync with prune (remove extra resources)
+argocd app sync my-app --prune
+
+# Sync specific resource only
+argocd app sync my-app --resource :Service:my-service
+```
+
+### 6.3 Application Stuck in "Progressing"
+
+**Symptom:** Application health stays "Progressing" indefinitely.
+
+**Investigation:**
+
+```bash
+# Step 1: Find what's not ready
+argocd app get my-app --show-resources | grep -v Healthy
+
+# Step 2: Check specific resource
+kubectl get deployment my-app -n production
+kubectl describe deployment my-app -n production
+
+# Step 3: Check pods
+kubectl get pods -n production -l app=my-app
 ```
 
 **Common Causes:**
-- Deployment stuck (see Pod issues)
-- Health check misconfigured
-- External dependency not available
 
-### 4.3 Cannot Login to ArgoCD
+```
+Progressing Forever
+        │
+        ├─► Deployment not completing rollout
+        │   - Check: kubectl rollout status deployment/my-app
+        │   - See: Section 5 (Pod Issues)
+        │
+        ├─► Service waiting for endpoints
+        │   - Check: kubectl get endpoints my-app
+        │   - Fix: Ensure pods have correct labels
+        │
+        ├─► HPA scaling
+        │   - Check: kubectl get hpa
+        │   - Fix: Wait or adjust HPA thresholds
+        │
+        └─► Custom health check failing
+            - Check: Application has custom health defined
+            - Fix: Review .status of the resource
+```
 
-**Symptom:** 403 Forbidden or authentication failed.
+### 6.4 Cannot Login to ArgoCD
+
+**Symptom:**
+- Web UI shows "403 Forbidden"
+- CLI shows "rpc error: code = Unauthenticated"
 
 **Solutions:**
+
 ```bash
-# Get initial admin password
+# Option 1: Get initial admin password
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d
+echo  # Add newline
 
-# Reset admin password
+# Option 2: Reset admin password
+# Generate bcrypt hash
+NEW_PASS_HASH=$(htpasswd -nbBC 10 "" "newpassword" | tr -d ':\n' | sed 's/$2y/$2a/')
+
+# Update secret
 kubectl -n argocd patch secret argocd-secret \
-  -p '{"stringData": {"admin.password": "'$(htpasswd -bnBC 10 "" newpassword | tr -d ':\n')'"}}'
+  -p '{"stringData": {"admin.password": "'$NEW_PASS_HASH'", "admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
 
 # Restart ArgoCD server
 kubectl rollout restart deployment argocd-server -n argocd
+
+# Option 3: Use GitHub SSO (if configured)
+# Check ArgoCD ConfigMap for dex settings
+kubectl get cm argocd-cm -n argocd -o yaml | grep -A 20 "dex.config"
 ```
 
-### 4.4 Sync Hook Failed
+### 6.5 Sync Failed with Hook Error
 
 **Symptom:**
 ```
-Error: hook failed: Job ... failed
+ComparisonError: hook failed: Job ... failed
 ```
 
-**Diagnostic:**
-```bash
-# Find failed job
-kubectl get jobs -n my-namespace
+**Investigation:**
 
-# Check job logs
-kubectl logs job/pre-sync-job -n my-namespace
+```bash
+# Step 1: Find the failed hook
+kubectl get jobs -n my-namespace | grep -E "pre|post"
+
+# Step 2: Check job logs
+kubectl logs job/my-app-pre-sync -n my-namespace
+
+# Step 3: Check job status
+kubectl describe job my-app-pre-sync -n my-namespace
 ```
 
-**Fix:**
-```bash
-# Delete failed job to retry
-kubectl delete job pre-sync-job -n my-namespace
+**Solutions:**
 
-# Retry sync
+```bash
+# Fix 1: Delete failed job and retry
+kubectl delete job my-app-pre-sync -n my-namespace
 argocd app sync my-app
+
+# Fix 2: Skip hooks (temporary)
+argocd app sync my-app --skip-hooks
+
+# Fix 3: Fix the hook in Git
+# - Check hook's command/script
+# - Ensure required secrets/config exist
+# - Push fix to Git
+# - Sync again
 ```
 
 ---
 
-## 5. Networking Issues
+## 7. Networking Issues
 
-### 5.1 Pod Cannot Reach External Service
+### 7.1 Understanding Kubernetes Networking
 
-**Symptom:** Connection timeout to external APIs.
+> 💡 **Kubernetes Network Model**
+>
+> ```
+> ┌─────────────────────────────────────────────────────────────────────┐
+> │                 KUBERNETES NETWORKING LAYERS                        │
+> ├─────────────────────────────────────────────────────────────────────┤
+> │                                                                     │
+> │  LAYER 1: POD-TO-POD                                                │
+> │  ─────────────────────                                              │
+> │  Every pod gets a unique IP address                                 │
+> │  Pods can reach any other pod by IP (no NAT)                        │
+> │  Managed by: CNI plugin (Azure CNI in AKS)                          │
+> │                                                                     │
+> │  LAYER 2: SERVICE                                                   │
+> │  ────────────────                                                   │
+> │  Services provide stable DNS and load balancing                     │
+> │  service-name.namespace.svc.cluster.local → Pod IPs                 │
+> │  Types: ClusterIP (internal), LoadBalancer (external)               │
+> │                                                                     │
+> │  LAYER 3: INGRESS                                                   │
+> │  ─────────────────                                                  │
+> │  HTTP(S) routing from outside the cluster                           │
+> │  Maps hostnames/paths to services                                   │
+> │                                                                     │
+> │  LAYER 4: NETWORK POLICY                                            │
+> │  ─────────────────────────                                          │
+> │  Firewall rules at pod level                                        │
+> │  Controls which pods can communicate                                │
+> │                                                                     │
+> └─────────────────────────────────────────────────────────────────────┘
+> ```
 
-**Diagnostic:**
+### 7.2 Pod Cannot Reach External Service
+
+**Symptom:** Application timeouts when calling external APIs.
+
+**Diagnostic Workflow:**
+
 ```bash
-# Test from pod
-kubectl run debug --rm -it --image=busybox -- wget -qO- http://example.com
+# Step 1: Test from inside the cluster
+kubectl run debug --rm -it --image=curlimages/curl -- sh
 
-# Check DNS resolution
-kubectl run debug --rm -it --image=busybox -- nslookup example.com
-
-# Check NSG rules
-az network nsg rule list --nsg-name nsg-aks -g $RG -o table
-```
-
-**Solutions:**
-
-| Cause | Solution |
-|-------|----------|
-| DNS not working | Check CoreDNS pods, restart if needed |
-| NSG blocking | Add outbound rule for destination |
-| No egress path | Check NAT gateway or load balancer |
-| Network policy blocking | Check network policies in namespace |
-
-**Fix DNS:**
-```bash
-# Check CoreDNS
-kubectl get pods -n kube-system -l k8s-app=kube-dns
-
-# Restart CoreDNS
-kubectl rollout restart deployment coredns -n kube-system
-```
-
-### 5.2 Service Not Accessible
-
-**Symptom:** Cannot reach service from other pods.
-
-**Diagnostic:**
-```bash
-# Check service exists
-kubectl get svc -n my-namespace
-
-# Check endpoints
-kubectl get endpoints my-service -n my-namespace
+# Inside the debug pod:
+# Test DNS resolution
+nslookup api.example.com
 
 # Test connectivity
-kubectl run debug --rm -it --image=busybox -- wget -qO- http://my-service.my-namespace.svc.cluster.local
+curl -v https://api.example.com
+
+# Test with IP (bypass DNS)
+curl -v https://52.x.x.x
+
+# Exit the debug pod
+exit
 ```
 
-**Solutions:**
+**Decision Tree:**
 
-| Issue | Solution |
-|-------|----------|
-| No endpoints | Check pod labels match service selector |
-| Wrong port | Verify service port matches container port |
-| Network policy | Check if ingress is allowed |
-
-### 5.3 Private Endpoint Not Working
-
-**Symptom:** Cannot reach Azure service via private endpoint.
-
-**Diagnostic:**
-```bash
-# Check private endpoint
-az network private-endpoint show -g $RG -n pe-keyvault -o table
-
-# Check DNS resolution
-kubectl run debug --rm -it --image=busybox -- nslookup kv-threehorizons-dev.vault.azure.net
+```
+Cannot reach external service
+            │
+            ├─► DNS resolution fails?
+            │   "nslookup: can't resolve"
+            │       │
+            │       └─► Check CoreDNS:
+            │           kubectl get pods -n kube-system -l k8s-app=kube-dns
+            │           kubectl logs -n kube-system -l k8s-app=kube-dns
+            │
+            ├─► DNS works but connection times out?
+            │       │
+            │       └─► Check outbound rules:
+            │           - NSG allows outbound on port 443
+            │           - No restrictive Network Policies
+            │           - Azure Firewall (if using) allows destination
+            │
+            └─► Connection refused?
+                    │
+                    └─► Service is blocking your IP or
+                        Service is down
 ```
 
-**Expected:** Should resolve to private IP (10.x.x.x), not public IP.
+**Common Fixes:**
 
-**Fix:**
 ```bash
-# Check private DNS zone link
+# Fix 1: Restart CoreDNS
+kubectl rollout restart deployment coredns -n kube-system
+
+# Fix 2: Check and update NSG
+az network nsg rule list \
+  --resource-group $MC_RG \
+  --nsg-name aks-agentpool-xxx-nsg \
+  --output table
+
+# Add outbound rule if missing
+az network nsg rule create \
+  --resource-group $MC_RG \
+  --nsg-name aks-agentpool-xxx-nsg \
+  --name allow-https-outbound \
+  --priority 200 \
+  --direction Outbound \
+  --access Allow \
+  --protocol Tcp \
+  --destination-port-ranges 443
+
+# Fix 3: Check Network Policy
+kubectl get networkpolicy -n my-namespace
+kubectl describe networkpolicy my-policy -n my-namespace
+```
+
+### 7.3 Service-to-Service Communication Fails
+
+**Symptom:** Service A cannot reach Service B within the cluster.
+
+**Investigation:**
+
+```bash
+# Step 1: Verify Service B exists and has endpoints
+kubectl get svc my-service-b -n namespace-b
+kubectl get endpoints my-service-b -n namespace-b
+
+# Step 2: Check Service B pods are running
+kubectl get pods -n namespace-b -l app=my-service-b
+
+# Step 3: Test from Service A
+kubectl exec -it $(kubectl get pod -n namespace-a -l app=my-service-a -o name | head -1) \
+  -n namespace-a -- wget -qO- http://my-service-b.namespace-b.svc.cluster.local
+```
+
+**Troubleshooting Matrix:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│              SERVICE COMMUNICATION TROUBLESHOOTING                   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  "no such host"                                                     │
+│  ─────────────                                                      │
+│  Cause: DNS can't resolve service name                              │
+│  Check:                                                             │
+│    1. Service exists: kubectl get svc -n namespace                  │
+│    2. Service name spelled correctly                                │
+│    3. Using correct namespace in DNS name                           │
+│    4. CoreDNS is running                                            │
+│                                                                     │
+│  "connection refused"                                               │
+│  ────────────────────                                               │
+│  Cause: Service exists but nothing is listening                     │
+│  Check:                                                             │
+│    1. Endpoints exist: kubectl get endpoints svc-name               │
+│    2. If no endpoints: pod labels don't match service selector      │
+│    3. Pod is listening on correct port                              │
+│                                                                     │
+│  "connection timed out"                                             │
+│  ──────────────────────                                             │
+│  Cause: Network policy or firewall blocking                         │
+│  Check:                                                             │
+│    1. Network policies: kubectl get networkpolicy -n namespace      │
+│    2. Pod is in Running state                                       │
+│    3. Port in service matches containerPort                         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 7.4 Private Endpoint Not Working
+
+**Symptom:** Cannot reach Azure service (Key Vault, ACR, etc.) from within cluster.
+
+> 💡 **How Private Endpoints Work**
+>
+> ```
+> WITHOUT Private Endpoint:
+>   Pod → Internet → Azure Service (public IP)
+>   Traffic leaves your VNet!
+>
+> WITH Private Endpoint:
+>   Pod → VNet → Private Endpoint (private IP) → Azure Service
+>   Traffic stays in VNet!
+>
+> For this to work:
+> 1. Private endpoint must exist
+> 2. Private DNS zone must be linked to VNet
+> 3. DNS must resolve to private IP
+> ```
+
+**Diagnostic Steps:**
+
+```bash
+# Step 1: Check DNS resolution from inside cluster
+kubectl run debug --rm -it --image=busybox -- nslookup mykeyvault.vault.azure.net
+
+# Expected (with private endpoint):
+# Name:      mykeyvault.vault.azure.net
+# Address 1: 10.0.4.5  (private IP!)
+
+# Bad (without private endpoint or misconfigured):
+# Name:      mykeyvault.vault.azure.net
+# Address 1: 52.x.x.x  (public IP!)
+
+# Step 2: Check private endpoint exists
+az network private-endpoint list --resource-group $RG --output table
+
+# Step 3: Check private DNS zone
+az network private-dns zone list --resource-group $RG --output table
+
+# Step 4: Check DNS zone is linked to VNet
 az network private-dns link vnet list \
   --resource-group $RG \
-  --zone-name privatelink.vaultcore.azure.net
+  --zone-name privatelink.vaultcore.azure.net \
+  --output table
+```
 
-# Create link if missing
+**Fixes:**
+
+```bash
+# Fix 1: Create missing DNS zone link
 az network private-dns link vnet create \
   --resource-group $RG \
   --zone-name privatelink.vaultcore.azure.net \
-  --name vnet-link \
-  --virtual-network $VNET_NAME \
+  --name link-to-my-vnet \
+  --virtual-network $VNET_ID \
   --registration-enabled false
+
+# Fix 2: Recreate private endpoint if wrong IP
+# (Usually requires Terraform apply)
+
+# Fix 3: Verify A record in private DNS zone
+az network private-dns record-set a list \
+  --resource-group $RG \
+  --zone-name privatelink.vaultcore.azure.net \
+  --output table
 ```
 
 ---
 
-## 6. External Secrets Issues
+## 8. External Secrets Issues
 
-### 6.1 ExternalSecret Not Syncing
+### 8.1 Understanding External Secrets
+
+> 💡 **How External Secrets Operator (ESO) Works**
+>
+> ```
+> ┌─────────────────────────────────────────────────────────────────────┐
+> │                 EXTERNAL SECRETS FLOW                               │
+> ├─────────────────────────────────────────────────────────────────────┤
+> │                                                                     │
+> │  1. You create ExternalSecret resource in K8s                       │
+> │                                                                     │
+> │  2. ESO controller sees it                                          │
+> │                                                                     │
+> │  3. ESO uses ClusterSecretStore to know HOW to connect              │
+> │     (Key Vault URL, authentication method)                          │
+> │                                                                     │
+> │  4. ESO authenticates to Key Vault using Workload Identity          │
+> │                                                                     │
+> │  5. ESO reads secret from Key Vault                                 │
+> │                                                                     │
+> │  6. ESO creates/updates Kubernetes Secret                           │
+> │                                                                     │
+> │  7. Your pod uses the Kubernetes Secret                             │
+> │                                                                     │
+> │  If ANY step fails, ExternalSecret shows "SecretSyncedError"        │
+> │                                                                     │
+> └─────────────────────────────────────────────────────────────────────┘
+> ```
+
+### 8.2 ExternalSecret Not Syncing
 
 **Symptom:**
 ```
 kubectl get externalsecret my-secret -n my-namespace
-NAME        STORE           REFRESH    STATUS
-my-secret   azure-key-vault 1h         SecretSyncedError
+NAME        STORE              REFRESH    STATUS
+my-secret   azure-keyvault     1h         SecretSyncedError
 ```
 
-**Diagnostic:**
+**Investigation:**
+
 ```bash
-# Check ExternalSecret status
+# Step 1: Get detailed status
 kubectl describe externalsecret my-secret -n my-namespace
 
-# Check ESO controller logs
-kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets
+# Look for:
+# - "SecretSynced" condition message
+# - Events section
+
+# Step 2: Check ESO controller logs
+kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets --tail=100 | grep -i error
 ```
 
-**Common Errors:**
+**Error Message Solutions:**
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `could not get secret` | Wrong secret name | Verify secret exists in Key Vault |
-| `authentication failed` | Workload identity issue | Check service account annotation |
-| `forbidden` | Missing RBAC | Add Key Vault access policy |
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│            EXTERNAL SECRETS ERROR MESSAGES                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  "could not get secret data from provider"                          │
+│  ─────────────────────────────────────────                          │
+│  Cause: Secret doesn't exist in Key Vault                           │
+│  Fix:                                                               │
+│    1. Verify secret name in ExternalSecret matches Key Vault        │
+│    2. Create secret in Key Vault if missing                         │
+│    az keyvault secret set --vault-name $KV --name my-secret \       │
+│      --value "my-value"                                             │
+│                                                                     │
+│  "failed to get authentication"                                     │
+│  ─────────────────────────────                                      │
+│  Cause: Workload Identity not working                               │
+│  Fix:                                                               │
+│    1. Check service account annotation:                             │
+│       kubectl get sa external-secrets -n external-secrets -o yaml   │
+│    2. Verify federated credential in Azure AD                       │
+│    3. Restart ESO: kubectl rollout restart deployment \             │
+│         external-secrets -n external-secrets                        │
+│                                                                     │
+│  "user or principal not found"                                      │
+│  ────────────────────────────                                       │
+│  Cause: Managed Identity doesn't have Key Vault access              │
+│  Fix:                                                               │
+│    az keyvault set-policy --name $KV \                              │
+│      --object-id $MI_OBJECT_ID \                                    │
+│      --secret-permissions get list                                  │
+│    OR (if using RBAC):                                              │
+│    az role assignment create --role "Key Vault Secrets User" \      │
+│      --assignee $MI_OBJECT_ID \                                     │
+│      --scope /subscriptions/.../keyvaults/$KV                       │
+│                                                                     │
+│  "403 Forbidden"                                                    │
+│  ──────────────                                                     │
+│  Cause: Permission denied                                           │
+│  Fix: Same as above - check Key Vault access policies or RBAC       │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-### 6.2 Workload Identity Not Working
+### 8.3 Secret Not Updating After Key Vault Change
 
-**Diagnostic:**
+**Symptom:** You updated a secret in Key Vault, but the Kubernetes Secret still has the old value.
+
+**Understanding:**
+
+> 💡 **Refresh Behavior**
+>
+> ESO doesn't sync continuously. It syncs based on `refreshInterval` in the ExternalSecret.
+> Default is often 1 hour, meaning changes can take up to 1 hour to appear.
+
+**Investigation:**
+
 ```bash
-# Check service account annotation
-kubectl get sa external-secrets -n external-secrets -o yaml | grep azure.workload.identity
+# Check refresh interval
+kubectl get externalsecret my-secret -n my-namespace \
+  -o jsonpath='{.spec.refreshInterval}'
 
-# Check federated credential
-az identity federated-credential list \
-  --identity-name id-threehorizons-dev-workload \
-  --resource-group $RG
+# Check last sync time
+kubectl get externalsecret my-secret -n my-namespace \
+  -o jsonpath='{.status.refreshTime}'
 ```
-
-**Fix:**
-```bash
-# Ensure service account has annotation
-kubectl annotate sa external-secrets \
-  azure.workload.identity/client-id=$CLIENT_ID \
-  -n external-secrets --overwrite
-
-# Restart ESO to pick up changes
-kubectl rollout restart deployment external-secrets -n external-secrets
-```
-
-### 6.3 Secret Not Updating
-
-**Symptom:** Secret in cluster has old value after updating in Key Vault.
 
 **Solutions:**
+
 ```bash
-# Check refresh interval in ExternalSecret
-kubectl get externalsecret my-secret -o jsonpath='{.spec.refreshInterval}'
+# Option 1: Force immediate refresh
+kubectl annotate externalsecret my-secret -n my-namespace \
+  force-sync="$(date +%s)" --overwrite
 
-# Force refresh
-kubectl annotate externalsecret my-secret \
-  force-sync=$(date +%s) \
-  --overwrite -n my-namespace
-
-# Or delete and recreate the K8s secret
+# Option 2: Delete the K8s secret (ESO will recreate)
 kubectl delete secret my-secret -n my-namespace
+
+# Option 3: Reduce refresh interval (in ExternalSecret)
+# spec:
+#   refreshInterval: 5m  # Check every 5 minutes
+```
+
+### 8.4 Workload Identity Not Working
+
+**Symptoms:**
+- "AADSTS70021: No matching federated identity record found"
+- "failed to acquire token"
+
+**Diagnostic Checklist:**
+
+```bash
+# 1. Check ServiceAccount annotation
+kubectl get sa external-secrets -n external-secrets -o yaml | grep -A 2 annotations
+
+# Expected:
+# annotations:
+#   azure.workload.identity/client-id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# 2. Check pod has required labels and volumes
+kubectl get pod -n external-secrets -l app.kubernetes.io/name=external-secrets -o yaml | grep -A 5 "azure.workload.identity"
+
+# Expected in pod spec:
+# labels:
+#   azure.workload.identity/use: "true"
+
+# 3. Check federated credential in Azure
+az identity federated-credential list \
+  --identity-name $IDENTITY_NAME \
+  --resource-group $RG \
+  --output table
+
+# Verify:
+# - Subject matches: system:serviceaccount:external-secrets:external-secrets
+# - Issuer matches: AKS OIDC issuer URL
+```
+
+**Fixes:**
+
+```bash
+# Fix 1: Add/fix ServiceAccount annotation
+kubectl annotate sa external-secrets \
+  -n external-secrets \
+  azure.workload.identity/client-id=$CLIENT_ID \
+  --overwrite
+
+# Fix 2: Create missing federated credential
+az identity federated-credential create \
+  --identity-name $IDENTITY_NAME \
+  --resource-group $RG \
+  --name "external-secrets-federation" \
+  --issuer $AKS_OIDC_ISSUER \
+  --subject "system:serviceaccount:external-secrets:external-secrets" \
+  --audiences "api://AzureADTokenExchange"
+
+# Fix 3: Restart ESO to pick up changes
+kubectl rollout restart deployment external-secrets -n external-secrets
 ```
 
 ---
 
-## 7. Observability Issues
+## 9. Observability Issues
 
-### 7.1 Prometheus Not Scraping Targets
+### 9.1 Prometheus Not Scraping Targets
 
-**Symptom:** Missing metrics in Grafana.
+**Symptom:** Missing metrics in Grafana dashboards.
 
-**Diagnostic:**
+**Investigation:**
+
 ```bash
-# Access Prometheus
+# Step 1: Access Prometheus UI
 kubectl port-forward svc/prometheus-kube-prometheus-prometheus -n observability 9090:9090
 
-# Check targets at http://localhost:9090/targets
+# Open http://localhost:9090/targets
+# Look for DOWN targets
+
+# Step 2: Check ServiceMonitor configuration
+kubectl get servicemonitors -n observability
+kubectl describe servicemonitor my-app-monitor -n observability
 ```
 
 **Common Issues:**
 
-| Status | Cause | Solution |
-|--------|-------|----------|
-| DOWN | Network policy blocking | Allow scraping in network policy |
-| unhealthy | Wrong port/path | Check ServiceMonitor configuration |
-| missing | No ServiceMonitor | Create ServiceMonitor for your app |
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                PROMETHEUS SCRAPING ISSUES                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Target shows "DOWN"                                                │
+│  ──────────────────                                                 │
+│  Check:                                                             │
+│    1. Pod is running: kubectl get pods -l app=my-app                │
+│    2. Metrics port is exposed: kubectl get svc my-app               │
+│    3. Can reach metrics endpoint:                                   │
+│       kubectl exec -it <prometheus-pod> -- wget -qO- \              │
+│         http://my-app.namespace:port/metrics                        │
+│                                                                     │
+│  Target not appearing at all                                        │
+│  ───────────────────────────                                        │
+│  Check:                                                             │
+│    1. ServiceMonitor exists in correct namespace                    │
+│    2. ServiceMonitor selector matches Service labels                │
+│    3. Prometheus is configured to watch namespace:                  │
+│       kubectl get prometheus -n observability -o yaml | \           │
+│         grep -A 10 serviceMonitorNamespaceSelector                  │
+│                                                                     │
+│  Target shows "UP" but missing specific metrics                     │
+│  ──────────────────────────────────────────────                     │
+│  Check:                                                             │
+│    1. Application is actually exposing those metrics                │
+│    2. Metric name hasn't changed                                    │
+│    3. Check cardinality issues (too many labels)                    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-**Create ServiceMonitor:**
+**Create ServiceMonitor Example:**
+
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: my-app-monitor
-  namespace: observability
+  namespace: observability  # Where ServiceMonitor lives
+  labels:
+    release: prometheus     # Required for Prometheus to find it
 spec:
   selector:
     matchLabels:
-      app: my-app
+      app: my-app           # Must match Service labels
   namespaceSelector:
     matchNames:
-      - my-namespace
+      - production          # Namespace where the Service lives
   endpoints:
-    - port: metrics
-      path: /metrics
-      interval: 30s
+    - port: metrics         # Port name from Service
+      path: /metrics        # Metrics endpoint path
+      interval: 30s         # How often to scrape
 ```
 
-### 7.2 Grafana Dashboard Not Loading
+### 9.2 Grafana Dashboard Not Loading
 
-**Symptom:** Dashboard shows "No Data".
+**Symptom:** Dashboard shows "No Data" or won't load.
 
-**Diagnostic:**
+**Diagnostic Steps:**
+
 ```bash
-# Check Grafana data source
+# Step 1: Access Grafana
 kubectl port-forward svc/prometheus-grafana -n observability 3000:80
-# Go to Configuration > Data Sources > Test
+
+# Step 2: Test data source
+# Go to: Configuration > Data Sources > Prometheus > Test
+
+# Step 3: Check Prometheus directly
+kubectl port-forward svc/prometheus-kube-prometheus-prometheus -n observability 9090:9090
+# Run the same query in Prometheus UI
 ```
 
 **Solutions:**
 
 | Issue | Solution |
 |-------|----------|
-| Wrong data source URL | Use `http://prometheus-kube-prometheus-prometheus.observability:9090` |
-| Query returns empty | Check query in Prometheus first |
-| Time range issue | Adjust time range in Grafana |
+| Data source test fails | Check Prometheus URL in data source settings |
+| Query returns empty | Run query in Prometheus first to verify data exists |
+| Dashboard variables broken | Check variable queries at top of dashboard |
+| Time range wrong | Adjust time picker, check "now" alignment |
 
-### 7.3 Alerts Not Firing
+### 9.3 Logs Not Appearing in Azure Monitor
 
-**Diagnostic:**
+**Symptom:** Container logs missing in Log Analytics.
+
+**Investigation:**
+
 ```bash
-# Check alert rules
-kubectl get prometheusrules -n observability
+# Step 1: Check OMS agent is running
+kubectl get pods -n kube-system | grep omsagent
 
-# Check AlertManager
-kubectl port-forward svc/prometheus-kube-prometheus-alertmanager -n observability 9093:9093
+# Step 2: Check OMS agent logs
+kubectl logs -n kube-system -l component=oms-agent --tail=50
+
+# Step 3: Verify Log Analytics workspace
+az aks show -g $RG -n $CLUSTER --query "addonProfiles.omsagent"
+```
+
+**Solutions:**
+
+```bash
+# Fix 1: Re-enable Container Insights
+az aks enable-addons \
+  --resource-group $RG \
+  --name $CLUSTER \
+  --addons monitoring \
+  --workspace-resource-id $WORKSPACE_ID
+
+# Fix 2: Restart OMS agent
+kubectl rollout restart daemonset omsagent -n kube-system
+
+# Fix 3: Check if namespace is excluded
+kubectl get configmap container-azm-ms-agentconfig -n kube-system -o yaml
 ```
 
 ---
 
-## 8. AI Foundry Issues
+## 10. AI Foundry Issues
 
-### 8.1 API Request Failed
+### 10.1 Rate Limit Exceeded (429)
 
 **Symptom:**
 ```
-Error: 429 Too Many Requests - Rate limit exceeded
+Error: 429 Too Many Requests - Rate limit exceeded. Retry after X seconds.
+```
+
+> 💡 **Understanding Azure OpenAI Quotas**
+>
+> Azure OpenAI uses **Tokens Per Minute (TPM)** quotas.
+> When you exceed your quota, requests are rejected with 429.
+>
+> TPM is shared across:
+> - All requests to a deployment
+> - Both input and output tokens count
+
+**Investigation:**
+
+```bash
+# Check current deployment capacity
+az cognitiveservices account deployment show \
+  --name $AI_ACCOUNT \
+  --resource-group $RG \
+  --deployment-name gpt-4o \
+  --query "properties.capacity"
 ```
 
 **Solutions:**
-```bash
-# Check current usage
-az cognitiveservices account show \
-  --name $AI_ACCOUNT \
-  --resource-group $RG \
-  --query "properties.quotaLimit"
 
-# Increase quota
+```bash
+# Option 1: Increase capacity
 az cognitiveservices account deployment update \
   --name $AI_ACCOUNT \
   --resource-group $RG \
   --deployment-name gpt-4o \
-  --capacity 20
+  --capacity 30  # Increase TPM
+
+# Option 2: Implement retry with backoff in your code
+# Python example:
+# import openai
+# from tenacity import retry, wait_exponential
+#
+# @retry(wait=wait_exponential(min=1, max=60))
+# def call_openai():
+#     return client.chat.completions.create(...)
+
+# Option 3: Spread load across multiple deployments
+# Create gpt-4o-2, gpt-4o-3, etc.
 ```
 
-### 8.2 Model Not Available
+### 10.2 Model Not Available in Region
 
 **Symptom:**
 ```
 Error: Model 'gpt-4o' is not available in region 'brazilsouth'
 ```
 
-**Solution:** Deploy to East US 2 for full model availability.
+**Model Availability Reference:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                AZURE OPENAI MODEL AVAILABILITY                      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Model                    │ Brazil South │ East US 2 │ West Europe │
+│  ─────────────────────────┼──────────────┼───────────┼─────────────│
+│  gpt-4o                   │      ❌      │    ✅     │     ✅      │
+│  gpt-4o-mini              │      ❌      │    ✅     │     ✅      │
+│  gpt-4-turbo              │      ❌      │    ✅     │     ✅      │
+│  gpt-35-turbo             │      ✅      │    ✅     │     ✅      │
+│  text-embedding-3-large   │      ❌      │    ✅     │     ✅      │
+│  text-embedding-ada-002   │      ✅      │    ✅     │     ✅      │
+│                                                                     │
+│  Recommendation: Use East US 2 for best model availability          │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Solution:** Deploy AI Foundry in East US 2:
 
 ```hcl
-# terraform/modules/ai-foundry/variables.tf
-variable "location" {
-  default = "eastus2"  # Use East US 2 for full model catalog
+module "ai_foundry" {
+  source   = "./modules/ai-foundry"
+  location = "eastus2"  # Not brazilsouth
+  # ...
 }
 ```
 
-### 8.3 Private Endpoint Connection Failed
-
-**Diagnostic:**
-```bash
-# Test from AKS pod
-kubectl run debug --rm -it --image=mcr.microsoft.com/azure-cli -- \
-  az cognitiveservices account show --name $AI_ACCOUNT -g $RG
-
-# Check private endpoint
-az network private-endpoint show -n pe-ai -g $RG
-```
-
----
-
-## 9. Authentication Issues
-
-### 9.1 Azure CLI Session Expired
+### 10.3 Content Filter Blocked Request
 
 **Symptom:**
 ```
-AADSTS700082: The refresh token has expired
+Error: The response was filtered due to the prompt triggering Azure OpenAI's content management policy.
+```
+
+**Understanding:**
+
+> 💡 **Azure OpenAI Content Filtering**
+>
+> Azure OpenAI automatically filters:
+> - Hate speech
+> - Violence
+> - Sexual content
+> - Self-harm content
+>
+> Filters can be adjusted via Content Filter configuration.
+
+**Solutions:**
+
+1. Review your prompt for triggering content
+2. Request content filter modification (Azure support)
+3. Use system prompt to guide model toward safe responses
+
+---
+
+## 11. Authentication and Authorization Issues
+
+### 11.1 Azure CLI Session Expired
+
+**Symptom:**
+```
+AADSTS700082: The refresh token has expired due to inactivity.
 ```
 
 **Fix:**
+
 ```bash
+# Clear and re-authenticate
 az logout
 az login
 az account set --subscription $SUBSCRIPTION_ID
+
+# Verify
+az account show
 ```
 
-### 9.2 GitHub Token Expired
+### 11.2 kubectl Permission Denied
 
-**Symptom:** GitHub Actions fail with 401.
+**Symptom:**
+```
+Error from server (Forbidden): pods is forbidden: User "user@example.com" cannot list resource "pods" in API group "" in the namespace "default"
+```
 
-**Fix:**
+**Investigation:**
+
 ```bash
-# Regenerate token
-gh auth login
+# Check your current user
+kubectl auth whoami
 
-# Update repository secret
-gh secret set GITHUB_TOKEN < token.txt
+# Check what you can do
+kubectl auth can-i --list
+
+# Check role bindings
+kubectl get rolebindings,clusterrolebindings -A | grep <your-email-or-group>
 ```
 
-### 9.3 Service Principal Expired
+**Solutions:**
+
+```bash
+# Option 1: Use admin credentials (temporary)
+az aks get-credentials -g $RG -n $CLUSTER --admin
+
+# Option 2: Add yourself to appropriate role
+kubectl create rolebinding my-access \
+  --clusterrole=view \
+  --user=user@example.com \
+  --namespace=default
+
+# Option 3: Check Azure AD group membership
+az ad group member list --group "AKS-Admins" --output table
+```
+
+### 11.3 Service Principal Expired
 
 **Symptom:**
 ```
@@ -813,169 +2037,345 @@ AADSTS7000215: Invalid client secret provided
 ```
 
 **Fix:**
-```bash
-# Create new secret
-az ad sp credential reset --name $SP_NAME
 
-# Update GitHub secrets
-gh secret set ARM_CLIENT_SECRET --body "new-secret"
+```bash
+# Step 1: Create new credential
+az ad sp credential reset --name $SP_NAME --credential-description "New secret"
+
+# Step 2: Update wherever it's used
+# - GitHub Actions secrets
+# - Azure DevOps
+# - Terraform variables
+# - Key Vault (if stored there)
+
+# Step 3: Update in GitHub
+gh secret set ARM_CLIENT_SECRET --body "new-secret-value"
 ```
 
 ---
 
-## 10. Performance Issues
+## 12. Performance Issues
 
-### 10.1 High API Server Latency
+### 12.1 High API Server Latency
 
-**Diagnostic:**
+**Symptom:** kubectl commands are slow, workloads take long to schedule.
+
+**Investigation:**
+
 ```bash
-# Check API server metrics
+# Check API server latency
 kubectl get --raw /metrics | grep apiserver_request_duration
 
-# Check etcd
-kubectl -n kube-system logs etcd-master | tail -50
-```
-
-**Solutions:**
-- Reduce watch connections
-- Upgrade to larger control plane (Premium AKS)
-- Review custom controllers making excessive API calls
-
-### 10.2 Slow Pod Startup
-
-**Diagnostic:**
-```bash
-# Check image pull time
-kubectl describe pod my-pod | grep -A 10 Events
-
-# Check init containers
-kubectl logs my-pod -c init-container
+# Check API server logs (in Azure Portal)
+# AKS > Monitoring > Logs > Query:
+# AzureDiagnostics | where Category == "kube-apiserver"
 ```
 
 **Solutions:**
 
 | Cause | Solution |
 |-------|----------|
-| Large image | Use smaller base images, multi-stage builds |
-| Slow image pull | Use ACR in same region, enable image caching |
-| Init container slow | Optimize init logic |
-| Slow readiness probe | Adjust `initialDelaySeconds` |
+| Too many watchers | Reduce custom controllers, use informers |
+| Large objects | Don't store large data in ConfigMaps/Secrets |
+| etcd pressure | Upgrade to Premium tier AKS |
+| Too many API calls | Add caching, reduce poll frequency |
 
-### 10.3 Memory/CPU Throttling
+### 12.2 Slow Pod Startup
 
-**Diagnostic:**
+**Investigation:**
+
 ```bash
-# Check resource usage
+# Get pod events with timestamps
+kubectl describe pod $POD_NAME | grep -A 20 Events
+
+# Common slow phases:
+# - Scheduled → Pulling: Image pull time
+# - Pulling → Started: Container creation
+# - Started → Ready: Readiness probe
+```
+
+**Solutions:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                SLOW POD STARTUP SOLUTIONS                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Slow Image Pull (10s+)                                             │
+│  ──────────────────────                                             │
+│  Solutions:                                                         │
+│    - Use smaller base images (alpine, distroless)                   │
+│    - Multi-stage builds to reduce image size                        │
+│    - Pre-pull images on nodes (DaemonSet)                           │
+│    - Use ACR in same region as AKS                                  │
+│                                                                     │
+│  Slow Init Containers                                               │
+│  ─────────────────────                                              │
+│  Solutions:                                                         │
+│    - Optimize init container logic                                  │
+│    - Parallelize if possible                                        │
+│    - Consider moving logic to app startup                           │
+│                                                                     │
+│  Slow Readiness Probe                                               │
+│  ─────────────────────                                              │
+│  Solutions:                                                         │
+│    - Reduce initialDelaySeconds                                     │
+│    - Optimize application startup                                   │
+│    - Use startupProbe for slow-starting apps                        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 12.3 Memory/CPU Throttling
+
+**Investigation:**
+
+```bash
+# Check current usage vs limits
 kubectl top pods -n my-namespace
 
-# Check throttling
-kubectl describe pod my-pod | grep -i throttl
+# Check for OOMKilled
+kubectl get pods -n my-namespace -o jsonpath='{.items[*].status.containerStatuses[*].lastState.terminated.reason}' | grep OOMKilled
+
+# Check throttling (requires metrics-server)
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods | jq '.items[] | select(.metadata.namespace=="my-namespace")'
 ```
 
-**Fix:**
+**Solutions:**
+
 ```yaml
+# Adjust resources in deployment
 resources:
   requests:
-    cpu: "500m"
+    cpu: "500m"      # Guaranteed minimum
     memory: "512Mi"
   limits:
-    cpu: "2000m"      # Increase limit
-    memory: "2Gi"     # Increase limit
+    cpu: "2000m"     # Maximum allowed
+    memory: "2Gi"    # Container killed if exceeded
 ```
 
----
-
-## 11. Common Error Messages
-
-### Error Reference Table
-
-| Error | Likely Cause | Quick Fix |
-|-------|--------------|-----------|
-| `connection refused` | Service not running | Check pod status, port |
-| `no such host` | DNS issue | Check CoreDNS, service name |
-| `timeout` | Network policy, NSG | Check network policies |
-| `403 Forbidden` | RBAC, authentication | Check roles, tokens |
-| `ImagePullBackOff` | Registry access | Check ACR attachment |
-| `CrashLoopBackOff` | App error | Check logs |
-| `OOMKilled` | Memory exhausted | Increase memory limit |
-| `Evicted` | Node pressure | Scale nodes, check disk |
-| `FailedScheduling` | Resources, taints | Scale up or add tolerations |
-| `InvalidImageName` | Wrong image reference | Check image name syntax |
+> 💡 **Resource Request vs Limit**
+>
+> - **Request**: What the scheduler guarantees. Pod won't start if cluster can't provide this.
+> - **Limit**: Maximum the container can use. Exceeding memory = OOMKilled. Exceeding CPU = throttled.
+>
+> Best practice: Set request = typical usage, limit = 2-3x request.
 
 ---
 
-## 12. Support Escalation
+## 13. Error Message Reference
 
-### When to Escalate
+### Quick Error Lookup Table
 
-- SEV1 incidents lasting > 30 minutes
-- Data loss or security breach
-- Repeated failures with no clear cause
-- Issues affecting multiple customers
+| Error Message | Likely Cause | Section |
+|---------------|--------------|---------|
+| "connection refused" | Service not running, wrong port | 7.3 |
+| "no such host" | DNS resolution failed | 7.2 |
+| "timeout" | Network policy blocking, firewall | 7.2 |
+| "403 Forbidden" | RBAC permission denied | 11.2 |
+| "ImagePullBackOff" | Can't pull container image | 5.3 |
+| "CrashLoopBackOff" | Container keeps crashing | 5.4 |
+| "OOMKilled" | Out of memory | 5.4 |
+| "Evicted" | Node resource pressure | 4.2 |
+| "FailedScheduling" | Can't find node for pod | 5.2 |
+| "QuotaExceeded" | Azure subscription limit | 3.5 |
+| "state blob is already locked" | Terraform lock | 3.3 |
+| "SecretSyncedError" | ESO can't sync secret | 8.2 |
 
-### Information to Collect
+---
+
+## 14. Support and Escalation
+
+### 14.1 When to Escalate
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ESCALATION CRITERIA                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ESCALATE IMMEDIATELY (SEV1):                                       │
+│  ────────────────────────────                                       │
+│  - Complete production outage                                       │
+│  - Data loss or security breach                                     │
+│  - Multiple customers affected                                      │
+│  - No workaround available                                          │
+│                                                                     │
+│  ESCALATE AFTER 1 HOUR (SEV2):                                      │
+│  ──────────────────────────────                                     │
+│  - Significant feature broken                                       │
+│  - Workaround exists but impacts users                              │
+│  - Performance severely degraded                                    │
+│                                                                     │
+│  ESCALATE AFTER 4 HOURS (SEV3):                                     │
+│  ───────────────────────────────                                    │
+│  - Non-critical feature broken                                      │
+│  - Affects small number of users                                    │
+│  - Workaround available                                             │
+│                                                                     │
+│  NEXT BUSINESS DAY (SEV4):                                          │
+│  ─────────────────────────                                          │
+│  - Cosmetic issues                                                  │
+│  - Documentation problems                                           │
+│  - Feature requests                                                 │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.2 Information to Collect Before Escalating
 
 ```bash
-# Generate support bundle
-./scripts/support-bundle.sh > support-bundle-$(date +%Y%m%d).txt
+#!/bin/bash
+# scripts/collect-support-bundle.sh
 
-# Include:
-# 1. Diagnostic output (Section 1)
-# 2. Recent events
-# 3. Relevant pod logs
-# 4. Terraform state (sanitized)
-# 5. ArgoCD app status
+BUNDLE_DIR="support-bundle-$(date +%Y%m%d-%H%M%S)"
+mkdir -p $BUNDLE_DIR
+
+echo "Collecting support bundle..."
+
+# 1. Cluster info
+kubectl cluster-info dump > $BUNDLE_DIR/cluster-dump.txt 2>&1
+
+# 2. All pod statuses
+kubectl get pods -A -o wide > $BUNDLE_DIR/pods.txt
+
+# 3. All events
+kubectl get events -A --sort-by='.lastTimestamp' > $BUNDLE_DIR/events.txt
+
+# 4. Node info
+kubectl describe nodes > $BUNDLE_DIR/nodes.txt
+
+# 5. Resource usage
+kubectl top nodes > $BUNDLE_DIR/top-nodes.txt 2>&1
+kubectl top pods -A > $BUNDLE_DIR/top-pods.txt 2>&1
+
+# 6. ArgoCD status
+kubectl get applications -n argocd -o yaml > $BUNDLE_DIR/argocd-apps.yaml 2>&1
+
+# 7. External Secrets status
+kubectl get externalsecrets -A -o yaml > $BUNDLE_DIR/externalsecrets.yaml 2>&1
+
+# 8. Network policies
+kubectl get networkpolicies -A -o yaml > $BUNDLE_DIR/netpols.yaml
+
+# 9. Azure resources (if az cli available)
+if command -v az &> /dev/null; then
+    az aks show -g $RG -n $CLUSTER > $BUNDLE_DIR/aks-info.json 2>&1
+fi
+
+# Create archive
+tar -czf $BUNDLE_DIR.tar.gz $BUNDLE_DIR
+rm -rf $BUNDLE_DIR
+
+echo "Support bundle created: $BUNDLE_DIR.tar.gz"
 ```
 
-### Support Channels
+### 14.3 Support Channels
 
-| Channel | Use Case | SLA |
-|---------|----------|-----|
-| GitHub Issues | Bug reports, features | Best effort |
-| Slack #platform-help | Quick questions | Business hours |
-| PagerDuty | SEV1/SEV2 incidents | 15 min response |
-| Azure Support | Azure-specific issues | Per support plan |
+| Channel | Use Case | Response Time |
+|---------|----------|---------------|
+| **GitHub Issues** | Bug reports, feature requests | Best effort |
+| **Slack #platform-help** | Quick questions, guidance | Business hours |
+| **PagerDuty** | SEV1/SEV2 incidents | 15 min (SEV1), 1 hr (SEV2) |
+| **Azure Support** | Azure-specific issues | Per support plan |
+| **Email: platform-team@** | General questions | 1 business day |
+
+### 14.4 Post-Incident Documentation
+
+After resolving an incident, document:
+
+```markdown
+# Incident Report: [Brief Description]
+
+## Summary
+- **Date/Time**: YYYY-MM-DD HH:MM UTC
+- **Duration**: X hours Y minutes
+- **Severity**: SEV1/2/3/4
+- **Affected**: [Users/Services]
+
+## Timeline
+- HH:MM - Issue reported
+- HH:MM - Investigation started
+- HH:MM - Root cause identified
+- HH:MM - Fix applied
+- HH:MM - Normal operation confirmed
+
+## Root Cause
+[Detailed explanation of what went wrong]
+
+## Resolution
+[What was done to fix it]
+
+## Lessons Learned
+1. [What we learned]
+2. [What we'll do differently]
+
+## Action Items
+- [ ] [Preventive measure 1]
+- [ ] [Preventive measure 2]
+```
 
 ---
 
 ## Appendix: Diagnostic Commands Cheatsheet
 
 ```bash
-# Cluster
-kubectl cluster-info
-kubectl get nodes -o wide
-kubectl top nodes
+# ═══════════════════════════════════════════════════════════════════
+# CLUSTER & NODES
+# ═══════════════════════════════════════════════════════════════════
+kubectl cluster-info                    # API server connectivity
+kubectl get nodes -o wide               # Node status and IPs
+kubectl describe node <name>            # Detailed node info
+kubectl top nodes                       # Node resource usage
 
-# Pods
-kubectl get pods -A
-kubectl describe pod <pod>
-kubectl logs <pod> -f
-kubectl exec -it <pod> -- /bin/sh
+# ═══════════════════════════════════════════════════════════════════
+# PODS
+# ═══════════════════════════════════════════════════════════════════
+kubectl get pods -A                     # All pods
+kubectl get pods -o wide                # Pods with node info
+kubectl describe pod <name>             # Detailed pod info
+kubectl logs <pod> -f                   # Stream logs
+kubectl logs <pod> --previous           # Previous container logs
+kubectl exec -it <pod> -- /bin/sh       # Shell into pod
+kubectl top pods                        # Pod resource usage
 
-# Events
-kubectl get events -A --sort-by='.lastTimestamp'
+# ═══════════════════════════════════════════════════════════════════
+# EVENTS
+# ═══════════════════════════════════════════════════════════════════
+kubectl get events --sort-by='.lastTimestamp'           # Recent events
+kubectl get events --field-selector type=Warning        # Warnings only
 
-# Network
-kubectl get svc,ep,netpol -A
-kubectl run debug --rm -it --image=busybox -- sh
+# ═══════════════════════════════════════════════════════════════════
+# SERVICES & NETWORKING
+# ═══════════════════════════════════════════════════════════════════
+kubectl get svc,ep -A                   # Services and endpoints
+kubectl get networkpolicy -A            # Network policies
+kubectl run debug --rm -it --image=busybox -- sh        # Debug pod
 
-# Storage
-kubectl get pv,pvc -A
-kubectl describe pv <pv>
+# ═══════════════════════════════════════════════════════════════════
+# ARGOCD
+# ═══════════════════════════════════════════════════════════════════
+argocd app list                         # List applications
+argocd app get <app>                    # App details
+argocd app diff <app>                   # What's different
+argocd app sync <app>                   # Sync application
 
-# ArgoCD
-argocd app list
-argocd app get <app>
-argocd app sync <app>
+# ═══════════════════════════════════════════════════════════════════
+# EXTERNAL SECRETS
+# ═══════════════════════════════════════════════════════════════════
+kubectl get externalsecrets -A          # All external secrets
+kubectl describe externalsecret <name>  # Detailed status
 
-# Azure
-az aks show -g $RG -n $CLUSTER
-az network private-endpoint list -g $RG
-az keyvault secret list --vault-name $KV
+# ═══════════════════════════════════════════════════════════════════
+# AZURE CLI
+# ═══════════════════════════════════════════════════════════════════
+az aks show -g $RG -n $CLUSTER          # AKS cluster info
+az aks get-credentials -g $RG -n $CLUSTER  # Get kubeconfig
+az network private-endpoint list -g $RG    # Private endpoints
+az keyvault secret list --vault-name $KV   # Key Vault secrets
 ```
 
 ---
 
-**Document Version:** 1.0.0
+**Document Version:** 2.0.0
 **Last Updated:** December 2025
 **Maintainer:** Platform Engineering Team
