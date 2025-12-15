@@ -152,9 +152,7 @@ three-horizons-accelerator-v4/
 
 ### Reference Documentation
 
-- [Enterprise Review](./ENTERPRISE_REVIEW.md) - Architecture decisions
-- [Inventory](./INVENTORY_v4.md) - Complete component list
-- [Agent Catalog](./AGENT_CATALOG.md) - AI agent documentation
+- [Agent Documentation](./agents/README.md) - 23 AI agents for deployment automation
 - [Sizing Profiles](./config/sizing-profiles.yaml) - Cost estimation
 
 ---

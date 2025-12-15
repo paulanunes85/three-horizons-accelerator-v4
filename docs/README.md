@@ -40,9 +40,8 @@
 
 | Document | Description |
 |----------|-------------|
-| [Naming Conventions](NAMING_CONVENTIONS.md) | Azure resource naming standards |
 | [Branching Strategy](BRANCHING_STRATEGY.md) | Git workflow and branch protection |
-| [Component Integration](COMPONENT_INTEGRATION.md) | How components connect together |
+| [Agent Documentation](../agents/README.md) | 23 AI agents for deployment automation |
 
 ### Agent Documentation
 
@@ -184,9 +183,7 @@ Terraform module documentation:
 ```
 docs/
 ├── README.md                    # This index file
-├── NAMING_CONVENTIONS.md        # Naming standards
 ├── BRANCHING_STRATEGY.md        # Git workflow
-├── COMPONENT_INTEGRATION.md     # Integration guide
 │
 └── guides/
     ├── DEPLOYMENT_GUIDE.md      # Step-by-step deployment
@@ -216,13 +213,13 @@ docs/
 
 1. Use the [Administrator Guide](guides/ADMINISTRATOR_GUIDE.md) daily
 2. Reference the [Troubleshooting Guide](guides/TROUBLESHOOTING_GUIDE.md) for issues
-3. Follow [Naming Conventions](NAMING_CONVENTIONS.md) for new resources
+3. Check [Agent Documentation](../agents/README.md) for automation
 
 ### Contributing?
 
 1. Read [CONTRIBUTING](../CONTRIBUTING.md)
 2. Follow [Branching Strategy](BRANCHING_STRATEGY.md)
-3. Understand [Component Integration](COMPONENT_INTEGRATION.md)
+3. Check the [Architecture Guide](guides/ARCHITECTURE_GUIDE.md)
 
 ---
 
@@ -263,7 +260,7 @@ When updating documentation:
 
 Found an issue or want to improve the documentation?
 
-- Open an issue: [GitHub Issues](https://github.com/your-org/three-horizons-accelerator-v4/issues)
+- Open an issue: [GitHub Issues](https://github.com/paulanunes85/three-horizons-accelerator-v4/issues)
 - Submit a PR: Follow [CONTRIBUTING](../CONTRIBUTING.md)
 
 ---

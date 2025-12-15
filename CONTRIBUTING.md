@@ -314,9 +314,9 @@ shellcheck scripts/*.sh
 | File | Purpose |
 |------|---------|
 | README.md | Project overview |
-| docs/QUICKSTART.md | Getting started guide |
-| docs/INVENTORY_v4.md | Component inventory |
-| docs/AGENT_CATALOG.md | Agent documentation |
+| QUICKSTART.md | Getting started guide |
+| agents/README.md | Agent documentation |
+| docs/guides/*.md | Comprehensive guides |
 | module/README.md | Module-specific docs |
 
 ### Documentation Style
