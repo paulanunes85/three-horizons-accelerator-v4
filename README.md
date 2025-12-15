@@ -20,7 +20,7 @@ The **Three Horizons Implementation Accelerator** is a complete kit of Infrastru
 
 ---
 
-## 🏗️ Three Horizons Architecture
+## Three Horizons Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -46,7 +46,7 @@ The **Three Horizons Implementation Accelerator** is a complete kit of Infrastru
 
 ---
 
-## 🚀 Quick Start (5 minutes)
+## Quick Start
 
 ### Prerequisites
 
@@ -89,7 +89,7 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 
 ---
 
-## 📁 Directory Structure
+## Directory Structure
 
 ```
 three-horizons-accelerator-v4/
@@ -134,26 +134,36 @@ three-horizons-accelerator-v4/
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-### Step-by-Step Guides
+### Comprehensive Guides
 
 | Guide | Description |
 |-------|-------------|
-| [🚀 Deployment Guide](./docs/guides/DEPLOYMENT_GUIDE.md) | Complete step-by-step deployment instructions |
-| [🏗️ Architecture Guide](./docs/guides/ARCHITECTURE_GUIDE.md) | Three Horizons architecture explained |
-| [🔧 Administrator Guide](./docs/guides/ADMINISTRATOR_GUIDE.md) | Day-2 operations and maintenance |
-| [📦 Module Reference](./docs/guides/MODULE_REFERENCE.md) | All Terraform modules with examples |
-| [🔍 Troubleshooting Guide](./docs/guides/TROUBLESHOOTING_GUIDE.md) | Problem diagnosis and resolution |
+| [Deployment Guide](./docs/guides/DEPLOYMENT_GUIDE.md) | Complete step-by-step deployment instructions |
+| [Architecture Guide](./docs/guides/ARCHITECTURE_GUIDE.md) | Three Horizons architecture explained |
+| [Administrator Guide](./docs/guides/ADMINISTRATOR_GUIDE.md) | Day-2 operations and maintenance |
+| [Module Reference](./docs/guides/MODULE_REFERENCE.md) | All Terraform modules with examples |
+| [Troubleshooting Guide](./docs/guides/TROUBLESHOOTING_GUIDE.md) | Problem diagnosis and resolution |
 
-### Reference Documentation
+### Agent Documentation
 
-- [Agent Documentation](./agents/README.md) - 23 AI agents for deployment automation
-- [Sizing Profiles](./config/sizing-profiles.yaml) - Cost estimation
+| Document | Description |
+|----------|-------------|
+| [Agent Overview](./agents/README.md) | Introduction to 23 AI deployment agents |
+| [Agent Index](./agents/INDEX.md) | Complete agent catalog by horizon |
+| [Deployment Sequence](./agents/DEPLOYMENT_SEQUENCE.md) | Step-by-step agent deployment order |
+| [MCP Servers Guide](./agents/MCP_SERVERS_GUIDE.md) | Model Context Protocol server setup |
+| [Dependency Graph](./agents/DEPENDENCY_GRAPH.md) | Visual agent dependencies |
+
+### Reference
+
+- [Sizing Profiles](./config/sizing-profiles.yaml) - Cost estimation by environment
+- [Branching Strategy](./docs/BRANCHING_STRATEGY.md) - Git workflow and branch protection
 
 ---
 
-## 🔧 Detailed Usage Guide
+## Detailed Usage Guide
 
 ### Step 1: Deploy Base Infrastructure (H1)
 
@@ -209,7 +219,7 @@ terraform apply -var-file=environments/dev.tfvars -var="enable_h3=true"
 
 ---
 
-## 📋 Golden Paths - How to Use
+## Golden Paths
 
 ### Register Templates in RHDH
 
@@ -271,7 +281,7 @@ kubectl apply -f golden-paths/h1-foundation/basic-cicd/template.yaml
 
 ---
 
-## ⚙️ ArgoCD Configuration
+## ArgoCD Configuration
 
 ### ApplicationSets
 
@@ -319,7 +329,7 @@ Configured to send to:
 
 ---
 
-## 📊 Observability
+## Observability
 
 ### Grafana Dashboards
 
@@ -339,7 +349,7 @@ Configured to send to:
 
 ---
 
-## 🔐 Security
+## Security
 
 ### Secrets Management
 
@@ -374,7 +384,7 @@ metadata:
 
 ---
 
-## 🔄 ADO → GitHub Migration
+## ADO to GitHub Migration
 
 ### Migration Script
 
@@ -387,17 +397,20 @@ metadata:
   --repos "repo1,repo2,repo3"
 ```
 
-### What's Migrated:
-- ✅ Source code and Git history
-- ✅ Branches and tags
-- ✅ Pull requests (as issues)
-- ✅ Wiki (as separate repository)
-- ⚠️ Pipelines (require manual conversion)
-- ⚠️ Work items (via Azure Boards integration)
+### What's Migrated
+
+| Item | Status |
+|------|--------|
+| Source code and Git history | Fully migrated |
+| Branches and tags | Fully migrated |
+| Pull requests | Migrated as issues |
+| Wiki | Migrated as separate repository |
+| Pipelines | Requires manual conversion |
+| Work items | Via Azure Boards integration |
 
 ---
 
-## 💰 Estimated Costs (USD/month)
+## Estimated Costs (USD/month)
 
 | Resource | Dev | Staging | Production |
 |----------|-----|---------|------------|
@@ -413,7 +426,7 @@ metadata:
 
 ---
 
-## ⏱️ Deploy Times
+## Deploy Times
 
 | Phase | Dev | Staging | Production |
 |-------|-----|---------|------------|
@@ -424,7 +437,7 @@ metadata:
 
 ---
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Terraform Errors
 
@@ -473,14 +486,37 @@ kubectl logs <pod-name> -n <namespace> --previous
 
 ---
 
-## 📞 Support
+## Next Steps
+
+After reviewing this README:
+
+1. **First time deploying?**
+   - Read the [Architecture Guide](./docs/guides/ARCHITECTURE_GUIDE.md) to understand the Three Horizons model
+   - Follow the [Deployment Guide](./docs/guides/DEPLOYMENT_GUIDE.md) step by step
+
+2. **Using AI agents?**
+   - Start with [Agent Overview](./agents/README.md)
+   - Follow the [Deployment Sequence](./agents/DEPLOYMENT_SEQUENCE.md)
+   - Setup [MCP Servers](./agents/MCP_SERVERS_GUIDE.md)
+
+3. **Operating the platform?**
+   - Use the [Administrator Guide](./docs/guides/ADMINISTRATOR_GUIDE.md) for day-2 operations
+   - Reference [Troubleshooting Guide](./docs/guides/TROUBLESHOOTING_GUIDE.md) for issues
+
+4. **Contributing?**
+   - Read [CONTRIBUTING.md](./CONTRIBUTING.md)
+   - Follow the [Branching Strategy](./docs/BRANCHING_STRATEGY.md)
+
+---
+
+## Support
 
 For questions, issues, or suggestions, open an issue on GitHub:
 - **GitHub Issues:** [Create Issue](https://github.com/paulanunes85/three-horizons-accelerator-v4/issues)
 
 ---
 
-## 📚 References
+## References
 
 ### Official Documentation
 - [Azure AKS](https://docs.microsoft.com/azure/aks/)
@@ -492,26 +528,19 @@ For questions, issues, or suggestions, open an issue on GitHub:
 
 ---
 
-## 📝 Version History
+## Version History
 
-### v4.0.0 (December 2025) - Unified Agentic DevOps
-- ✅ 14 Terraform modules (including Defender, Purview, Naming)
-- ✅ 23 AI agents for intelligent orchestration
-- ✅ 25 GitHub Issues templates
-- ✅ 21 Golden Path templates
-- ✅ 10 automation scripts
-- ✅ 15 MCP Server configurations
-- ✅ Complete observability stack
-- ✅ Multi-language documentation
-
-### v3.0.0 (December 2024)
-- 11 Terraform modules
-- 21 Golden Path templates
-- 6 automation scripts
+### v4.0.0 (December 2025)
+- 14 Terraform modules (including Defender, Purview, Naming)
+- 23 AI agents for intelligent deployment orchestration
+- 25 GitHub Issues templates
+- 21 Golden Path templates for RHDH
+- 10 automation scripts
+- 15 MCP Server configurations
+- Complete observability stack
 
 ---
 
-**Version:** 4.0.0 Unified
+**Version:** 4.0.0
 **Last Updated:** December 2025
-**Maintained by:** Microsoft LATAM Platform Engineering
 **License:** MIT
