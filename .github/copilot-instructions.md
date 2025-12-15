@@ -98,7 +98,7 @@ terraform apply
 
 ## Agent System
 
-The platform uses 23 AI agents organized by horizon for deployment orchestration. When generating code for agents:
+The platform uses 23 AI agents organized by horizon for deployment orchestration. There are also 16 Terraform modules, 22 Golden Path templates, and 28 Issue templates. When generating code for agents:
 - Follow the agent specification format in `agents/`
 - Include proper YAML frontmatter
 - Define clear inputs, outputs, and steps

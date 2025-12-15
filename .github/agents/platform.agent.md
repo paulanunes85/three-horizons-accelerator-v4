@@ -49,9 +49,10 @@ You are a Platform Engineering specialist agent for the Three Horizons platform.
 | infrastructure-provisioning | Terraform module |
 | web-application | Full-stack web app |
 
-### H2 Enhancement (8 templates)
+### H2 Enhancement (9 templates)
 | Template | Purpose |
 |----------|---------|
+| ado-to-github-migration | Azure DevOps to GitHub migration |
 | api-microservice | REST/GraphQL service |
 | gitops-deployment | ArgoCD application |
 | event-driven-microservice | Event Hubs/Service Bus |

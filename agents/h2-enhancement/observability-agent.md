@@ -1,3 +1,18 @@
+---
+name: "Observability Agent"
+version: "1.0.0"
+horizon: "H2"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+  - kubernetes
+  - helm
+dependencies:
+  - observability
+  - aks-cluster
+---
+
 # Observability Agent
 
 ## 🤖 Agent Identity

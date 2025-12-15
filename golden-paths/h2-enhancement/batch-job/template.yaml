@@ -649,15 +649,79 @@ class JobProcessor:
         )
     
     def _extract(self) -> List[dict]:
-        """Extract data from sources."""
-        # TODO: Implement data extraction logic
-        # This is a placeholder - implement based on data sources
-        return []
-    
+        """Extract data from sources.
+
+        Customize this method based on your data sources.
+        Examples are provided for common Azure data sources.
+        """
+        from src.connectors import get_connector
+
+        records = []
+
+        # Example: Extract from Azure Storage
+        # connector = get_connector('azure-storage')
+        # blobs = connector.list_blobs(container='input-data', prefix='daily/')
+        # for blob in blobs:
+        #     data = connector.download_blob(blob.name)
+        #     records.extend(self._parse_blob(data))
+
+        # Example: Extract from SQL Database
+        # connector = get_connector('sql-database')
+        # query = "SELECT * FROM source_table WHERE processed = 0"
+        # records = connector.execute_query(query)
+
+        # Example: Extract from API endpoint
+        # connector = get_connector('api-endpoint')
+        # response = connector.get('/api/v1/data', params={'since': self._get_last_run()})
+        # records = response.json()
+
+        logger.info(f"Extracted {len(records)} records from sources")
+        return records
+
     def _transform(self, data: List[dict]) -> List[dict]:
-        """Transform data."""
-        # TODO: Implement transformation logic
-        return data
+        """Transform data records.
+
+        Customize transformations based on your business logic.
+        Common patterns: field mapping, data enrichment, aggregation.
+        """
+        transformed = []
+
+        for record in data:
+            try:
+                # Example transformations:
+                transformed_record = {
+                    # Map fields
+                    'id': record.get('source_id') or record.get('id'),
+                    'timestamp': self._normalize_timestamp(record.get('created_at')),
+
+                    # Enrich data
+                    'processed_at': datetime.utcnow().isoformat(),
+
+                    # Clean/normalize values
+                    'amount': float(record.get('amount', 0)),
+                    'status': str(record.get('status', 'unknown')).lower(),
+
+                    # Preserve original data
+                    '_raw': record,
+                }
+                transformed.append(transformed_record)
+
+            except Exception as e:
+                logger.warning(f"Transform error for record {record.get('id')}: {e}")
+                continue
+
+        return transformed
+
+    def _normalize_timestamp(self, value: Any) -> Optional[str]:
+        """Normalize timestamp to ISO format."""
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, str):
+            from dateutil.parser import parse
+            return parse(value).isoformat()
+        return str(value)
     
     {%- if values.enableDataValidation %}
     def _validate(self, data: List[dict]) -> tuple[List[dict], int]:
@@ -674,15 +738,78 @@ class JobProcessor:
         return valid, invalid_count
     
     def _is_valid(self, record: dict) -> bool:
-        """Check if a record is valid."""
-        # TODO: Implement validation rules
+        """Check if a record is valid.
+
+        Customize validation rules based on your data requirements.
+        Return True if record passes all validations.
+        """
+        # Required fields check
+        required_fields = ['id', 'timestamp']
+        for field in required_fields:
+            if not record.get(field):
+                logger.debug(f"Missing required field: {field}")
+                return False
+
+        # Data type validations
+        if 'amount' in record:
+            try:
+                float(record['amount'])
+            except (TypeError, ValueError):
+                logger.debug(f"Invalid amount value: {record.get('amount')}")
+                return False
+
+        # Business rule validations
+        # Example: amount must be positive
+        if record.get('amount', 0) < 0:
+            logger.debug(f"Negative amount not allowed: {record.get('amount')}")
+            return False
+
+        # Example: status must be in allowed values
+        allowed_statuses = ['pending', 'active', 'completed', 'cancelled']
+        if record.get('status') and record['status'] not in allowed_statuses:
+            logger.debug(f"Invalid status: {record.get('status')}")
+            return False
+
         return True
     {%- endif %}
-    
+
     def _load(self, data: List[dict]) -> str:
-        """Load data to targets."""
-        # TODO: Implement data loading logic
-        return "output/processed_data.parquet"
+        """Load data to targets.
+
+        Customize this method based on your target destinations.
+        Returns the output location path.
+        """
+        from src.connectors import get_connector
+        import json
+
+        if not data:
+            logger.info("No data to load")
+            return ""
+
+        output_location = ""
+
+        # Example: Load to Azure Storage (Parquet)
+        # connector = get_connector('azure-storage')
+        # import pandas as pd
+        # df = pd.DataFrame(data)
+        # parquet_bytes = df.to_parquet()
+        # blob_name = f"processed/{datetime.utcnow().strftime('%Y/%m/%d')}/data.parquet"
+        # connector.upload_blob(container='output-data', name=blob_name, data=parquet_bytes)
+        # output_location = f"wasbs://output-data@{connector.account_name}.blob.core.windows.net/{blob_name}"
+
+        # Example: Load to SQL Database
+        # connector = get_connector('sql-database')
+        # connector.bulk_insert('processed_table', data)
+        # output_location = "sql://processed_table"
+
+        # Example: Load to Cosmos DB
+        # connector = get_connector('cosmos-db')
+        # for record in data:
+        #     connector.upsert_item(record)
+        # output_location = f"cosmos://{connector.database}/{connector.container}"
+
+        logger.info(f"Loaded {len(data)} records to {output_location}")
+        return output_location
 
 ---
 # skeleton/kubernetes/cronjob.yaml

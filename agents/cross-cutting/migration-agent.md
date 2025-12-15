@@ -1,17 +1,38 @@
+---
+name: "Migration Agent"
+version: "2.0.0"
+horizon: "cross-cutting"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - github
+  - azure
+  - azure-devops
+dependencies: []
+playbook_reference: "https://devblogs.microsoft.com/all-things-azure/azure-devops-to-github-migration-playbook-unlocking-agentic-devops/"
+---
+
 # Migration Agent (ADO → GitHub)
 
 ## 🤖 Agent Identity
 
 ```yaml
 name: migration-agent
-version: 1.0.0
+version: 2.0.0
 horizon: Cross-Cutting
 description: |
   Migrates repositories, pipelines, and configurations from Azure DevOps
-  to GitHub. Handles code migration, CI/CD conversion, and Copilot 
-  Standalone to Enterprise upgrade paths.
-  
+  to GitHub following the official Microsoft Migration Playbook.
+
+  Supports:
+  - 6-Phase Migration Process
+  - Hybrid Mode (code on GitHub, Azure Boards for PM)
+  - Mannequin Management (user attribution)
+  - Pipeline Rewiring (ADO Pipelines → GitHub source)
+  - GHAS and Copilot Enterprise enablement
+
 author: Microsoft LATAM Platform Engineering
+playbook: https://devblogs.microsoft.com/all-things-azure/azure-devops-to-github-migration-playbook-unlocking-agentic-devops/
 model_compatibility:
   - GitHub Copilot Agent Mode
   - GitHub Copilot Coding Agent
@@ -23,13 +44,28 @@ model_compatibility:
 ## 📋 Related Resources
 | Resource Type | Path |
 |--------------|------|
+| **Golden Path** | `golden-paths/h2-enhancement/ado-to-github-migration/template.yaml` |
 | Issue Template | `.github/ISSUE_TEMPLATE/migration.yml` |
 | Migration Script | `scripts/migration/ado-to-github-migration.sh` |
 | Onboarding Script | `scripts/onboard-team.sh` |
+| Microsoft Playbook | [DevBlogs Article](https://devblogs.microsoft.com/all-things-azure/azure-devops-to-github-migration-playbook-unlocking-agentic-devops/) |
 
 ---
 
 ## 🎯 Capabilities
+
+### 6-Phase Migration (Microsoft Playbook)
+
+| Phase | Capability | Description | Complexity |
+|-------|------------|-------------|------------|
+| 1 | **Environment Setup** | Prerequisites, PAT tokens, authentication | Low |
+| 2 | **Azure Pipelines App** | Install GitHub App for pipeline integration | Low |
+| 3 | **Inventory Report** | Generate repos, pipelines, teams inventory | Low |
+| 4 | **Generate Script** | Create migration script with options | Medium |
+| 5 | **Execute Migration** | Migrate repos with history, rewire pipelines | High |
+| 6 | **Post-Migration** | Mannequin reclaim, validation checklist | Medium |
+
+### Additional Capabilities
 
 | Capability | Description | Complexity |
 |------------|-------------|------------|
@@ -38,9 +74,10 @@ model_compatibility:
 | **Migrate Work Items** | ADO Boards → GitHub Issues/Projects | Medium |
 | **Upgrade Copilot** | Standalone → Enterprise | Low |
 | **Convert GHAzDO → GHAS** | Security scanning migration | Medium |
-| **Map Users** | ADO users → GitHub users | Low |
+| **Mannequin Management** | Reclaim placeholder users | Low |
 | **Migrate Secrets** | ADO Variables → GitHub Secrets | Low |
-| **Full Migration** | Complete org migration | Very High |
+| **Hybrid Integration** | Keep Azure Boards + GitHub code | Medium |
+| **Full Migration** | Complete 6-phase org migration | Very High |
 
 ---
 

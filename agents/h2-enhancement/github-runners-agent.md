@@ -1,3 +1,18 @@
+---
+name: "GitHub Runners Agent"
+version: "1.0.0"
+horizon: "H2"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+  - kubernetes
+  - github
+dependencies:
+  - github-runners
+  - aks-cluster
+---
+
 # GitHub Runners Agent
 
 ## 🤖 Agent Identity

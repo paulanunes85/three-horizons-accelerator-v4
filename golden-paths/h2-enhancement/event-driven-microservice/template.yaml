@@ -805,16 +805,88 @@ class MessageRouter:
 
 # Example handler - customize for your use case
 class OrderCreatedHandler(MessageHandler):
-    """Handle order created events."""
-    
+    """Handle order created events.
+
+    Customize this handler for your business logic.
+    Common patterns: validation, transformation, storage, event publishing.
+    """
+
     async def handle(self, message: Dict[str, Any]) -> Any:
-        order_id = message.get("data", {}).get("order_id")
+        """Process an order created event.
+
+        Args:
+            message: Event message containing order data
+
+        Returns:
+            Processing result with status and metadata
+        """
+        data = message.get("data", {})
+        order_id = data.get("order_id")
         logger.info(f"Processing order: {order_id}")
-        
-        # TODO: Implement your business logic here
-        # Example: Validate, transform, store, publish result
-        
-        return {"processed": True, "order_id": order_id}
+
+        try:
+            # Step 1: Validate the incoming message
+            self._validate_message(data)
+
+            # Step 2: Transform/enrich the data
+            enriched_data = await self._enrich_order(data)
+
+            # Step 3: Apply business rules
+            processed_data = self._apply_business_rules(enriched_data)
+
+            # Step 4: Persist to database (if needed)
+            # await self._save_to_database(processed_data)
+
+            # Step 5: Publish downstream events (if needed)
+            # await self._publish_event("orders-processed", processed_data)
+
+            logger.info(f"Successfully processed order: {order_id}")
+            return {
+                "processed": True,
+                "order_id": order_id,
+                "status": "completed",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+        except ValidationError as e:
+            logger.warning(f"Validation failed for order {order_id}: {e}")
+            return {"processed": False, "order_id": order_id, "error": str(e)}
+
+        except Exception as e:
+            logger.error(f"Failed to process order {order_id}: {e}")
+            raise  # Re-raise to trigger retry/DLQ
+
+    def _validate_message(self, data: Dict[str, Any]) -> None:
+        """Validate required fields in the message."""
+        required_fields = ["order_id", "customer_id", "items"]
+        missing = [f for f in required_fields if f not in data]
+        if missing:
+            raise ValidationError(f"Missing required fields: {missing}")
+
+    async def _enrich_order(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Enrich order data with additional information."""
+        enriched = data.copy()
+        enriched["processed_at"] = datetime.utcnow().isoformat()
+        # Example: Add customer details from external service
+        # enriched["customer"] = await self._get_customer(data["customer_id"])
+        return enriched
+
+    def _apply_business_rules(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply business rules and transformations."""
+        processed = data.copy()
+        # Example: Calculate totals, apply discounts, validate inventory
+        items = processed.get("items", [])
+        processed["total_items"] = len(items)
+        processed["total_amount"] = sum(item.get("price", 0) * item.get("quantity", 1) for item in items)
+        return processed
+
+
+class ValidationError(Exception):
+    """Custom validation error for message processing."""
+    pass
+
+
+from datetime import datetime
 
 
 # Register default handlers

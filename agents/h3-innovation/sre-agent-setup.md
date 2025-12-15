@@ -1,3 +1,17 @@
+---
+name: "SRE Agent Setup"
+version: "1.0.0"
+horizon: "H3"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+  - kubernetes
+dependencies:
+  - observability
+  - aks-cluster
+---
+
 # SRE Agent Setup
 
 ## 🤖 Agent Identity
