@@ -1,3 +1,16 @@
+---
+name: "Networking Agent"
+version: "1.0.0"
+horizon: "H1"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+  - terraform
+dependencies:
+  - networking
+---
+
 # Networking Agent
 
 ## 🤖 Agent Identity

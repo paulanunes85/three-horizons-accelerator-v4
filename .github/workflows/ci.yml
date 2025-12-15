@@ -100,7 +100,7 @@ jobs:
         run: |
           cd terraform
           terraform fmt -check -recursive -diff
-        continue-on-error: true
+        continue-on-error: true  # Format is a soft check - warns but doesn't block
 
       - name: Terraform Init
         id: init
@@ -165,7 +165,7 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           working_directory: terraform
-          soft_fail: true
+          soft_fail: false  # Block pipeline on security issues
           format: sarif
           sarif_file: tfsec.sarif
 
@@ -174,7 +174,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: tfsec.sarif
-        continue-on-error: true
+        continue-on-error: true  # Upload failure shouldn't block CI
 
   # ===========================================================================
   # CHECKOV SECURITY SCAN
@@ -196,7 +196,7 @@ jobs:
           framework: terraform
           output_format: cli,sarif
           output_file_path: console,checkov.sarif
-          soft_fail: true
+          soft_fail: false  # Block pipeline on security issues
           skip_check: CKV_AZURE_35,CKV_AZURE_59,CKV2_AZURE_1,CKV2_AZURE_18
 
       - name: Upload SARIF
@@ -204,7 +204,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: checkov.sarif
-        continue-on-error: true
+        continue-on-error: true  # Upload failure shouldn't block CI
 
   # ===========================================================================
   # INFRACOST - COST ESTIMATION
@@ -237,14 +237,14 @@ jobs:
           infracost breakdown --path=base/terraform --format=json --out-file=/tmp/infracost-base.json || true
           infracost breakdown --path=terraform --format=json --out-file=/tmp/infracost.json
           infracost diff --path=terraform --format=json --compare-to=/tmp/infracost-base.json --out-file=/tmp/infracost-diff.json || true
-        continue-on-error: true
+        continue-on-error: true  # Cost estimation is informational only
 
       - name: Post Infracost Comment
         uses: infracost/actions/comment@v1
         with:
           path: /tmp/infracost-diff.json
           behavior: update
-        continue-on-error: true
+        continue-on-error: true  # PR comment failure shouldn't block CI
 
   # ===========================================================================
   # KUBERNETES VALIDATION
@@ -271,14 +271,18 @@ jobs:
         run: |
           echo "## Kubernetes Validation Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          ERRORS=0
           for dir in deploy argocd; do
             if [ -d "$dir" ]; then
               echo "### Validating $dir/" >> $GITHUB_STEP_SUMMARY
               find "$dir" \( -name "*.yaml" -o -name "*.yml" \) ! -name "kustomization*" ! -path "*/templates/*" -print0 | \
-                xargs -0 -I {} kubeconform -strict -summary {} 2>&1 || true
+                xargs -0 -I {} sh -c 'kubeconform -strict -summary {} || exit 1' || ERRORS=$((ERRORS+1))
             fi
           done
-        continue-on-error: true
+          if [ $ERRORS -gt 0 ]; then
+            echo "::error::Kubernetes manifest validation failed"
+            exit 1
+          fi
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
@@ -300,7 +304,7 @@ jobs:
         uses: controlplaneio/kubesec-action@v0.0.2
         with:
           input: deploy/
-        continue-on-error: true
+        # Security scan blocks CI on critical findings
 
   # ===========================================================================
   # GOLDEN PATHS VALIDATION
@@ -397,7 +401,7 @@ jobs:
             **/*.md
             !**/node_modules/**
             !golden-paths/**
-        continue-on-error: true
+        continue-on-error: true  # Documentation lint is a soft check
 
       - name: Check Links
         uses: lycheeverse/lychee-action@v2
@@ -430,7 +434,7 @@ jobs:
 
       - name: Run yamllint
         run: yamllint -c .yamllint.yml deploy/ argocd/ config/ --format github
-        continue-on-error: true
+        continue-on-error: true  # YAML lint is a soft check for style issues
 
   # ===========================================================================
   # AGENTS VALIDATION
@@ -490,14 +494,14 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
+        # CRITICAL: Secret detection must block CI - no continue-on-error
 
       - name: Dependency Review
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
-        continue-on-error: true
+        # CRITICAL: High severity vulnerabilities must block CI - no continue-on-error
 
       - name: OSSF Scorecard
         if: github.event_name != 'pull_request'
@@ -506,7 +510,7 @@ jobs:
           results_file: scorecard.sarif
           results_format: sarif
           publish_results: true
-        continue-on-error: true
+        continue-on-error: true  # Informational only - scorecard results don't block CI
 
   # ===========================================================================
   # CI SUMMARY

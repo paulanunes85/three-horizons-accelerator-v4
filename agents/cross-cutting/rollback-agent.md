@@ -1,3 +1,17 @@
+---
+name: "Rollback Agent"
+version: "1.0.0"
+horizon: "cross-cutting"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - kubernetes
+  - terraform
+  - helm
+dependencies:
+  - argocd
+---
+
 # Rollback Agent
 
 ## 🤖 Agent Identity

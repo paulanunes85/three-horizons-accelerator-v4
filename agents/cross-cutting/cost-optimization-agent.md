@@ -1,3 +1,15 @@
+---
+name: "Cost Optimization Agent"
+version: "1.0.0"
+horizon: "cross-cutting"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+dependencies:
+  - cost-management
+---
+
 # Cost Optimization Agent
 
 ## 🤖 Agent Identity

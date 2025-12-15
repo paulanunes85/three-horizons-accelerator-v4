@@ -8,6 +8,10 @@
 #   - ArgoCD installed and configured
 #   - Cluster admin permissions for CRD installation
 #
+# IMPORTANT: Set the GITHUB_ORG environment variable before deployment.
+#
+# Example: export GITHUB_ORG=mycompany
+#
 # =============================================================================
 
 apiVersion: argoproj.io/v1alpha1
@@ -208,7 +212,7 @@ spec:
   project: platform-infrastructure
 
   source:
-    repoURL: https://github.com/your-org/three-horizons-accelerator.git
+    repoURL: https://github.com/${GITHUB_ORG}/three-horizons-accelerator.git
     targetRevision: HEAD
     path: policies/kubernetes/constraint-templates
     directory:
@@ -259,7 +263,7 @@ spec:
   project: platform-infrastructure
 
   source:
-    repoURL: https://github.com/your-org/three-horizons-accelerator.git
+    repoURL: https://github.com/${GITHUB_ORG}/three-horizons-accelerator.git
     targetRevision: HEAD
     path: policies/kubernetes/constraints
     directory:

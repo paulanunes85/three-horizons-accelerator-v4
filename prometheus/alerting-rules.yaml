@@ -27,7 +27,7 @@ groups:
         annotations:
           summary: "AKS node not ready: {{ $labels.node }}"
           description: "Node {{ $labels.node }} has been not ready for more than 5 minutes."
-          runbook_url: "https://docs.example.com/runbooks/aks-node-not-ready"
+          runbook_url: "${RUNBOOK_BASE_URL}/aks-node-not-ready"
 
       - alert: AKSNodeHighCPU
         expr: |

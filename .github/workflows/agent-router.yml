@@ -39,6 +39,7 @@ jobs:
           
           # Map label to agent spec path
           case $AGENT_LABEL in
+            # H1 Foundation (8 agents)
             "agent:infrastructure")
               AGENT="h1-foundation/infrastructure-agent"
               HORIZON="H1"
@@ -51,6 +52,27 @@ jobs:
               AGENT="h1-foundation/security-agent"
               HORIZON="H1"
               ;;
+            "agent:container-registry")
+              AGENT="h1-foundation/container-registry-agent"
+              HORIZON="H1"
+              ;;
+            "agent:database")
+              AGENT="h1-foundation/database-agent"
+              HORIZON="H1"
+              ;;
+            "agent:defender")
+              AGENT="h1-foundation/defender-cloud-agent"
+              HORIZON="H1"
+              ;;
+            "agent:aro-platform")
+              AGENT="h1-foundation/aro-platform-agent"
+              HORIZON="H1"
+              ;;
+            "agent:purview")
+              AGENT="h1-foundation/purview-governance-agent"
+              HORIZON="H1"
+              ;;
+            # H2 Enhancement (5 agents)
             "agent:gitops")
               AGENT="h2-enhancement/gitops-agent"
               HORIZON="H2"
@@ -63,14 +85,32 @@ jobs:
               AGENT="h2-enhancement/observability-agent"
               HORIZON="H2"
               ;;
-            "agent:rhdh")
+            "agent:rhdh"|"agent:rhdh-portal")
               AGENT="h2-enhancement/rhdh-portal-agent"
               HORIZON="H2"
               ;;
+            "agent:github-runners")
+              AGENT="h2-enhancement/github-runners-agent"
+              HORIZON="H2"
+              ;;
+            # H3 Innovation (4 agents)
             "agent:ai-foundry")
               AGENT="h3-innovation/ai-foundry-agent"
               HORIZON="H3"
               ;;
+            "agent:mlops"|"agent:mlops-pipeline")
+              AGENT="h3-innovation/mlops-pipeline-agent"
+              HORIZON="H3"
+              ;;
+            "agent:sre"|"agent:sre-agent")
+              AGENT="h3-innovation/sre-agent-setup"
+              HORIZON="H3"
+              ;;
+            "agent:multi-agent")
+              AGENT="h3-innovation/multi-agent-setup"
+              HORIZON="H3"
+              ;;
+            # Cross-Cutting (6 agents)
             "agent:migration")
               AGENT="cross-cutting/migration-agent"
               HORIZON="Cross"
@@ -81,6 +121,18 @@ jobs:
               ;;
             "agent:rollback")
               AGENT="cross-cutting/rollback-agent"
+              HORIZON="Cross"
+              ;;
+            "agent:cost-optimization")
+              AGENT="cross-cutting/cost-optimization-agent"
+              HORIZON="Cross"
+              ;;
+            "agent:github-app")
+              AGENT="cross-cutting/github-app-agent"
+              HORIZON="Cross"
+              ;;
+            "agent:identity-federation")
+              AGENT="cross-cutting/identity-federation-agent"
               HORIZON="Cross"
               ;;
             *)

@@ -1,3 +1,19 @@
+---
+name: "Security Agent"
+version: "1.0.0"
+horizon: "H1"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+  - terraform
+  - kubernetes
+dependencies:
+  - security
+  - defender
+  - external-secrets
+---
+
 # Security Agent
 
 ## 🤖 Agent Identity

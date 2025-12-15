@@ -1084,10 +1084,88 @@ class Orchestrator:
         return result
     
     async def _run_agent(self, agent: Any, prompt: str, context: Optional[Dict]) -> str:
-        """Run a single agent with the given prompt."""
-        # Implementation depends on framework
-        # This is a placeholder
-        return f"Agent response to: {prompt[:50]}..."
+        """Run a single agent with the given prompt.
+
+        This method adapts to the configured framework (AutoGen, Semantic Kernel, etc.)
+        and handles the actual LLM interaction with proper error handling and timeouts.
+
+        Args:
+            agent: The agent instance to run
+            prompt: The prompt/task for the agent
+            context: Optional context dictionary with additional information
+
+        Returns:
+            The agent's response as a string
+        """
+        import asyncio
+
+        # Build context-aware prompt
+        full_prompt = prompt
+        if context:
+            context_str = "\n".join(f"- {k}: {v}" for k, v in context.items())
+            full_prompt = f"Context:\n{context_str}\n\nTask: {prompt}"
+
+        try:
+            {%- if values.framework == 'autogen' %}
+            # AutoGen agent execution
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    agent.generate_reply,
+                    messages=[{"role": "user", "content": full_prompt}]
+                ),
+                timeout=${{ values.agentTimeout }}
+            )
+            return response if isinstance(response, str) else str(response)
+
+            {%- elif values.framework == 'semantic-kernel' %}
+            # Semantic Kernel agent execution
+            from semantic_kernel.contents import ChatHistory
+            chat_history = ChatHistory()
+            chat_history.add_user_message(full_prompt)
+
+            response = await asyncio.wait_for(
+                agent.invoke(chat_history),
+                timeout=${{ values.agentTimeout }}
+            )
+            return str(response[-1].content) if response else ""
+
+            {%- elif values.framework == 'langchain' %}
+            # LangChain/LangGraph agent execution
+            response = await asyncio.wait_for(
+                agent.ainvoke({"input": full_prompt}),
+                timeout=${{ values.agentTimeout }}
+            )
+            return response.get("output", str(response))
+
+            {%- else %}
+            # Generic/Custom framework execution
+            # Adapt this to your specific framework
+            if hasattr(agent, 'arun'):
+                response = await asyncio.wait_for(
+                    agent.arun(full_prompt),
+                    timeout=${{ values.agentTimeout }}
+                )
+            elif hasattr(agent, 'run'):
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(agent.run, full_prompt),
+                    timeout=${{ values.agentTimeout }}
+                )
+            else:
+                # Fallback: treat agent as callable
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(agent, full_prompt),
+                    timeout=${{ values.agentTimeout }}
+                )
+            return str(response)
+            {%- endif %}
+
+        except asyncio.TimeoutError:
+            logger.error(f"Agent timed out after ${{ values.agentTimeout }}s")
+            raise TimeoutError(f"Agent execution exceeded {${{ values.agentTimeout }}}s timeout")
+
+        except Exception as e:
+            logger.error(f"Agent execution failed: {e}")
+            raise
     
     def _parse_plan(self, plan: str) -> List[Dict]:
         """Parse manager's plan into executable steps."""

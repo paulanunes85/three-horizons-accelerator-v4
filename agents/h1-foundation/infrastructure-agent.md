@@ -1,3 +1,21 @@
+---
+name: "Infrastructure Agent"
+version: "1.0.0"
+horizon: "H1"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+  - terraform
+  - kubernetes
+dependencies:
+  - naming
+  - aks-cluster
+  - networking
+  - security
+  - container-registry
+---
+
 # Infrastructure Agent
 
 ## Overview

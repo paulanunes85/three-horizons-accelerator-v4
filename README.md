@@ -8,15 +8,15 @@ The **Three Horizons Implementation Accelerator** is a complete kit of Infrastru
 
 | Component | Quantity | Description |
 |-----------|----------|-------------|
-| **Terraform Modules** | 14 | Complete Azure infrastructure |
+| **Terraform Modules** | 16 | Complete Azure infrastructure |
 | **AI Agents** | 23 | Intelligent deployment orchestration |
-| **Golden Path Templates** | 21 | Self-service templates for RHDH |
-| **Issue Templates** | 25 | GitHub Issues templates |
-| **Automation Scripts** | 10 | Bootstrap and operations |
+| **Golden Path Templates** | 22 | Self-service templates for RHDH |
+| **Issue Templates** | 28 | GitHub Issues templates |
+| **Automation Scripts** | 14 | Bootstrap and operations |
 | **MCP Servers** | 15 | MCP server configurations |
 | **Observability** | 4 | Dashboards and alerts |
 
-**Total: 100+ files | ~18,000 lines of production-ready code**
+**Total: 120+ files | ~20,000 lines of production-ready code**
 
 ---
 
@@ -100,33 +100,36 @@ three-horizons-accelerator-v4/
 │   ├── h3-innovation/              # 4 agents (ai-foundry, sre, mlops, multi-agent)
 │   └── cross-cutting/              # 6 agents (migration, validation, rollback, cost, github-app, identity)
 │
-├── terraform/                      # 14 Infrastructure as Code modules
+├── terraform/                      # 16 Infrastructure as Code modules
 │   ├── main.tf                     # Root module
 │   └── modules/
 │       ├── aks-cluster/            # Azure Kubernetes Service
+│       ├── ai-foundry/             # Azure AI Foundry
 │       ├── argocd/                 # ArgoCD GitOps
+│       ├── container-registry/     # ACR
+│       ├── cost-management/        # Cost analysis and budgets
+│       ├── databases/              # PostgreSQL, Redis, Cosmos
+│       ├── defender/               # Defender for Cloud
+│       ├── disaster-recovery/      # Backup and DR
+│       ├── external-secrets/       # External Secrets Operator
+│       ├── github-runners/         # Self-hosted runners
+│       ├── naming/                 # Naming conventions
 │       ├── networking/             # VNet, Subnets, NSGs
 │       ├── observability/          # Prometheus, Grafana, Loki
-│       ├── databases/              # PostgreSQL, Redis, Cosmos
-│       ├── security/               # Key Vault, Identities
-│       ├── ai-foundry/             # Azure AI Foundry
-│       ├── container-registry/     # ACR
-│       ├── github-runners/         # Self-hosted runners
-│       ├── rhdh/                   # Red Hat Developer Hub
-│       ├── defender/               # Defender for Cloud
 │       ├── purview/                # Microsoft Purview
-│       └── naming/                 # Naming conventions
+│       ├── rhdh/                   # Red Hat Developer Hub
+│       └── security/               # Key Vault, Identities
 │
-├── golden-paths/                   # 21 RHDH templates (Backstage)
+├── golden-paths/                   # 22 RHDH templates (Backstage)
 │   ├── h1-foundation/              # 6 basic templates
-│   ├── h2-enhancement/             # 8 advanced templates
+│   ├── h2-enhancement/             # 9 advanced templates (incl. ADO migration)
 │   └── h3-innovation/              # 7 AI/Agent templates
 │
-├── .github/ISSUE_TEMPLATE/         # 25 issue templates
+├── .github/ISSUE_TEMPLATE/         # 28 issue templates
 ├── argocd/                         # GitOps configurations
 ├── config/                         # Sizing profiles and regions
 ├── mcp-servers/                    # 15 MCP configurations
-├── scripts/                        # 10 automation scripts
+├── scripts/                        # 14 automation scripts
 ├── grafana/dashboards/             # Dashboards
 ├── prometheus/                     # Alerts
 └── docs/                           # Documentation
@@ -531,11 +534,11 @@ For questions, issues, or suggestions, open an issue on GitHub:
 ## Version History
 
 ### v4.0.0 (December 2025)
-- 14 Terraform modules (including Defender, Purview, Naming)
+- 16 Terraform modules (including Defender, Purview, Naming, Disaster Recovery)
 - 23 AI agents for intelligent deployment orchestration
-- 25 GitHub Issues templates
-- 21 Golden Path templates for RHDH
-- 10 automation scripts
+- 28 GitHub Issues templates
+- 22 Golden Path templates for RHDH (including ADO to GitHub migration)
+- 14 automation scripts
 - 15 MCP Server configurations
 - Complete observability stack
 

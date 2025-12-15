@@ -89,3 +89,19 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# =============================================================================
+# WEBHOOK CONFIGURATION
+# =============================================================================
+
+variable "enable_webhook" {
+  description = "Enable webhook for image push notifications"
+  type        = bool
+  default     = false
+}
+
+variable "webhook_service_uri" {
+  description = "Webhook service URI for image push notifications"
+  type        = string
+  default     = ""
+}

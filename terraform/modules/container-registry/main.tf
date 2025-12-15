@@ -191,13 +191,15 @@ resource "azurerm_container_registry_scope_map" "readonly" {
 # =============================================================================
 
 resource "azurerm_container_registry_webhook" "image_push" {
+  count = var.enable_webhook && var.webhook_service_uri != "" ? 1 : 0
+
   name                = "imagepush"
   resource_group_name = var.resource_group_name
   registry_name       = azurerm_container_registry.main.name
   location            = var.location
 
-  service_uri = "https://placeholder.webhook.url/image-pushed" # Configure in tfvars
-  status      = "disabled"                                     # Enable after configuring actual URL
+  service_uri = var.webhook_service_uri
+  status      = "enabled"
   scope       = "*:*"
   actions     = ["push"]
 
@@ -206,10 +208,6 @@ resource "azurerm_container_registry_webhook" "image_push" {
   }
 
   tags = local.common_tags
-
-  lifecycle {
-    ignore_changes = [service_uri, status]
-  }
 }
 
 # =============================================================================

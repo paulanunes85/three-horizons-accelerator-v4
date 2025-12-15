@@ -1,3 +1,17 @@
+---
+name: "Golden Paths Agent"
+version: "1.0.0"
+horizon: "H2"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - github
+  - kubernetes
+dependencies:
+  - rhdh
+  - argocd
+---
+
 # Golden Paths Agent
 
 ## 🤖 Agent Identity

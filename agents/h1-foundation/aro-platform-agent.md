@@ -1,3 +1,18 @@
+---
+name: "ARO Platform Agent"
+version: "1.0.0"
+horizon: "H1"
+status: "stable"
+last_updated: "2025-12-15"
+mcp_servers:
+  - azure
+  - openshift
+  - helm
+dependencies:
+  - networking
+  - security
+---
+
 # ARO Platform Agent
 
 ## 🤖 Agent Identity
