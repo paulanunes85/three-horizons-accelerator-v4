@@ -58,8 +58,21 @@ This is the Three Horizons Accelerator v4.0.0 - an enterprise-grade platform acc
 | Helm values | `deploy/helm/` |
 | Golden Path templates | `golden-paths/` |
 | Agent specifications | `agents/` |
+| Skills (CLI references) | `skills/` |
 | Automation scripts | `scripts/` |
 | Documentation | `docs/` |
+
+## Skills
+
+Skills provide CLI reference documentation for Copilot context. Available skills:
+
+| Skill | Purpose |
+|-------|---------|
+| `azure-cli` | Azure CLI commands for resource management |
+| `terraform-cli` | Terraform CLI for infrastructure as code |
+| `kubectl-cli` | Kubernetes kubectl commands |
+| `argocd-cli` | ArgoCD GitOps operations |
+| `validation-scripts` | Reusable validation patterns |
 
 ## Security Requirements
 
