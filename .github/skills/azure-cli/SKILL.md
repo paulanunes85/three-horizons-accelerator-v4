@@ -1,6 +1,7 @@
 ---
 name: azure-cli
-description: Azure CLI comprehensive reference for resource management, AKS operations, Container Registry, Key Vault, networking, and identity management. Essential for Three Horizons Accelerator infrastructure operations.
+description: 'Azure CLI (az) reference for cloud infrastructure. Use when asked to create Azure resources, manage AKS/ACR/Key Vault, setup networking, configure RBAC. Covers az aks, az acr, az keyvault, az network, az identity commands.'
+license: Complete terms in LICENSE.txt
 ---
 
 # Azure CLI (az)

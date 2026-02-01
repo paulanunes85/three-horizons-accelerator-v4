@@ -1,3 +1,7 @@
+---
+description: 'Main GitHub Copilot instructions for Three Horizons Accelerator - project overview, technology stack, code standards, and common tasks'
+---
+
 # GitHub Copilot Instructions for Three Horizons Accelerator
 
 ## Project Overview
@@ -35,6 +39,15 @@ This is the Three Horizons Accelerator v4.0.0 - an enterprise-grade platform acc
 - Apply network policies
 - Use standard Kubernetes labels (app.kubernetes.io/*)
 
+### ARO (Azure Red Hat OpenShift)
+- Use `oc` CLI for OpenShift-specific operations
+- Install operators via OLM (Operator Lifecycle Manager)
+- Use OpenShift Routes instead of Ingress
+- Configure OAuth with Entra ID
+- Deploy RHDH using Red Hat RHDH Operator
+- Use OpenShift GitOps Operator for ArgoCD
+- Apply appropriate Security Context Constraints (SCCs)
+
 ### Python
 - Use Python 3.11+
 - Use FastAPI for APIs
@@ -58,7 +71,7 @@ This is the Three Horizons Accelerator v4.0.0 - an enterprise-grade platform acc
 | Helm values | `deploy/helm/` |
 | Golden Path templates | `golden-paths/` |
 | Agent specifications | `agents/` |
-| Skills (CLI references) | `skills/` |
+| Skills (CLI references) | `.github/skills/` |
 | Automation scripts | `scripts/` |
 | Documentation | `docs/` |
 

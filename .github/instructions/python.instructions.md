@@ -1,5 +1,6 @@
 ---
-applyTo: "**/*.py,**/python/**"
+description: 'Python coding standards, FastAPI patterns, type hints, error handling, and testing conventions for Three Horizons Accelerator services'
+applyTo: '**/*.py,**/python/**'
 ---
 
 # Python Coding Standards

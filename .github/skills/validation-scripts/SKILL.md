@@ -1,6 +1,7 @@
 ---
 name: validation-scripts
-description: Reusable validation patterns and scripts for Three Horizons Accelerator deployments. Includes Azure infrastructure, Kubernetes cluster, Terraform state, and GitOps validation patterns.
+description: 'Reusable validation patterns for infrastructure deployments. Use when asked to validate Azure resources, check K8s cluster health, verify Terraform state, detect drift, run compliance checks.'
+license: Complete terms in LICENSE.txt
 ---
 
 # Validation Scripts

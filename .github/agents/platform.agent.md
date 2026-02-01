@@ -1,6 +1,9 @@
 ---
 name: platform
-description: Platform Agent for Golden Paths, IDP, and developer experience
+description: 'Platform specialist for Golden Paths, RHDH templates, IDP configuration, and developer experience'
+tools: ['read', 'search', 'edit']
+model: 'Claude Sonnet 4.5'
+infer: true
 ---
 
 # Platform Agent

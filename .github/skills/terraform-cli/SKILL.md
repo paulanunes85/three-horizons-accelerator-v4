@@ -1,6 +1,7 @@
 ---
 name: terraform-cli
-description: Terraform CLI comprehensive reference for infrastructure as code operations. Covers init, plan, apply, state management, workspaces, imports, and advanced workflows for Azure infrastructure deployment.
+description: 'Terraform CLI reference for infrastructure as code. Use when asked to provision infrastructure, plan changes, apply configs, manage state, import resources. Covers terraform init, terraform plan, terraform apply, terraform state.'
+license: Complete terms in LICENSE.txt
 ---
 
 # Terraform CLI

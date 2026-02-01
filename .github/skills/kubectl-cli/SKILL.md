@@ -1,6 +1,7 @@
 ---
 name: kubectl-cli
-description: Kubernetes kubectl CLI comprehensive reference for cluster management, workload deployment, debugging, and operations. Essential for AKS/ARO cluster operations in Three Horizons Accelerator.
+description: 'Kubernetes kubectl CLI reference for cluster operations. Use when asked to deploy workloads, debug pods, check logs, apply manifests, configure RBAC. Covers kubectl apply, kubectl get, kubectl describe, kubectl logs, kubectl exec.'
+license: Complete terms in LICENSE.txt
 ---
 
 # kubectl CLI

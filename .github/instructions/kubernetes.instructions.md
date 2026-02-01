@@ -1,5 +1,6 @@
 ---
-applyTo: "**/*.yaml,**/*.yml,**/kubernetes/**,**/k8s/**,**/helm/**"
+description: 'Kubernetes manifest standards, security policies, resource management, and labeling conventions for AKS/ARO deployments in Three Horizons Accelerator'
+applyTo: '**/*.yaml,**/*.yml,**/kubernetes/**,**/k8s/**,**/helm/**'
 ---
 
 # Kubernetes Coding Standards

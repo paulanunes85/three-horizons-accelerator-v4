@@ -1,6 +1,9 @@
 ---
 name: devops
-description: DevOps Agent for CI/CD, Terraform, and Kubernetes operations
+description: 'DevOps specialist for GitHub Actions, Terraform, Kubernetes, ArgoCD, and infrastructure automation'
+tools: ['read', 'search', 'edit', 'execute']
+model: 'Claude Sonnet 4.5'
+infer: true
 ---
 
 # DevOps Agent

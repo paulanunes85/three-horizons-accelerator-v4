@@ -1,6 +1,7 @@
 ---
 name: argocd-cli
-description: ArgoCD CLI comprehensive reference for GitOps deployment, application management, sync operations, and repository management. Essential for Three Horizons Accelerator GitOps workflows.
+description: 'ArgoCD CLI reference for GitOps continuous delivery. Use when asked to deploy apps, sync manifests, check sync status, configure repos, rollback deployments. Covers argocd app sync, argocd app get, argocd repo add, argocd proj create.'
+license: Complete terms in LICENSE.txt
 ---
 
 # ArgoCD CLI

@@ -1,7 +1,6 @@
 ---
 name: generate-tests
 description: Generate comprehensive test suites for code
-mode: agent
 ---
 
 # Test Generation Agent

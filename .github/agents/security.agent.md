@@ -1,6 +1,9 @@
 ---
 name: security
-description: Security Agent for compliance, vulnerability scanning, and security best practices
+description: 'Security specialist for Azure compliance, vulnerability scanning, RBAC, and Defender configuration'
+tools: ['read', 'search', 'web']
+model: 'Claude Sonnet 4.5'
+infer: true
 ---
 
 # Security Agent

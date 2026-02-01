@@ -54,6 +54,65 @@ model_compatibility:
 
 ---
 
+## 🚦 Agent Workflow - Decision Flow
+
+> ⚠️ **CRITICAL**: Before executing ANY task, the agent MUST collect these decisions:
+
+```yaml
+onStart:
+  - prompt: "Platform Selection"
+    question: "Which platform will host Red Hat Developer Hub?"
+    options:
+      - "aks" # Azure Kubernetes Service
+      - "aro" # Azure Red Hat OpenShift
+    required: true
+    affects:
+      - installation_path
+      - operator_installation
+      - ingress_type
+    
+  - prompt: "Authentication Provider"
+    question: "Which authentication provider will be used?"
+    options:
+      - "entra-id" # Microsoft Entra ID (for GitHub EMU)
+      - "github"   # GitHub OAuth (for GH Enterprise Cloud)
+    required: true
+    affects:
+      - auth_configuration
+      - app_registration
+```
+
+### Decision Matrix
+
+| Decision | AKS Path | ARO Path |
+|----------|----------|----------|
+| OLM Installation | **Required** - Manual install v0.28+ | **Built-in** - via OperatorHub |
+| Operator Source | CatalogSource CR | OperatorHub UI or CLI |
+| Ingress Type | Kubernetes Ingress `webapprouting` | OpenShift Route (auto-created) |
+| Pull Secret | Required in both namespaces | Required + linked to SA |
+| RHDH Namespace | Separate: `rhdh-operator` + `rhdh` | Separate: `rhdh-operator` + `rhdh` |
+
+### Execution Flow
+
+```mermaid
+graph TD
+    A[Issue Created] --> B{Platform?}
+    B -->|AKS| C[Install OLM]
+    B -->|ARO| D[Use OperatorHub]
+    C --> E[Create Pull Secret]
+    D --> E
+    E --> F{Auth Provider?}
+    F -->|Entra ID| G[Register Azure AD App]
+    F -->|GitHub| H[Create GitHub App]
+    G --> I[Deploy RHDH Operator]
+    H --> I
+    I --> J[Create RHDH Instance]
+    J --> K[Configure Plugins]
+    K --> L[Validate Deployment]
+```
+
+---
+
 ## 🎯 Capabilities
 
 | Capability | Description | Complexity |
@@ -221,84 +280,115 @@ curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releas
 kubectl get pods -n olm
 ```
 
-### Step 2: Install Red Hat Ecosystem Catalog
+### Step 2: Create Operator Namespace and Pull Secret
 
 ```bash
-# Create pull secret for Red Hat registry
-kubectl create secret docker-registry rh-pull-secret \
-  --namespace rhdh \
+# Create namespace for RHDH Operator (separate from instance)
+kubectl create namespace rhdh-operator
+
+# Create pull secret for Red Hat registry in operator namespace
+kubectl -n rhdh-operator create secret docker-registry rhdh-pull-secret \
   --docker-server=registry.redhat.io \
   --docker-username="${RH_USERNAME}" \
-  --docker-password="${RH_PASSWORD}"
+  --docker-password="${RH_PASSWORD}" \
+  --docker-email="${RH_EMAIL}"
+```
 
-# Install catalog source
+### Step 3: Install Red Hat Catalog Source
+
+```bash
+# Install catalog source with pull secret
 kubectl apply -f - <<EOF
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: redhat-operators
-  namespace: olm
+  name: redhat-catalog
+  namespace: rhdh-operator
 spec:
   sourceType: grpc
-  image: registry.redhat.io/redhat/redhat-operator-index:v4.15
+  image: registry.redhat.io/redhat/redhat-operator-index:v4.19
   displayName: Red Hat Operators
   publisher: Red Hat
   secrets:
-    - rh-pull-secret
+    - rhdh-pull-secret
 EOF
 ```
 
-### Step 3: Install RHDH Operator
+### Step 4: Create Operator Group
 
 ```bash
-# Create subscription
+# Create operator group
+kubectl apply -f - <<EOF
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: rhdh-operator-group
+  namespace: rhdh-operator
+EOF
+```
+
+### Step 5: Install RHDH Operator
+
+```bash
+# Create subscription with specific version
 kubectl apply -f - <<EOF
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: rhdh
-  namespace: rhdh
+  namespace: rhdh-operator
 spec:
-  channel: fast-1.8
+  channel: fast
+  installPlanApproval: Automatic
   name: rhdh
-  source: redhat-operators
-  sourceNamespace: olm
+  source: redhat-catalog
+  sourceNamespace: rhdh-operator
+  startingCSV: rhdh-operator.v1.8.0
 EOF
 
-# Wait for operator
-kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=rhdh-operator -n rhdh --timeout=300s
+# Wait for operator deployment
+until kubectl -n rhdh-operator get deployment rhdh-operator &>/dev/null; do
+  echo -n .
+  sleep 3
+done
+echo "RHDH Operator Deployment created"
+
+# Patch operator deployment with pull secret
+kubectl -n rhdh-operator patch deployment rhdh-operator \
+  --patch '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"rhdh-pull-secret"}]}}}}' \
+  --type=merge
+
+# Wait for operator to be ready
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=rhdh-operator \
+  -n rhdh-operator --timeout=300s
 ```
 
-### Step 4: Create Ingress (AKS Only)
+### Step 6: Create Ingress (AKS Only)
 
 ```yaml
 # rhdh-ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: rhdh-ingress
+  name: my-rhdh-ingress
   namespace: rhdh
-  annotations:
-    kubernetes.io/ingress.class: "webapprouting.kubernetes.azure.com"
-    # For nginx:
-    # kubernetes.io/ingress.class: "nginx"
 spec:
   ingressClassName: webapprouting.kubernetes.azure.com
-  tls:
-    - hosts:
-        - developer.${DOMAIN}
-      secretName: rhdh-tls
   rules:
-    - host: developer.${DOMAIN}
-      http:
+    - http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: backstage-developer-hub
+                name: developer-hub  # Matches Backstage CR name
                 port:
                   name: http-backend
+```
+
+**Note**: For Azure Web Application Routing, enable it with:
+```bash
+az aks approuting enable --resource-group <your_ResourceGroup> --name <your_ClusterName>
 ```
 
 ---
@@ -462,9 +552,46 @@ integrations:
 
 ## 📦 Full RHDH Custom Resource
 
+### Step 1: Create Instance Namespace and Pull Secret
+
+```bash
+# Create namespace for RHDH instance (separate from operator)
+kubectl create namespace rhdh
+
+# Create pull secret in instance namespace
+kubectl -n rhdh create secret docker-registry my-rhdh-pull-secret \
+  --docker-server=registry.redhat.io \
+  --docker-username="${RH_USERNAME}" \
+  --docker-password="${RH_PASSWORD}" \
+  --docker-email="${RH_EMAIL}"
+
+# Link pull secret to default service account
+kubectl patch serviceaccount default \
+  -p '{"imagePullSecrets": [{"name": "my-rhdh-pull-secret"}]}' \
+  -n rhdh
+```
+
+### Step 2: Create Secrets (including BACKEND_SECRET)
+
+```bash
+# Generate BACKEND_SECRET for service-to-service authentication
+BACKEND_SECRET=$(openssl rand -base64 32)
+
+# Create secrets
+kubectl create secret generic my-rhdh-secrets \
+  --namespace rhdh \
+  --from-literal=BACKEND_SECRET="${BACKEND_SECRET}" \
+  --from-literal=GITHUB_APP_CLIENT_ID="${GITHUB_APP_CLIENT_ID}" \
+  --from-literal=GITHUB_APP_CLIENT_SECRET="${GITHUB_APP_CLIENT_SECRET}" \
+  --from-literal=POSTGRES_HOST="${POSTGRES_HOST}" \
+  --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+```
+
+### Step 3: Apply Backstage Custom Resource
+
 ```yaml
 # rhdh-instance.yaml
-apiVersion: rhdh.redhat.com/v1alpha1
+apiVersion: rhdh.redhat.com/v1alpha3
 kind: Backstage
 metadata:
   name: developer-hub
@@ -472,17 +599,23 @@ metadata:
 spec:
   application:
     replicas: 2
+    imagePullSecrets:
+      - my-rhdh-pull-secret
     
     appConfig:
+      mountPath: /opt/app-root/src
       configMaps:
         - name: app-config-rhdh
         
     extraEnvs:
       secrets:
-        - name: rhdh-secrets
+        - name: my-rhdh-secrets
         
+    route:
+      enabled: true  # For ARO - auto-creates Route
+      
   database:
-    enableLocalDb: false
+    enableLocalDb: false  # Use external PostgreSQL in production
     
 ---
 apiVersion: v1
@@ -498,6 +631,12 @@ data:
       
     backend:
       baseUrl: https://developer.${DOMAIN}
+      auth:
+        externalAccess:
+          - type: legacy
+            options:
+              subject: legacy-default-config
+              secret: "${BACKEND_SECRET}"
       database:
         client: pg
         connection:
@@ -505,6 +644,8 @@ data:
           port: 5432
           user: rhdh
           password: ${POSTGRES_PASSWORD}
+          ssl:
+            require: true
           
     # Auth config (Entra ID or GitHub - choose one)
     auth:

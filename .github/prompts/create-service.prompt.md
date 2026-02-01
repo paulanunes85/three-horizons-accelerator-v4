@@ -1,7 +1,6 @@
 ---
 name: create-service
 description: Create a new microservice using Golden Path templates
-mode: agent
 ---
 
 # Create New Microservice
