@@ -77,7 +77,7 @@ az                          # Root command
 ├── role                    # RBAC
 ├── group                   # Resource Groups
 ├── resource                # Generic resources
-├── deployment              # ARM/Bicep deployments
+├── deployment              # Terraform deployments
 ├── monitor                 # Monitoring
 ├── ad                      # Entra ID (Azure AD)
 └── extension               # CLI extensions

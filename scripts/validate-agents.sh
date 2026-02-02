@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 #
 # validate-agents.sh - Validate all agent specification files
 #
@@ -10,8 +10,11 @@
 #
 # Usage: ./scripts/validate-agents.sh [--verbose]
 #
+# NOTE: Uses zsh for associative array support on macOS
+#
 
 set -e
+setopt KSH_ARRAYS 2>/dev/null || true
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,8 +23,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Script directory (handle both bash and zsh)
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 AGENTS_DIR="$PROJECT_ROOT/agents"
 
@@ -73,35 +80,57 @@ REQUIRED_SECTIONS=(
     "Validation"
 )
 
-# Expected agent files
-declare -A EXPECTED_AGENTS=(
-    # H1 Foundation
-    ["h1-foundation/infrastructure-agent.md"]="Infrastructure Agent"
-    ["h1-foundation/networking-agent.md"]="Networking Agent"
-    ["h1-foundation/security-agent.md"]="Security Agent"
-    ["h1-foundation/container-registry-agent.md"]="Container Registry Agent"
-    ["h1-foundation/database-agent.md"]="Database Agent"
-    ["h1-foundation/defender-cloud-agent.md"]="Defender Cloud Agent"
-    ["h1-foundation/aro-platform-agent.md"]="ARO Platform Agent"
-    ["h1-foundation/purview-governance-agent.md"]="Purview Governance Agent"
-    # H2 Enhancement
-    ["h2-enhancement/gitops-agent.md"]="GitOps Agent"
-    ["h2-enhancement/observability-agent.md"]="Observability Agent"
-    ["h2-enhancement/rhdh-portal-agent.md"]="RHDH Portal Agent"
-    ["h2-enhancement/golden-paths-agent.md"]="Golden Paths Agent"
-    ["h2-enhancement/github-runners-agent.md"]="GitHub Runners Agent"
-    # H3 Innovation
-    ["h3-innovation/ai-foundry-agent.md"]="AI Foundry Agent"
-    ["h3-innovation/mlops-pipeline-agent.md"]="MLOps Pipeline Agent"
-    ["h3-innovation/sre-agent-setup.md"]="SRE Agent Setup"
-    ["h3-innovation/multi-agent-setup.md"]="Multi-Agent Setup"
-    # Cross-Cutting
-    ["cross-cutting/validation-agent.md"]="Validation Agent"
-    ["cross-cutting/migration-agent.md"]="Migration Agent"
-    ["cross-cutting/rollback-agent.md"]="Rollback Agent"
-    ["cross-cutting/cost-optimization-agent.md"]="Cost Optimization Agent"
-    ["cross-cutting/github-app-agent.md"]="GitHub App Agent"
-    ["cross-cutting/identity-federation-agent.md"]="Identity Federation Agent"
+# Expected agent files (using parallel arrays for portability)
+AGENT_PATHS=(
+    "h1-foundation/infrastructure-agent.md"
+    "h1-foundation/networking-agent.md"
+    "h1-foundation/security-agent.md"
+    "h1-foundation/container-registry-agent.md"
+    "h1-foundation/database-agent.md"
+    "h1-foundation/defender-cloud-agent.md"
+    "h1-foundation/aro-platform-agent.md"
+    "h1-foundation/purview-governance-agent.md"
+    "h2-enhancement/gitops-agent.md"
+    "h2-enhancement/observability-agent.md"
+    "h2-enhancement/rhdh-portal-agent.md"
+    "h2-enhancement/golden-paths-agent.md"
+    "h2-enhancement/github-runners-agent.md"
+    "h3-innovation/ai-foundry-agent.md"
+    "h3-innovation/mlops-pipeline-agent.md"
+    "h3-innovation/sre-agent-setup.md"
+    "h3-innovation/multi-agent-setup.md"
+    "cross-cutting/validation-agent.md"
+    "cross-cutting/migration-agent.md"
+    "cross-cutting/rollback-agent.md"
+    "cross-cutting/cost-optimization-agent.md"
+    "cross-cutting/github-app-agent.md"
+    "cross-cutting/identity-federation-agent.md"
+)
+
+AGENT_NAMES=(
+    "Infrastructure Agent"
+    "Networking Agent"
+    "Security Agent"
+    "Container Registry Agent"
+    "Database Agent"
+    "Defender Cloud Agent"
+    "ARO Platform Agent"
+    "Purview Governance Agent"
+    "GitOps Agent"
+    "Observability Agent"
+    "RHDH Portal Agent"
+    "Golden Paths Agent"
+    "GitHub Runners Agent"
+    "AI Foundry Agent"
+    "MLOps Pipeline Agent"
+    "SRE Agent Setup"
+    "Multi-Agent Setup"
+    "Validation Agent"
+    "Migration Agent"
+    "Rollback Agent"
+    "Cost Optimization Agent"
+    "GitHub App Agent"
+    "Identity Federation Agent"
 )
 
 # Valid MCP servers (exported for use by other scripts)
@@ -200,11 +229,13 @@ validate_structure() {
 validate_agents() {
     print_header "Validating Agent Specifications"
 
-    for file_path in "${!EXPECTED_AGENTS[@]}"; do
-        ((TOTAL_AGENTS++))
-        if validate_agent "$file_path" "${EXPECTED_AGENTS[$file_path]}"; then
-            ((VALID_AGENTS++))
+    local i=0
+    for file_path in "${AGENT_PATHS[@]}"; do
+        ((TOTAL_AGENTS++)) || true
+        if validate_agent "$file_path" "${AGENT_NAMES[$i]}"; then
+            ((VALID_AGENTS++)) || true
         fi
+        ((i++)) || true
     done
 }
 
@@ -260,7 +291,7 @@ validate_crossrefs() {
                     fi
                     ((broken_links++))
                 fi
-            done < <(grep -oP '\[.*?\]\(\K[^)]+(?=\))' "$file" 2>/dev/null || true)
+            done < <(grep -oE '\[.*\]\([^)]+\)' "$file" 2>/dev/null | sed 's/.*(\([^)]*\))/\1/' || true)
         fi
     done
 

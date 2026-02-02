@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # RHDH Software Template for provisioning Azure infrastructure.
-# Supports Terraform and Bicep with GitOps-driven infrastructure.
+# Uses Terraform with Azure providers following Microsoft best practices.
 #
 # Horizon: H1 - Foundation
 # Use Case: Self-service infrastructure provisioning with governance
@@ -17,12 +17,11 @@ metadata:
   title: "H1: Provision Azure Infrastructure"
   description: |
     Self-service infrastructure provisioning for Azure resources.
-    Supports Terraform and Bicep with built-in compliance and cost controls.
+    Uses Terraform with Azure providers following Microsoft best practices.
   tags:
     - h1-foundation
     - infrastructure
     - terraform
-    - bicep
     - azure
     - iac
   annotations:
@@ -95,12 +94,8 @@ spec:
           default: terraform
           enum:
             - terraform
-            - bicep
-            - pulumi
           enumNames:
-            - Terraform
-            - Bicep (Azure native)
-            - Pulumi
+            - Terraform (Azure providers)
 
         terraformVersion:
           title: Terraform Version

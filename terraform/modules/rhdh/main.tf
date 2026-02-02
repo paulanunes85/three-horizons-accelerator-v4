@@ -389,9 +389,9 @@ resource "helm_release" "rhdh" {
         replicas = var.replicas
 
         image = {
-          registry   = "quay.io"
+          registry   = "registry.redhat.io"
           repository = "rhdh/rhdh-hub-rhel9"
-          tag        = "1.2"
+          tag        = "1.8"
         }
 
         appConfig = {

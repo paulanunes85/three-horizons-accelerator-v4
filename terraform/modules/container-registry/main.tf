@@ -67,25 +67,19 @@ resource "azurerm_container_registry" "main" {
   # Public network access
   public_network_access_enabled = false
 
+  # Geo-replication (Premium only)
+  dynamic "georeplications" {
+    for_each = var.sku == "Premium" ? toset(var.geo_replication_locations) : []
+    content {
+      location                = georeplications.value
+      zone_redundancy_enabled = var.environment == "prod"
+      tags                    = local.common_tags
+    }
+  }
+
   identity {
     type = "SystemAssigned"
   }
-
-  tags = local.common_tags
-}
-
-# =============================================================================
-# GEO-REPLICATION (Premium only)
-# =============================================================================
-
-resource "azurerm_container_registry_replication" "replicas" {
-  for_each = var.sku == "Premium" ? toset(var.geo_replication_locations) : []
-
-  name                  = each.key
-  container_registry_id = azurerm_container_registry.main.id
-  location              = each.key
-
-  zone_redundancy_enabled = var.environment == "prod"
 
   tags = local.common_tags
 }
@@ -241,7 +235,7 @@ resource "azurerm_monitor_diagnostic_setting" "acr" {
     category = "ContainerRegistryLoginEvents"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
   }
 }

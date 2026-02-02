@@ -109,7 +109,6 @@ spec:
             - go
             - typescript
             - terraform
-            - bicep
           enumNames:
             - Python
             - Node.js
@@ -118,7 +117,6 @@ spec:
             - Go
             - TypeScript
             - Terraform
-            - Bicep
 
         languageVersion:
           title: Language Version

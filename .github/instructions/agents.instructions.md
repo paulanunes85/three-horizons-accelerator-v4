@@ -185,7 +185,7 @@ Reference MCP servers using consistent format:
 
 ### Azure Operations
 - `mcp_azure_*` - Azure resource management
-- `mcp_bicep_*` - Infrastructure as Code
+- `mcp_com_microsoft_*` - Azure Terraform best practices
 
 ### GitHub Operations
 - `mcp_github_*` - Repository and workflow management

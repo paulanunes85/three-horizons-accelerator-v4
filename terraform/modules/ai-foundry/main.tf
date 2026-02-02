@@ -322,7 +322,7 @@ resource "azurerm_monitor_diagnostic_setting" "openai" {
     category = "Trace"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
   }
 }
@@ -338,7 +338,7 @@ resource "azurerm_monitor_diagnostic_setting" "search" {
     category = "OperationLogs"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
   }
 }

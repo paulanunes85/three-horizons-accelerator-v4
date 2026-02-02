@@ -16,7 +16,7 @@ Three Horizons uses a **hybrid approach**:
 │  VS Code MCPs (API Operations)   │  Terminal (CLI Operations)│
 │  ─────────────────────────────   │  ─────────────────────────│
 │  • Azure DevOps (repos, PRs)     │  • az login/aks/acr       │
-│  • Bicep schemas & AVM           │  • terraform plan/apply   │
+│  • Terraform Registry            │  • terraform plan/apply   │
 │  • Firecrawl (web search)        │  • kubectl apply/get      │
 │  • Apify (data extraction)       │  • helm install/upgrade   │
 │                                  │  • argocd sync            │
@@ -25,18 +25,16 @@ Three Horizons uses a **hybrid approach**:
 
 ## Available VS Code MCPs
 
-### 1. Bicep / Azure Infrastructure
+### 1. Terraform / Azure Infrastructure
 
-**Prefix:** `mcp_bicep_experim_*`
+**Prefix:** `mcp_com_microsoft_*` (for Azure best practices)
 
 | Tool | Purpose |
 |------|---------|
-| `get_az_resource_type_schema` | Get Azure resource JSON schemas |
-| `get_bicep_best_practices` | Bicep coding best practices |
-| `list_avm_metadata` | List Azure Verified Modules |
-| `list_az_resource_types_for_provider` | List resource types by provider |
+| `get_azure_bestpractices` | Azure Terraform best practices |
+| `azureterraformbestpractices` | Terraform coding patterns |
 
-**Usage:** H1 Foundation - Infrastructure schema validation
+**Usage:** H1 Foundation - Infrastructure provisioning with Terraform
 
 ### 2. Azure DevOps
 
@@ -104,8 +102,8 @@ Three Horizons uses a **hybrid approach**:
 Use `tool_search_tool_regex` to find available tools:
 
 ```json
-// Find all Bicep tools
-{ "pattern": "^mcp_bicep" }
+// Find all Azure MCP tools
+{ "pattern": "^mcp_com_microsoft" }
 
 // Find Azure DevOps repo tools
 { "pattern": "^mcp_microsoft_azu_repo" }
@@ -126,8 +124,7 @@ Use `tool_search_tool_regex` to find available tools:
 
 ```bash
 # MCP Operations
-- mcp_bicep_experim_get_az_resource_type_schema  # Validate resource configs
-- mcp_bicep_experim_list_avm_metadata             # Find verified modules
+- mcp_com_microsoft_get_azure_bestpractices       # Azure Terraform patterns
 - mcp_microsoft_azu_pipelines_run_pipeline        # Deploy infrastructure
 - mcp_microsoft_azu_repo_create_pull_request      # Create infra PRs
 

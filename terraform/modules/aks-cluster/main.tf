@@ -56,17 +56,17 @@ resource "azurerm_kubernetes_cluster" "main" {
   # SYSTEM NODE POOL
   # ==========================================================================
   default_node_pool {
-    name                = var.default_node_pool.name
-    vm_size             = var.default_node_pool.vm_size
-    node_count          = var.default_node_pool.node_count
-    zones               = var.default_node_pool.zones
-    vnet_subnet_id      = var.network_config.nodes_subnet_id
+    name                 = var.default_node_pool.name
+    vm_size              = var.default_node_pool.vm_size
+    node_count           = var.default_node_pool.node_count
+    zones                = var.default_node_pool.zones
+    vnet_subnet_id       = var.network_config.nodes_subnet_id
     min_count            = var.default_node_pool.enable_auto_scaling ? var.default_node_pool.min_count : null
     max_count            = var.default_node_pool.enable_auto_scaling ? var.default_node_pool.max_count : null
     auto_scaling_enabled = var.default_node_pool.enable_auto_scaling
-    os_disk_size_gb     = var.default_node_pool.os_disk_size_gb
-    os_disk_type        = var.default_node_pool.os_disk_type
-    max_pods            = var.default_node_pool.max_pods
+    os_disk_size_gb      = var.default_node_pool.os_disk_size_gb
+    os_disk_type         = var.default_node_pool.os_disk_type
+    max_pods             = var.default_node_pool.max_pods
 
     # Pod subnet for Azure CNI Overlay
     pod_subnet_id = var.network_config.pods_subnet_id
@@ -120,6 +120,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   # ==========================================================================
   azure_active_directory_role_based_access_control {
     azure_rbac_enabled = true
+    tenant_id          = var.tenant_id
   }
 
   # ==========================================================================
@@ -309,9 +310,8 @@ resource "azurerm_monitor_diagnostic_setting" "aks" {
   }
 
   # Metrics
-  metric {
+  enabled_metric {
     category = "AllMetrics"
-    enabled  = true
   }
 }
 
