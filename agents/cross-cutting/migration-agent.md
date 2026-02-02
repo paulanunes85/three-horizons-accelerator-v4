@@ -1,13 +1,13 @@
 ---
 name: "Migration Agent"
-version: "2.0.0"
+version: "2.0.1"
 horizon: "cross-cutting"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - github
-  - azure
-  - azure-devops
+last_updated: "2026-02-02"
+skills:
+  - github-cli
+  - azure-cli
+  - validation-scripts
 dependencies: []
 playbook_reference: "https://devblogs.microsoft.com/all-things-azure/azure-devops-to-github-migration-playbook-unlocking-agentic-devops/"
 ---

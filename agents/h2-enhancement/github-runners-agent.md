@@ -1,16 +1,19 @@
 ---
 name: "GitHub Runners Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H2"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - kubernetes
-  - github
+last_updated: "2026-02-02"
+skills:
+  - terraform-cli
+  - kubectl-cli
+  - github-cli
+  - validation-scripts
 dependencies:
-  - github-runners
-  - aks-cluster
+  - infrastructure-agent
+  - security-agent
+  - github-app-agent
+  - identity-federation-agent
 ---
 
 # GitHub Runners Agent

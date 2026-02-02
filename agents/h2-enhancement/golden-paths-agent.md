@@ -1,15 +1,16 @@
 ---
 name: "Golden Paths Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H2"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - github
-  - kubernetes
+last_updated: "2026-02-02"
+skills:
+  - kubectl-cli
+  - github-cli
+  - validation-scripts
 dependencies:
-  - rhdh
-  - argocd
+  - rhdh-portal-agent
+  - gitops-agent
 ---
 
 # Golden Paths Agent

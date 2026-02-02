@@ -1,16 +1,18 @@
 ---
 name: "ARO Platform Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H1"
-status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - openshift
-  - helm
+status: "deprecated"
+last_updated: "2026-02-02"
+skills:
+  - azure-cli
+  - kubectl-cli
+  - helm-cli
+  - validation-scripts
 dependencies:
-  - networking
-  - security
+  - networking-agent
+  - security-agent
+note: "ARO removed from roadmap. AKS is preferred platform. Marked as deprecated."
 ---
 
 # ARO Platform Agent

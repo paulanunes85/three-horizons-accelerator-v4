@@ -1,18 +1,21 @@
 ---
 name: "RHDH Portal Agent"
-version: "2.0.0"
+version: "2.0.1"
 horizon: "H2"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - kubernetes
-  - helm
-  - github
+last_updated: "2026-02-02"
+skills:
+  - kubectl-cli
+  - helm-cli
+  - github-cli
+  - azure-cli
+  - validation-scripts
 dependencies:
-  - rhdh
-  - databases
-  - security
+  - infrastructure-agent
+  - gitops-agent
+  - database-agent
+  - security-agent
+  - github-app-agent
 ---
 
 # RHDH Portal Agent (Dual Platform)

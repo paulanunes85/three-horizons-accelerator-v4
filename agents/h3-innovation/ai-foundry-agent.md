@@ -1,16 +1,17 @@
 ---
 name: "AI Foundry Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H3"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - terraform
+last_updated: "2026-02-02"
+skills:
+  - terraform-cli
+  - azure-cli
+  - validation-scripts
 dependencies:
-  - ai-foundry
-  - networking
-  - security
+  - infrastructure-agent
+  - networking-agent
+  - security-agent
 ---
 
 # AI Foundry Agent

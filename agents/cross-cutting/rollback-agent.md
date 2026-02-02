@@ -1,15 +1,18 @@
 ---
 name: "Rollback Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "cross-cutting"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - kubernetes
-  - terraform
-  - helm
+last_updated: "2026-02-02"
+skills:
+  - kubectl-cli
+  - terraform-cli
+  - helm-cli
+  - argocd-cli
+  - validation-scripts
 dependencies:
-  - argocd
+  - gitops-agent
+  - validation-agent
 ---
 
 # Rollback Agent

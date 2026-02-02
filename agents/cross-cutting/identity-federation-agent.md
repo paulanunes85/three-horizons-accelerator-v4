@@ -1,14 +1,15 @@
 ---
 name: "Identity Federation Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "cross-cutting"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - github
+last_updated: "2026-02-02"
+skills:
+  - azure-cli
+  - github-cli
+  - validation-scripts
 dependencies:
-  - security
+  - security-agent
 ---
 
 # Identity Federation Agent

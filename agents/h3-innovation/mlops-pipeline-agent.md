@@ -1,15 +1,18 @@
 ---
 name: "MLOps Pipeline Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H3"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - kubernetes
+last_updated: "2026-02-02"
+skills:
+  - terraform-cli
+  - azure-cli
+  - kubectl-cli
+  - validation-scripts
 dependencies:
-  - ai-foundry
-  - observability
+  - ai-foundry-agent
+  - infrastructure-agent
+  - observability-agent
 ---
 
 # MLOps Pipeline Agent

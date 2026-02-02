@@ -1,15 +1,17 @@
 ---
 name: "Container Registry Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H1"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - kubernetes
+last_updated: "2026-02-02"
+skills:
+  - terraform-cli
+  - azure-cli
+  - kubectl-cli
+  - validation-scripts
 dependencies:
-  - container-registry
-  - networking
+  - infrastructure-agent
+  - networking-agent
 ---
 
 # Container Registry Agent
@@ -18,18 +20,65 @@ dependencies:
 
 ```yaml
 name: container-registry-agent
-version: 1.0.0
+version: 2.0.0
 horizon: H1 - Foundation
 description: |
-  Manages Azure Container Registry (ACR) setup and configuration.
-  Creates registry, configures geo-replication, sets up retention
-  policies, and integrates with AKS.
+  Manages Azure Container Registry (ACR) setup.
+  Creates registry, geo-replication, retention policies,
+  and AKS integration.
+  
+  Version 2.0 updates:
+  - Real skills integration (no MCP servers)
+  - Explicit consent for ACR operations
+  - AVM module for ACR
+  - Fixed georeplications block (no deprecated azurerm_container_registry_replication)
   
 author: Microsoft LATAM Platform Engineering
-model_compatibility:
-  - GitHub Copilot Agent Mode
-  - GitHub Copilot Coding Agent
-  - Claude with MCP
+```
+
+---
+
+## 💡 Skills Integration
+
+| Skill | Usage |
+|-------|-------|
+| **terraform-cli** | ACR provisioning |
+| **azure-cli** | ACR management, image operations |
+| **kubectl-cli** | AKS integration validation |
+| **validation-scripts** | ACR health checks |
+
+## 🛑 Explicit Consent Required
+
+- ✋ `terraform apply` - ACR creation/modification
+- ✋ `az acr delete` - ACR deletion
+- ✋ `az acr repository delete` - Image deletion
+- ✋ Geo-replication changes
+
+## 🏭 Azure Verified Modules (AVM)
+
+| Resource | AVM Module |
+|----------|------------|
+| Container Registry | `Azure/avm-res-containerregistry-registry/azurerm` |
+
+**Usage**:
+```hcl
+module "acr" {
+  source  = "Azure/avm-res-containerregistry-registry/azurerm"
+  version = "~> 0.3.0"
+  
+  name                = module.naming.container_registry
+  resource_group_name = azurerm_resource_group.main.name
+  location            = var.location
+  sku                 = "Premium"
+  
+  # Georeplications (not separate resource)
+  georeplications = [
+    { location = "brazilsouth", zone_redundancy_enabled = true },
+    { location = "eastus2", zone_redundancy_enabled = true }
+  ]
+  
+  enable_telemetry = var.enable_telemetry
+}
 ```
 
 ---

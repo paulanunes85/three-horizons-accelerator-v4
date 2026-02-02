@@ -1,17 +1,18 @@
 ---
 name: "Security Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H1"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - terraform
-  - kubernetes
+last_updated: "2026-02-02"
+skills:
+  - terraform-cli
+  - azure-cli
+  - kubectl-cli
+  - validation-scripts
 dependencies:
-  - security
-  - defender
-  - external-secrets
+  - infrastructure-agent
+  - networking-agent
+  - defender-cloud-agent
 ---
 
 # Security Agent
@@ -20,19 +21,44 @@ dependencies:
 
 ```yaml
 name: security-agent
-version: 1.0.0
+version: 2.0.0
 horizon: H1 - Foundation
 description: |
   Configures security foundations for the platform.
   Workload Identity, RBAC, Network Policies, Azure Policies,
   Key Vault integration, and Defender for Cloud.
   
+  Version 2.0 updates:
+  - Replaced fictional MCP servers with real skills
+  - Added explicit consent for RBAC/policy changes
+  - Enhanced validation scripts
+  - Added Azure Verified Modules for Key Vault and identities
+  
 author: Microsoft LATAM Platform Engineering
-model_compatibility:
-  - GitHub Copilot Agent Mode
-  - GitHub Copilot Coding Agent
-  - Claude with MCP
 ```
+
+---
+
+## 💡 Skills Integration
+
+This agent leverages:
+
+| Skill | Usage |
+|-------|-------|
+| **terraform-cli** | Terraform for security resources |
+| **azure-cli** | Azure RBAC, Key Vault, Policies |
+| **kubectl-cli** | Kubernetes RBAC, Network Policies |
+| **validation-scripts** | Security validation |
+
+## 🛑 Explicit Consent Required
+
+- ✋ `terraform apply` - Security infrastructure
+- ✋ `az role assignment create` - RBAC assignments
+- ✋ `az policy assignment create` - Azure Policy
+- ✋ `kubectl apply` - Network Policies
+- ✋ `az keyvault delete` - Key Vault deletion
+
+**Default**: No action without explicit "yes".
 
 ---
 

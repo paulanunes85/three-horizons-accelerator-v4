@@ -1,13 +1,15 @@
 ---
 name: "GitOps Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H2"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - kubernetes
-  - github
+last_updated: "2026-02-02"
+skills:
+  - argocd-cli
+  - kubectl-cli
+  - helm-cli
+  - github-cli
+  - validation-scripts
 dependencies:
   - argocd
   - aks-cluster
@@ -19,18 +21,58 @@ dependencies:
 
 ```yaml
 name: gitops-agent
-version: 1.0.0
+version: 2.0.0
 horizon: H2 - Enhancement
 description: |
   Configures ArgoCD GitOps platform on AKS clusters.
   Creates ApplicationSets, Projects, RBAC, notifications, and sync policies.
   Establishes GitOps workflows for application deployment.
   
+  Version 2.0 updates:
+  - Replaced fictional MCP servers with real skills from .github/skills/
+  - Added explicit consent patterns for destructive operations
+  - Enhanced validation with real scripts
+  - Integrated ArgoCD CLI, Helm CLI, kubectl CLI best practices
+  
 author: Microsoft LATAM Platform Engineering
 model_compatibility:
   - GitHub Copilot Agent Mode
   - GitHub Copilot Coding Agent
   - Claude with MCP
+```
+
+---
+
+## 💡 Skills Integration
+
+This agent leverages the following skills from `.github/skills/`:
+
+| Skill | Path | Usage |
+|-------|------|-------|
+| **argocd-cli** | `.github/skills/argocd-cli/` | ArgoCD CLI operations - app sync, repo add, project create |
+| **kubectl-cli** | `.github/skills/kubectl-cli/` | Kubernetes operations - namespace, secret, RBAC management |
+| **helm-cli** | `.github/skills/helm-cli/` | Helm chart deployment for ArgoCD installation |
+| **github-cli** | `.github/skills/github-cli/` | GitHub repository credentials, deploy keys, webhook setup |
+| **validation-scripts** | `.github/skills/validation-scripts/` | Post-deployment validation and health checks |
+
+## 🛑 Explicit Consent Required
+
+**IMPORTANT**: This agent will request explicit user confirmation before executing:
+
+- ✋ `helm install argocd` - Install ArgoCD via Helm (creates namespace, deployments)
+- ✋ `argocd app sync` - Synchronize applications (triggers deployments)
+- ✋ `kubectl delete namespace argocd` - Delete ArgoCD installation
+- ✋ `argocd app delete` - Delete application from ArgoCD
+- ✋ `argocd proj delete` - Delete ArgoCD project
+- ✋ Any command modifying cluster state or application deployments
+
+**Default behavior**: When in doubt, **no action** is taken until explicit "yes" is received.
+
+Example prompts:
+```
+Should I proceed with installing ArgoCD in the 'argocd' namespace? (yes/no)
+Should I proceed with syncing 47 applications? This may trigger production deployments. (yes/no)
+Should I proceed with deleting project 'team-alpha'? This will affect 12 applications. (yes/no)
 ```
 
 ---

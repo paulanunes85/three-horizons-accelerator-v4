@@ -4,6 +4,32 @@
 >
 > Intelligent deployment orchestration for the Three Horizons Platform
 
+## 🎯 Latest Updates (v2.0 - February 2026)
+
+**Major improvements to agent architecture:**
+
+✅ **Skills Integration** - Agents now leverage real skills from [`.github/skills/`](../.github/skills/):
+- `terraform-cli`, `azure-cli`, `kubectl-cli`, `argocd-cli`, `helm-cli`, `github-cli`, `validation-scripts`
+
+✅ **Explicit Consent Patterns** - Dangerous operations require confirmation:
+- `terraform apply`, `az resource delete`, `kubectl delete` - Default: "no action" when in doubt
+
+✅ **Best Practices**:
+- Terraform quality checks (tflint, tfsec, terraform-docs)
+- Azure Verified Modules (AVM) references
+- Pre-commit hooks
+
+✅ **Validation Enhancement** - Real validation scripts:
+- `validate-azure-resources.sh`, `validate-k8s-cluster.sh`, `detect-drift.sh`
+
+✅ **Agent Framework Integration** - Multi-agent orchestration via [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
+
+📚 **New Documentation**:
+- [Agent Validation Report](AGENT_VALIDATION_REPORT.md) - Compliance analysis
+- [Agent Integration Guide](AGENT_INTEGRATION_GUIDE.md) - Multi-agent patterns
+
+---
+
 ## Quick Reference
 
 | Category | Agents | Purpose |
@@ -14,6 +40,21 @@
 | [Cross-Cutting](./cross-cutting/) | 6 | Utilities (validation, migration, rollback, cost optimization) |
 
 **Total: 23 agents | 10,362 lines of specifications**
+
+---
+
+## 📚 Documentation
+
+| Document | Description | Size |
+|----------|-------------|------|
+| **[Executive Summary](EXECUTIVE_SUMMARY.md)** | Complete v2.0 update overview | Executive |
+| **[Quick Start Guide](QUICK_START_GUIDE.md)** | How to use agents v2.0 | User Guide |
+| **[Agent Template](AGENT_TEMPLATE.md)** | v2.0 template for new agents | Template |
+| **[Validation Report](AGENT_VALIDATION_REPORT.md)** | Compliance analysis & recommendations | Technical |
+| **[Integration Guide](AGENT_INTEGRATION_GUIDE.md)** | Multi-agent orchestration patterns | Technical |
+| **[Update Summary](AGENTS_V2_UPDATE_SUMMARY.md)** | Detailed v2.0 changes | Technical |
+| **[Deployment Sequence](DEPLOYMENT_SEQUENCE.md)** | H1→H2→H3 deployment order | Reference |
+| **[Dependency Graph](DEPENDENCY_GRAPH.md)** | Agent dependencies visualization | Reference |
 
 ---
 

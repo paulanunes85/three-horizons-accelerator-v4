@@ -1,16 +1,18 @@
 ---
 name: "Database Agent"
-version: "1.0.0"
+version: "2.0.0"
 horizon: "H1"
 status: "stable"
-last_updated: "2025-12-15"
-mcp_servers:
-  - azure
-  - terraform
-  - kubernetes
+last_updated: "2026-02-02"
+skills:
+  - terraform-cli
+  - azure-cli
+  - kubectl-cli
+  - validation-scripts
 dependencies:
-  - databases
-  - purview
+  - infrastructure-agent
+  - networking-agent
+  - security-agent
 ---
 
 # Database Agent
@@ -19,19 +21,49 @@ dependencies:
 
 ```yaml
 name: database-agent
-version: 1.0.0
+version: 2.0.0
 horizon: H1 - Foundation
 description: |
-  Provisions and configures managed databases for the platform.
+  Provisions and configures managed databases.
   Azure PostgreSQL Flexible Server, Azure Cache for Redis,
-  Cosmos DB, and Azure SQL as needed.
+  Cosmos DB, and Azure SQL.
+  
+  Version 2.0 updates:
+  - Replaced fictional MCP servers with real skills
+  - Added explicit consent for database operations
+  - Added AVM modules for PostgreSQL, Cosmos DB
+  - Enhanced backup and HA validation
   
 author: Microsoft LATAM Platform Engineering
-model_compatibility:
-  - GitHub Copilot Agent Mode
-  - GitHub Copilot Coding Agent
-  - Claude with MCP
 ```
+
+---
+
+## 💡 Skills Integration
+
+| Skill | Usage |
+|-------|-------|
+| **terraform-cli** | Database provisioning |
+| **azure-cli** | Database management, backups |
+| **kubectl-cli** | Connection validation |
+| **validation-scripts** | Database health checks |
+
+## 🛑 Explicit Consent Required
+
+- ✋ `terraform apply` - Database creation
+- ✋ `az postgres flexible-server delete` - Database deletion
+- ✋ `az cosmosdb delete` - Cosmos DB deletion
+- ✋ Any backup deletion or HA configuration change
+
+**Default**: No action without confirmation.
+
+## 🏭 Azure Verified Modules (AVM)
+
+| Resource | AVM Module |
+|----------|------------|
+| PostgreSQL | `Azure/avm-res-dbforpostgresql-flexibleserver/azurerm` |
+| Cosmos DB | `Azure/avm-res-documentdb-databaseaccount/azurerm` |
+| Redis Cache | `Azure/avm-res-cache-redis/azurerm` |
 
 ---
 
