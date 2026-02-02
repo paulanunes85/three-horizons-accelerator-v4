@@ -16,6 +16,40 @@ dependencies:
 
 # AI Foundry Agent
 
+## ⚠️ Explicit Consent Required
+
+**CRITICAL**: This agent creates AI resources with significant cost implications. Always obtain explicit approval before proceeding.
+
+**User Consent Prompt:**
+```markdown
+🤖 **Azure AI Foundry Deployment Request**
+
+This action will:
+- ✅ Create AI Foundry project (Cognitive Services account)
+- ✅ Deploy AI models (GPT-4o, embeddings, etc.)
+- ✅ Create AI Search service (if RAG enabled)
+- ✅ Deploy AI Agent (if enabled)
+- ✅ Enable Content Safety filters
+- ⚠️ **Significant monthly costs apply**
+
+**Estimated Monthly Costs:**
+- AI Models: $100-$10,000+ (depends on TPM capacity)
+  - GPT-4o: ~$3-$30/1M tokens
+  - Text-embedding: ~$0.10/1M tokens
+- AI Search: $250-$2,500 (Standard/S1-S3)
+- Storage: $20-$100/month
+
+**Configuration:**
+- Models to Deploy: ${MODELS_LIST}
+- RAG Enabled: ${RAG_ENABLED}
+- AI Agent: ${AGENT_ENABLED}
+- TPM Capacity: ${TPM_CAPACITY}K
+
+Type **"approve:ai-foundry capacity={TPM}"** to proceed or **"reject"** to cancel.
+```
+
+**Approval Format:** `approve:ai-foundry models={list} capacity={TPM} rag={true|false}`
+
 ## 🤖 Agent Identity
 
 ```yaml
@@ -624,7 +658,177 @@ validation_checks:
 
 ---
 
-## 💬 Agent Communication
+## � GitHub Actions Workflow
+
+**Workflow File:** `.github/workflows/ai-foundry-deploy.yml`
+
+```yaml
+name: Deploy Azure AI Foundry
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'Project name'
+        required: true
+      models:
+        description: 'Models to deploy (comma-separated)'
+        required: true
+        default: 'gpt-4o,text-embedding-3-large'
+      rag_enabled:
+        description: 'Enable RAG with AI Search'
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  deploy-ai-foundry:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'agent:ai-foundry') && contains(github.event.issue.labels.*.name, 'approved')) ||
+      (github.event_name == 'workflow_dispatch')
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Parse issue configuration
+        if: github.event_name == 'issues'
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+        with:
+          template-path: .github/ISSUE_TEMPLATE/ai-foundry.yml
+      
+      - name: Set environment variables
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "PROJECT_NAME=${{ github.event.inputs.project_name }}" >> $GITHUB_ENV
+            echo "MODELS=${{ github.event.inputs.models }}" >> $GITHUB_ENV
+            echo "RAG_ENABLED=${{ github.event.inputs.rag_enabled }}" >> $GITHUB_ENV
+          else
+            echo "PROJECT_NAME=${{ fromJson(steps.parse.outputs.jsonString).project_name }}" >> $GITHUB_ENV
+            echo "RESOURCE_GROUP=${{ fromJson(steps.parse.outputs.jsonString).resource_group }}" >> $GITHUB_ENV
+            echo "REGION=${{ fromJson(steps.parse.outputs.jsonString).region }}" >> $GITHUB_ENV
+            echo "RAG_ENABLED=${{ fromJson(steps.parse.outputs.jsonString).rag_enabled }}" >> $GITHUB_ENV
+          fi
+      
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Create AI Foundry Account
+        run: |
+          az cognitiveservices account create \
+            --name ${PROJECT_NAME}-ai-foundry \
+            --resource-group ${RESOURCE_GROUP} \
+            --kind OpenAI \
+            --sku S0 \
+            --location ${REGION:-eastus2} \
+            --yes
+          
+          echo "AI_ENDPOINT=$(az cognitiveservices account show \
+            --name ${PROJECT_NAME}-ai-foundry \
+            --resource-group ${RESOURCE_GROUP} \
+            --query properties.endpoint -o tsv)" >> $GITHUB_ENV
+      
+      - name: Deploy GPT-4o Model
+        run: |
+          az cognitiveservices account deployment create \
+            --name ${PROJECT_NAME}-ai-foundry \
+            --resource-group ${RESOURCE_GROUP} \
+            --deployment-name gpt4o-main \
+            --model-name gpt-4o \
+            --model-version "2024-08-06" \
+            --model-format OpenAI \
+            --sku-capacity 30 \
+            --sku-name Standard
+      
+      - name: Deploy Embedding Model
+        run: |
+          az cognitiveservices account deployment create \
+            --name ${PROJECT_NAME}-ai-foundry \
+            --resource-group ${RESOURCE_GROUP} \
+            --deployment-name embedding-main \
+            --model-name text-embedding-3-large \
+            --model-version "1" \
+            --model-format OpenAI \
+            --sku-capacity 120 \
+            --sku-name Standard
+      
+      - name: Create AI Search (if RAG enabled)
+        if: env.RAG_ENABLED == 'true'
+        run: |
+          az search service create \
+            --name ${PROJECT_NAME}-search \
+            --resource-group ${RESOURCE_GROUP} \
+            --sku standard \
+            --location ${REGION:-eastus2}
+          
+          echo "SEARCH_ENDPOINT=https://${PROJECT_NAME}-search.search.windows.net" >> $GITHUB_ENV
+      
+      - name: Store secrets in Key Vault
+        run: |
+          AI_KEY=$(az cognitiveservices account keys list \
+            --name ${PROJECT_NAME}-ai-foundry \
+            --resource-group ${RESOURCE_GROUP} \
+            --query key1 -o tsv)
+          
+          az keyvault secret set \
+            --vault-name ${PROJECT_NAME}-kv \
+            --name ai-foundry-endpoint \
+            --value "${AI_ENDPOINT}"
+          
+          az keyvault secret set \
+            --vault-name ${PROJECT_NAME}-kv \
+            --name ai-foundry-key \
+            --value "${AI_KEY}"
+      
+      - name: Run validation tests
+        run: |
+          chmod +x scripts/validate-config.sh
+          ./scripts/validate-config.sh ai-foundry
+      
+      - name: Comment success on issue
+        if: github.event_name == 'issues' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ragStatus = process.env.RAG_ENABLED === 'true' ? '✅ Enabled' : '⏭️ Skipped';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ **Azure AI Foundry Deployed Successfully**\n\n**Resources:**\n- AI Foundry: ${process.env.AI_ENDPOINT}\n- GPT-4o Model: ✅ Deployed (30K TPM)\n- Embedding Model: ✅ Deployed (120K TPM)\n- AI Search: ${ragStatus}\n\n**Next Steps:**\n1. Test model: \`curl ${process.env.AI_ENDPOINT}/openai/deployments/gpt4o-main/chat/completions\`\n2. Check Azure Portal for usage\n3. Configure AI agent using \`golden-paths/h3-innovation/foundry-agent/\``
+            })
+      
+      - name: Close issue
+        if: github.event_name == 'issues' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              labels: ['completed']
+            })
+```
+
+**Trigger:** Label issue with `agent:ai-foundry` + `approved`
+
+---
+
+## �💬 Agent Communication
 
 ### On Start
 ```markdown

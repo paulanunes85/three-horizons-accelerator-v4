@@ -72,7 +72,7 @@ These agents deploy the core Azure infrastructure required by all other horizons
 | Container Registry | [container-registry-agent.md](./h1-foundation/container-registry-agent.md) | Azure Container Registry provisioning |
 | Database | [database-agent.md](./h1-foundation/database-agent.md) | PostgreSQL, Redis, Cosmos DB, Azure SQL |
 | Defender Cloud | [defender-cloud-agent.md](./h1-foundation/defender-cloud-agent.md) | Microsoft Defender for Cloud, compliance |
-| ARO Platform | [aro-platform-agent.md](./h1-foundation/aro-platform-agent.md) | Azure Red Hat OpenShift (alternative to AKS) |
+| ARO Platform | [aro-platform-agent.md](./h1-foundation/aro-platform-agent.md) | Azure Red Hat OpenShift (enterprise alternative to AKS) |
 | Purview Governance | [purview-governance-agent.md](./h1-foundation/purview-governance-agent.md) | Data governance, PII classification |
 
 ### H2 Enhancement - Platform Capabilities

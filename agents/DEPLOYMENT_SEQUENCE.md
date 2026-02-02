@@ -81,7 +81,7 @@ Deploy the foundation in this order:
 | Order | Agent | Duration | Dependencies | When to Use |
 |-------|-------|----------|--------------|-------------|
 | 7 | [Purview Governance Agent](./h1-foundation/purview-governance-agent.md) | 15-20 min | Infrastructure | Data governance required |
-| 8 | [ARO Platform Agent](./h1-foundation/aro-platform-agent.md) | 30-45 min | Networking | OpenShift instead of AKS |
+| 8 | [ARO Platform Agent](./h1-foundation/aro-platform-agent.md) | 30-45 min | Networking | **Alternative:** Use instead of AKS |
 
 ### Phase 1 Validation
 

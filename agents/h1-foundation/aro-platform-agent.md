@@ -2,7 +2,7 @@
 name: "ARO Platform Agent"
 version: "2.0.0"
 horizon: "H1"
-status: "deprecated"
+status: "stable"
 last_updated: "2026-02-02"
 skills:
   - azure-cli
@@ -12,10 +12,19 @@ skills:
 dependencies:
   - networking-agent
   - security-agent
-note: "ARO removed from roadmap. AKS is preferred platform. Marked as deprecated."
+note: "ARO is a valid enterprise platform choice. Organizations choose between ARO (Red Hat ecosystem) or AKS (Azure native) based on requirements."
 ---
 
 # ARO Platform Agent
+
+## Overview
+Agent responsible for deploying and configuring Azure Red Hat OpenShift (ARO) as an enterprise-grade Kubernetes platform alternative to AKS.
+
+**Platform Choice:** Organizations can choose between ARO (Red Hat OpenShift) or AKS (Azure Kubernetes Service) based on their requirements:
+- **ARO:** Enterprise support, Red Hat ecosystem, OpenShift operators, built-in GitOps (OpenShift GitOps/ArgoCD)
+- **AKS:** Native Azure integration, simpler management, lower cost
+
+**Note:** This is a mutually exclusive choice with `infrastructure-agent` (AKS). Choose one based on your platform strategy.
 
 ## 🤖 Agent Identity
 

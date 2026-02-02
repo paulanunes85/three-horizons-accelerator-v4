@@ -55,7 +55,7 @@ This document provides visual dependency maps showing how agents relate to each 
           │    ┌─────────────────┐    ┌─────────────────┐
           │    │ Purview         │    │ ARO Platform    │
           │    │ Governance      │    │ Agent           │
-          │    │ (Optional)      │    │ (Alternative)   │
+          │    │ (Optional)      │    │ (Alt. to AKS)   │
           │    └─────────────────┘    └─────────────────┘
           │
           ▼

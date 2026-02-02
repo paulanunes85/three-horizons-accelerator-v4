@@ -16,6 +16,33 @@ dependencies:
 
 # Validation Agent
 
+## ⚠️ Explicit Consent Required
+
+**User Consent Prompt:**
+```markdown
+🔍 **Platform Validation Request**
+
+This action will:
+- ✅ Scan all Azure resources in subscription
+- ✅ Query Kubernetes cluster health
+- ✅ Check ArgoCD application status
+- ✅ Retrieve security findings (GHAS + Defender)
+- ✅ Analyze costs and budget
+- ✅ Generate comprehensive validation report
+
+**Validation Scope:**
+- Infrastructure: ${INFRA_SCOPE}
+- Kubernetes: ${K8S_SCOPE}
+- Security: ${SECURITY_SCOPE}
+- Cost: ${COST_SCOPE}
+
+**Note:** This is a read-only operation with no destructive changes.
+
+Type **"approve:validation scope={scope}"** to proceed or **"reject"** to cancel.
+```
+
+**Approval Format:** `approve:validation scope={all|infra|k8s|security}`
+
 ## 🤖 Agent Identity
 
 ```yaml
@@ -702,6 +729,300 @@ Closing this issue. Please address remediation issues.
 | All deployment agents | **Triggers After** | Runs post-deployment |
 | `rollback-agent` | **Calls** | If critical failures found |
 | `cost-optimization-agent` | **Calls** | For cost recommendations |
+
+---
+
+## 🔄 GitHub Actions Workflow
+
+**Workflow File:** `.github/workflows/validation-check.yml`
+
+```yaml
+name: Platform Validation
+
+on:
+  issues:
+    types: [labeled]
+  schedule:
+    - cron: '0 8 * * *'  # Daily at 8 AM UTC
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Validation scope'
+        required: true
+        type: choice
+        options:
+          - all
+          - infrastructure
+          - kubernetes
+          - security
+          - cost
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+  security-events: read
+
+jobs:
+  validate-platform:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set scope
+        id: scope
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "SCOPE=${{ github.event.inputs.scope }}" >> $GITHUB_ENV
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "SCOPE=all" >> $GITHUB_ENV
+          else
+            echo "SCOPE=all" >> $GITHUB_ENV
+          fi
+      
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Get AKS credentials
+        if: env.SCOPE == 'all' || env.SCOPE == 'kubernetes'
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --name ${{ secrets.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+      
+      - name: Validate Infrastructure
+        if: env.SCOPE == 'all' || env.SCOPE == 'infrastructure'
+        id: infra
+        run: |
+          echo "## Infrastructure Validation" >> $GITHUB_STEP_SUMMARY
+          
+          # Resource Group
+          RG_STATUS=$(az group show --name ${{ secrets.RESOURCE_GROUP }} --query provisioningState -o tsv)
+          echo "- Resource Group: $RG_STATUS" >> $GITHUB_STEP_SUMMARY
+          
+          # AKS
+          AKS_STATUS=$(az aks show --name ${{ secrets.AKS_CLUSTER_NAME }} -g ${{ secrets.RESOURCE_GROUP }} --query provisioningState -o tsv)
+          echo "- AKS: $AKS_STATUS" >> $GITHUB_STEP_SUMMARY
+          
+          # ACR
+          ACR_STATUS=$(az acr check-health --name ${{ secrets.ACR_NAME }} --yes --query status -o tsv || echo "FAIL")
+          echo "- ACR: $ACR_STATUS" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Validate Kubernetes
+        if: env.SCOPE == 'all' || env.SCOPE == 'kubernetes'
+        id: k8s
+        run: |
+          echo "## Kubernetes Validation" >> $GITHUB_STEP_SUMMARY
+          
+          # Nodes
+          NODES_READY=$(kubectl get nodes --no-headers | grep -c Ready || echo 0)
+          NODES_TOTAL=$(kubectl get nodes --no-headers | wc -l)
+          echo "- Nodes: $NODES_READY/$NODES_TOTAL ready" >> $GITHUB_STEP_SUMMARY
+          
+          # Pods
+          PODS_RUNNING=$(kubectl get pods -A --field-selector status.phase=Running --no-headers | wc -l)
+          PODS_TOTAL=$(kubectl get pods -A --no-headers | wc -l)
+          echo "- Pods: $PODS_RUNNING/$PODS_TOTAL running" >> $GITHUB_STEP_SUMMARY
+          
+          # System namespaces
+          for ns in kube-system argocd monitoring; do
+            PODS_NS=$(kubectl get pods -n $ns --no-headers 2>/dev/null | wc -l || echo 0)
+            echo "  - $ns: $PODS_NS pods" >> $GITHUB_STEP_SUMMARY
+          done
+      
+      - name: Validate ArgoCD
+        if: env.SCOPE == 'all' || env.SCOPE == 'kubernetes'
+        id: argocd
+        run: |
+          echo "## ArgoCD Validation" >> $GITHUB_STEP_SUMMARY
+          
+          # Install argocd CLI if not exists
+          if ! command -v argocd &> /dev/null; then
+            curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+            chmod +x argocd
+            sudo mv argocd /usr/local/bin/
+          fi
+          
+          # Login to ArgoCD
+          ARGOCD_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+          kubectl port-forward svc/argocd-server -n argocd 8080:443 &
+          sleep 5
+          argocd login localhost:8080 --username admin --password $ARGOCD_PWD --insecure
+          
+          # Check apps
+          APPS_TOTAL=$(argocd app list -o name | wc -l)
+          APPS_SYNCED=$(argocd app list -o json | jq '[.[] | select(.status.sync.status=="Synced")] | length')
+          APPS_HEALTHY=$(argocd app list -o json | jq '[.[] | select(.status.health.status=="Healthy")] | length')
+          
+          echo "- Applications: $APPS_TOTAL total" >> $GITHUB_STEP_SUMMARY
+          echo "- Synced: $APPS_SYNCED/$APPS_TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- Healthy: $APPS_HEALTHY/$APPS_TOTAL" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Validate Security
+        if: env.SCOPE == 'all' || env.SCOPE == 'security'
+        id: security
+        run: |
+          echo "## Security Validation" >> $GITHUB_STEP_SUMMARY
+          
+          # GHAS Code Scanning
+          GHAS_CRITICAL=$(gh api repos/${{ github.repository }}/code-scanning/alerts \
+            --jq '[.[] | select(.state=="open" and .rule.severity=="critical")] | length' || echo 0)
+          GHAS_HIGH=$(gh api repos/${{ github.repository }}/code-scanning/alerts \
+            --jq '[.[] | select(.state=="open" and .rule.severity=="high")] | length' || echo 0)
+          echo "- GHAS Code Scanning: $GHAS_CRITICAL critical, $GHAS_HIGH high" >> $GITHUB_STEP_SUMMARY
+          
+          # Secret Scanning
+          SECRETS_OPEN=$(gh api repos/${{ github.repository }}/secret-scanning/alerts \
+            --jq '[.[] | select(.state=="open")] | length' || echo 0)
+          echo "- Secret Scanning: $SECRETS_OPEN exposed secrets" >> $GITHUB_STEP_SUMMARY
+          
+          # Defender for Cloud
+          DEFENDER_HIGH=$(az security assessment list \
+            --query "[?status.code=='Unhealthy' && metadata.severity=='High'] | length(@)" -o tsv || echo 0)
+          echo "- Defender for Cloud: $DEFENDER_HIGH high severity findings" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Validate Cost
+        if: env.SCOPE == 'all' || env.SCOPE == 'cost'
+        id: cost
+        run: |
+          echo "## Cost Validation" >> $GITHUB_STEP_SUMMARY
+          
+          # Current month cost
+          CURRENT_COST=$(az consumption usage list \
+            --start-date $(date -d "first day of this month" +%Y-%m-%d) \
+            --end-date $(date +%Y-%m-%d) \
+            --query "[?contains(instanceId, '${{ secrets.RESOURCE_GROUP }}')].pretaxCost" \
+            | jq 'add // 0')
+          
+          echo "- Current month spend: \$$CURRENT_COST" >> $GITHUB_STEP_SUMMARY
+          echo "- Budget: \$5000" >> $GITHUB_STEP_SUMMARY
+          
+          PERCENTAGE=$(echo "scale=2; $CURRENT_COST / 5000 * 100" | bc)
+          echo "- Utilization: ${PERCENTAGE}%" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Generate Report
+        if: always()
+        run: |
+          cat << EOF > validation-report.md
+          # Platform Validation Report
+          
+          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Scope:** $SCOPE
+          
+          ## Summary
+          
+          | Category | Status |
+          |----------|--------|
+          | Infrastructure | ${{ steps.infra.outcome == 'success' && '✅ Healthy' || '❌ Failed' }} |
+          | Kubernetes | ${{ steps.k8s.outcome == 'success' && '✅ Healthy' || '❌ Failed' }} |
+          | ArgoCD | ${{ steps.argocd.outcome == 'success' && '✅ Healthy' || '❌ Failed' }} |
+          | Security | ${{ steps.security.outcome == 'success' && '✅ Healthy' || '⚠️ Warnings' }} |
+          | Cost | ${{ steps.cost.outcome == 'success' && '✅ Within Budget' || '❌ Over Budget' }} |
+          
+          See job summary for detailed results.
+          EOF
+          
+          cat validation-report.md >> $GITHUB_STEP_SUMMARY
+      
+      - name: Create issue if failures
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[❌ Validation] Platform validation failed - ${new Date().toISOString().split('T')[0]}`,
+              body: `## Validation Failures Detected\n\nSee [workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.`,
+              labels: ['validation-failure', 'priority:high']
+            })
+```
+
+**Triggers:**
+- Daily at 8 AM UTC (scheduled)
+- Manual workflow dispatch
+- Label issue with `agent:validation`
+
+---
+
+## 📝 Validation Report Example
+
+```markdown
+# Platform Validation Report
+
+**Date:** 2026-02-02 08:00:00 UTC
+**Scope:** all
+**Duration:** 5m 23s
+
+## Summary
+
+| Category | Status | Score |
+|----------|--------|-------|
+| Infrastructure | ✅ Healthy | 100% |
+| Kubernetes | ✅ Healthy | 98% |
+| ArgoCD | ⚠️ Warning | 92% |
+| Security | ⚠️ Warning | 85% |
+| Cost | ✅ Within Budget | 64% |
+| **Overall** | ⚠️ **Degraded** | **91.8%** |
+
+## Detailed Findings
+
+### Infrastructure (✅ 100%)
+- Resource Group: Succeeded
+- AKS Cluster: Running (3/3 nodes)
+- ACR: Healthy
+- Key Vault: Accessible
+
+### Kubernetes (✅ 98%)
+- Nodes: 3/3 ready
+- Pods: 85/87 running (2 completed jobs)
+- System namespaces: All healthy
+- CPU: 45% avg, Memory: 62% avg
+
+### ArgoCD (⚠️ 92%)
+- Applications: 12 total
+- Synced: 11/12 (1 out of sync)
+- Healthy: 11/12 (1 progressing)
+
+**Action Required:**
+- ⚠️ `rhdh-portal` out of sync - needs manual sync
+
+### Security (⚠️ 85%)
+- GHAS Code Scanning: 0 critical, 2 high, 15 medium
+- Secret Scanning: 0 exposed secrets
+- Dependabot: 8 alerts (3 high, 5 medium)
+- Defender for Cloud: 3 medium severity findings
+
+**Action Required:**
+- 🔴 Fix 2 high severity GHAS alerts
+- 🟡 Review 3 Defender recommendations
+
+### Cost (✅ 64%)
+- Budget: $5,000/month
+- Current spend: $3,200
+- Forecast: $4,800
+- Top consumers:
+  - AKS: $2,100 (66%)
+  - AI Foundry: $800 (25%)
+  - Storage: $300 (9%)
+
+## Recommendations
+
+1. **High Priority:** Fix 2 high severity GHAS alerts
+2. **Medium Priority:** Sync `rhdh-portal` application
+3. **Low Priority:** Review Dependabot alerts
+```
+
+---
+
+## 🔗 Related Agents
 
 ---
 

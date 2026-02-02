@@ -50,6 +50,38 @@ terraform apply -target=module.defender
 - networking-agent (private endpoints, NSGs) → `terraform/modules/networking/`
 - security-agent (Key Vault, managed identities) → `terraform/modules/security/`
 
+## ⚠️ Explicit Consent Required
+
+**CRITICAL**: This agent performs subscription-wide security configurations with cost implications. Always obtain explicit approval before proceeding.
+
+**User Consent Prompt:**
+```markdown
+🔐 **Defender for Cloud Configuration Request**
+
+This action will:
+- ✅ Enable Microsoft Defender plans (monthly costs apply)
+- ✅ Configure security policies across subscription
+- ✅ Enable continuous export to Log Analytics  
+- ✅ Configure security contacts and notifications
+- ⚠️ Estimated monthly cost: $100-$5,000 (based on sizing profile)
+
+**Costs Breakdown:**
+- CSPM: $0 (Free) or ~$5/resource (Standard)
+- Containers: ~$7/vCore/month
+- Servers: ~$15/server/month (P1), ~$30/server/month (P2)
+- Databases: ~$15/server/month
+- Storage: ~$10/million transactions/month
+
+**Required Configuration:**
+- Security Email: ${SECURITY_EMAIL}
+- Security Phone: ${SECURITY_PHONE}
+- Sizing Profile: [small/medium/large/xlarge]
+
+Type **"approve:defender-cloud profile={sizing}"** to proceed or **"reject"** to cancel.
+```
+
+**Approval Format:** `approve:defender-cloud profile={small|medium|large|xlarge}`
+
 ## Capabilities
 
 ### 1. Defender Plans Enablement
@@ -394,6 +426,167 @@ AI Workloads: East US 2 (Defender for AI fully available)
 - Security dashboard plugin
 - Compliance scorecard
 - Vulnerability overview
+
+## GitHub Actions Workflow
+
+**Workflow File:** `.github/workflows/defender-cloud-deploy.yml`
+
+```yaml
+name: Deploy Defender for Cloud
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      sizing_profile:
+        description: 'Sizing profile'
+        required: true
+        type: choice
+        options:
+          - small
+          - medium
+          - large
+          - xlarge
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  deploy-defender:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'agent:defender-cloud') && contains(github.event.issue.labels.*.name, 'approved')) ||
+      (github.event_name == 'workflow_dispatch')
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Parse issue configuration
+        if: github.event_name == 'issues'
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+        with:
+          template-path: .github/ISSUE_TEMPLATE/defender-cloud.yml
+      
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Set environment variables
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "SIZING_PROFILE=${{ github.event.inputs.sizing_profile }}" >> $GITHUB_ENV
+          else
+            echo "SIZING_PROFILE=${{ fromJson(steps.parse.outputs.jsonString).sizing_profile }}" >> $GITHUB_ENV
+            echo "SECURITY_EMAIL=${{ fromJson(steps.parse.outputs.jsonString).security_email }}" >> $GITHUB_ENV
+            echo "PROJECT_NAME=${{ fromJson(steps.parse.outputs.jsonString).project_name }}" >> $GITHUB_ENV
+            echo "RESOURCE_GROUP=${{ fromJson(steps.parse.outputs.jsonString).resource_group }}" >> $GITHUB_ENV
+          fi
+      
+      - name: Enable Defender CSPM
+        run: |
+          TIER=$([ "$SIZING_PROFILE" == "small" ] && echo "Free" || echo "Standard")
+          az security pricing create \
+            --name CloudPosture \
+            --tier $TIER
+      
+      - name: Enable Defender for Containers
+        run: |
+          az security pricing create \
+            --name Containers \
+            --tier Standard \
+            --extensions name=AgentlessDiscoveryForKubernetes isEnabled=True \
+            --extensions name=ContainerRegistriesVulnerabilityAssessments isEnabled=True
+      
+      - name: Enable Defender for Servers
+        run: |
+          if [[ "$SIZING_PROFILE" != "small" ]]; then
+            SUBPLAN=$([ "$SIZING_PROFILE" == "xlarge" ] && echo "P2" || echo "P1")
+            az security pricing create \
+              --name VirtualMachines \
+              --tier Standard \
+              --subplan $SUBPLAN
+          fi
+      
+      - name: Enable Defender for Databases
+        if: env.SIZING_PROFILE != 'small'
+        run: |
+          az security pricing create --name SqlServers --tier Standard
+          az security pricing create --name OpenSourceRelationalDatabases --tier Standard
+          az security pricing create --name CosmosDbs --tier Standard
+      
+      - name: Enable Defender for Storage
+        run: |
+          SCANNING=$([ "$SIZING_PROFILE" == "medium" ] || [ "$SIZING_PROFILE" == "large" ] || [ "$SIZING_PROFILE" == "xlarge" ] && echo "True" || echo "False")
+          az security pricing create \
+            --name StorageAccounts \
+            --tier Standard \
+            --subplan DefenderForStorageV2 \
+            --extensions name=OnUploadMalwareScanning isEnabled=$SCANNING \
+            --extensions name=SensitiveDataDiscovery isEnabled=$SCANNING
+      
+      - name: Configure security contacts
+        if: github.event_name == 'issues'
+        run: |
+          az security contact create \
+            --name "default" \
+            --alert-notifications "on" \
+            --alerts-to-admins "on" \
+            --email "$SECURITY_EMAIL"
+      
+      - name: Enable continuous export to Log Analytics
+        run: |
+          LOG_ANALYTICS_ID=$(az monitor log-analytics workspace show \
+            --resource-group $RESOURCE_GROUP \
+            --workspace-name "${PROJECT_NAME}-logs" \
+            --query id -o tsv)
+          
+          az security automation create \
+            --name "ExportToLogAnalytics" \
+            --resource-group $RESOURCE_GROUP \
+            --scopes "[{\"description\":\"Subscription\",\"scopePath\":\"/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}\"}]" \
+            --sources "[{\"eventSource\":\"Alerts\"},{\"eventSource\":\"Recommendations\"},{\"eventSource\":\"SecureScores\"}]" \
+            --actions "[{\"actionType\":\"LogAnalytics\",\"workspaceResourceId\":\"${LOG_ANALYTICS_ID}\"}]"
+      
+      - name: Validate Defender configuration
+        run: |
+          chmod +x scripts/validate-config.sh
+          ./scripts/validate-config.sh defender
+      
+      - name: Comment success on issue
+        if: github.event_name == 'issues' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ **Defender for Cloud Configured Successfully**\n\n**Profile:** ${process.env.SIZING_PROFILE}\n\n**Plans Enabled:**\n- CSPM: ✅\n- Containers: ✅\n- Storage: ✅\n\n📊 Check [Azure Portal](https://portal.azure.com/#view/Microsoft_Azure_Security/SecurityMenuBlade/~/overview) for secure score.`
+            })
+      
+      - name: Close issue
+        if: github.event_name == 'issues' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              labels: ['completed']
+            })
+```
+
+**Trigger:** Label issue with `agent:defender-cloud` + `approved`
 
 ## Validation Criteria
 - [ ] All required Defender plans enabled
