@@ -81,8 +81,8 @@ resource "azurerm_cognitive_deployment" "models" {
     version = each.value.model_version
   }
 
-  scale {
-    type     = "Standard"
+  sku {
+    name     = "Standard"
     capacity = each.value.capacity
   }
 

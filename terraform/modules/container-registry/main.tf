@@ -44,30 +44,12 @@ resource "azurerm_container_registry" "main" {
   admin_enabled       = false
 
   # Network rules (Premium only)
+  network_rule_bypass_option = "AzureServices"
   dynamic "network_rule_set" {
     for_each = var.sku == "Premium" ? [1] : []
     content {
       default_action = "Deny"
-
-      # Allow Azure services
-      ip_rule = []
-
-      virtual_network {
-        action    = "Allow"
-        subnet_id = var.subnet_id
-      }
     }
-  }
-
-  # Content trust (Premium only)
-  trust_policy {
-    enabled = var.sku == "Premium" ? var.enable_content_trust : false
-  }
-
-  # Retention policy (Premium only)
-  retention_policy {
-    enabled = var.sku == "Premium"
-    days    = var.retention_policy_days
   }
 
   # Quarantine policy for security scanning
@@ -84,11 +66,6 @@ resource "azurerm_container_registry" "main" {
 
   # Public network access
   public_network_access_enabled = false
-
-  # Encryption
-  encryption {
-    enabled = false # Use platform-managed keys by default
-  }
 
   identity {
     type = "SystemAssigned"

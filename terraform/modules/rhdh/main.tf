@@ -86,7 +86,7 @@ resource "azurerm_storage_container" "techdocs" {
   count = var.enable_techdocs ? 1 : 0
 
   name                  = "techdocs"
-  storage_account_name  = azurerm_storage_account.techdocs[0].name
+  storage_account_id    = azurerm_storage_account.techdocs[0].id
   container_access_type = "private"
 }
 

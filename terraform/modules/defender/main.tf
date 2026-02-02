@@ -119,6 +119,7 @@ locals {
 # =============================================================================
 
 resource "azurerm_security_center_contact" "main" {
+  name                = "primary"
   email               = var.security_contact_email
   phone               = var.security_contact_phone != "" ? var.security_contact_phone : null
   alert_notifications = true
