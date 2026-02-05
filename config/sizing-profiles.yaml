@@ -8,12 +8,12 @@ Predefined infrastructure configurations based on team size, workload requiremen
 
 ## 📊 Sizing Matrix
 
-| Profile | Team Size | Workloads | Monthly Cost | Use Case |
-|---------|-----------|-----------|--------------|----------|
-| 🟢 **Small** | < 10 devs | Dev/POC | ~$800 | Proof of concept, development |
-| 🟡 **Medium** | 10-50 devs | Standard | ~$3,500 | Standard production |
-| 🔴 **Large** | 50-200 devs | Enterprise | ~$12,000 | Enterprise production |
-| ⚫ **XLarge** | 200+ devs | Critical | ~$35,000 | Mission critical, multi-region |
+| Profile | Team Size | Workloads | Use Case |
+|---------|-----------|-----------|----------|
+| 🟢 **Small** | < 10 devs | Dev/POC | Proof of concept, development |
+| 🟡 **Medium** | 10-50 devs | Standard | Standard production |
+| 🔴 **Large** | 50-200 devs | Enterprise | Enterprise production |
+| ⚫ **XLarge** | 200+ devs | Critical | Mission critical, multi-region |
 
 ---
 
@@ -23,7 +23,7 @@ Predefined infrastructure configurations based on team size, workload requiremen
 
 ```yaml
 profile: small
-estimated_cost_usd: 800
+profile: small
 
 infrastructure:
   aks:
@@ -96,7 +96,7 @@ observability:
 
 ```yaml
 profile: medium
-estimated_cost_usd: 3500
+profile: medium
 
 infrastructure:
   aks:
@@ -187,7 +187,7 @@ observability:
 
 ```yaml
 profile: large
-estimated_cost_usd: 12000
+profile: large
 
 infrastructure:
   aks:
@@ -312,7 +312,7 @@ observability:
 
 ```yaml
 profile: xlarge
-estimated_cost_usd: 35000
+profile: xlarge
 multi_region: true
 
 regions:
@@ -450,10 +450,10 @@ body:
       label: T-Shirt Size
       description: Select infrastructure size based on your needs
       options:
-        - "🟢 Small - Dev/POC (~$800/mo)"
-        - "🟡 Medium - Standard Production (~$3,500/mo)"
-        - "🔴 Large - Enterprise (~$12,000/mo)"
-        - "⚫ XLarge - Mission Critical (~$35,000/mo)"
+        - "🟢 Small - Dev/POC"
+        - "🟡 Medium - Standard Production"
+        - "🔴 Large - Enterprise"
+        - "⚫ XLarge - Mission Critical"
     validations:
       required: true
       
