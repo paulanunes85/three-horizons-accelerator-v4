@@ -1,8 +1,6 @@
 ---
 name: mcp-cli
 description: Model Context Protocol server reference and operations
-version: "1.0.0"
-license: MIT
 ---
 
 ## When to Use

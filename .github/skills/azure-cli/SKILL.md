@@ -1,11 +1,6 @@
 ---
 name: azure-cli
 description: Azure CLI operations for cloud resource management
-version: "1.0.0"
-license: MIT
-tools_required: ["az"]
-min_versions:
-  az: "2.50.0"
 ---
 
 ## When to Use

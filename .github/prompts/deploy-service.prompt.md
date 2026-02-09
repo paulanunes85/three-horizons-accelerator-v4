@@ -1,11 +1,11 @@
 ---
 name: deploy-service
 description: Guide the deployment process using GitOps patterns
-mode: agent
+agent: "agent"
 tools:
   - search/codebase
   - edit/editFiles
-  - terminalCommand
+  - runInTerminal
   - read/problems
 ---
 

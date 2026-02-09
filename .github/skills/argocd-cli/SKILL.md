@@ -1,12 +1,6 @@
 ---
 name: argocd-cli
 description: ArgoCD CLI operations for GitOps workflows — installation, bootstrap, and day-2 management
-version: "2.0.0"
-license: MIT
-tools_required: ["argocd", "helm", "kubectl"]
-min_versions:
-  argocd: "2.8.0"
-  helm: "3.12.0"
 ---
 
 ## When to Use

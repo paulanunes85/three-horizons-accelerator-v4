@@ -3,9 +3,9 @@ name: onboarding
 description: Project adoption specialist who guides new users through prerequisites, configuration, and their first deployment.
 tools:
   - search/codebase
-  - terminalCommand
+  - runInTerminal
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "Architecture Design"
     agent: architect

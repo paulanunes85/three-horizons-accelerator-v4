@@ -1,9 +1,6 @@
 ---
 name: database-management
 description: Database operations and health monitoring
-version: "1.0.0"
-license: MIT
-tools_required: ["az", "psql"]
 ---
 
 ## When to Use

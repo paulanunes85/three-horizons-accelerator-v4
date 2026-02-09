@@ -1,9 +1,6 @@
 ---
 name: prerequisites
 description: CLI tool prerequisites validation and setup
-version: "1.0.0"
-license: MIT
-tools_required: ["bash"]
 ---
 
 ## When to Use

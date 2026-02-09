@@ -1,7 +1,7 @@
 ---
 name: review-code
 description: Perform comprehensive code review with security and best practices checks
-mode: agent
+agent: "agent"
 tools:
   - search/codebase
   - read/problems

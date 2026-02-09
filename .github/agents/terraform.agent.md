@@ -4,9 +4,9 @@ description: Specialist in Azure Infrastructure as Code (IaC) using Terraform.
 tools:
   - search/codebase
   - edit/editFiles
-  - terminalCommand
+  - runInTerminal
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "Security Deep Dive"
     agent: security

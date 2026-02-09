@@ -1,11 +1,6 @@
 ---
 name: kubectl-cli
 description: Kubernetes CLI operations for AKS and ARO cluster management
-version: "1.0.0"
-license: MIT
-tools_required: ["kubectl", "kubelogin"]
-min_versions:
-  kubectl: "1.28.0"
 ---
 
 ## When to Use

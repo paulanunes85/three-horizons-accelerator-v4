@@ -1,11 +1,6 @@
 ---
 name: github-cli
 description: GitHub CLI operations for repository and workflow management
-version: "1.0.0"
-license: MIT
-tools_required: ["gh"]
-min_versions:
-  gh: "2.30.0"
 ---
 
 ## When to Use

@@ -1,11 +1,11 @@
 ---
 name: generate-tests
 description: Generate comprehensive test suites for code
-mode: agent
+agent: "agent"
 tools:
   - search/codebase
   - edit/editFiles
-  - terminalCommand
+  - runInTerminal
   - read/problems
 ---
 

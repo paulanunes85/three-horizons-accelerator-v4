@@ -1,12 +1,6 @@
 ---
 name: terraform-cli
 description: Terraform CLI operations for Azure infrastructure management
-version: "1.0.0"
-license: MIT
-tools_required: ["terraform", "tfsec", "checkov"]
-min_versions:
-  terraform: "1.5.0"
-  tfsec: "1.28.0"
 ---
 
 ## When to Use

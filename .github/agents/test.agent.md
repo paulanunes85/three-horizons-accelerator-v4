@@ -4,9 +4,9 @@ description: Specialist in Testing, QA, TDD, and coverage analysis.
 tools:
   - search/codebase
   - edit/editFiles
-  - terminalCommand
+  - runInTerminal
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "Code Review"
     agent: reviewer
@@ -27,7 +27,7 @@ You are a **Software Development Engineer in Test (SDET)**. You believe in the T
 
 ## 🛠️ Skill Set
 **(No external CLI skills required - Uses standard language runners)**
-- Use `go test`, `pytest`, `npm test` via the `terminalCommand` tool.
+- Use `go test`, `pytest`, `npm test` via the `terminal` tool.
 
 ## ⛔ Boundaries
 

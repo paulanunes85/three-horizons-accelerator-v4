@@ -6,7 +6,7 @@ tools:
   - edit/editFiles
   - read/problems
   - githubRepo
-infer: false
+user-invokable: true
 handoffs:
   - label: "Technical Review"
     agent: architect
