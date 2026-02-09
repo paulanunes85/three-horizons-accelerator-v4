@@ -1,9 +1,6 @@
 ---
 name: openshift-operations
 description: OpenShift administrative operations and management
-version: "1.0.0"
-license: MIT
-tools_required: ["oc"]
 ---
 
 ## When to Use

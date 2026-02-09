@@ -1,9 +1,6 @@
 ---
 name: aro-deployment
 description: Azure Red Hat OpenShift cluster deployment operations
-version: "1.0.0"
-license: MIT
-tools_required: ["az", "oc"]
 ---
 
 ## When to Use

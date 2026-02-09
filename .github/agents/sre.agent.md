@@ -3,9 +3,9 @@ name: sre
 description: Specialist in SRE, Observability, SLOs, and Incident Response.
 tools:
   - search/codebase
-  - terminalCommand
+  - runInTerminal
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "Deploy Fix"
     agent: devops

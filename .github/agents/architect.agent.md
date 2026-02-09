@@ -4,7 +4,7 @@ description: Specialist in Solution Design, Patterns, and the Azure Well-Archite
 tools:
   - search/codebase
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "Implementation (IaC)"
     agent: terraform

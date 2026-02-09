@@ -1,11 +1,6 @@
 ---
 name: helm-cli
 description: Helm CLI operations for Kubernetes package management
-version: "1.0.0"
-license: MIT
-tools_required: ["helm"]
-min_versions:
-  helm: "3.12.0"
 ---
 
 ## When to Use

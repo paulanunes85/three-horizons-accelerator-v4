@@ -4,7 +4,7 @@ description: Specialist in Security Compliance, Vulnerability Management, and Ze
 tools:
   - search/codebase
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "Remediate Findings"
     agent: devops

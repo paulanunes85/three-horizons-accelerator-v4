@@ -4,14 +4,13 @@ description: "Specialist in [Task Domain] and [Key Responsibility]."
 tools:
   - search/codebase
   - edit/editFiles
-  - terminalCommand
+  - runInTerminal
   - read/problems
-infer: false
 user-invokable: true
 disable-model-invocation: false
 handoffs:
   - label: "Handoff Logic"
-    agent: target-agent
+    agent: devops
     prompt: "Context for the next agent."
     send: false
 ---
@@ -29,7 +28,7 @@ You are a **[Role Name]** specializing in **[Domain]**. You focus on **[Key Prin
 ## 🛠️ Skill Set
 
 ### 1. Skill Name
-> **Reference:** [Skill Name](../skills/skill-folder/SKILL.md)
+> **Reference:** [Kubectl Skill](../skills/kubectl-cli/SKILL.md) <!-- Replace with your skill -->
 - Specific instruction on how to use this skill.
 
 ## ⛔ Boundaries

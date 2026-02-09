@@ -1,11 +1,6 @@
 ---
 name: ai-foundry-operations
 description: Azure AI Foundry — provisioning, model deployment, RAG configuration, and operational management
-version: "2.0.0"
-license: MIT
-tools_required: ["az", "curl"]
-min_versions:
-  az: "2.50.0"
 ---
 
 ## When to Use

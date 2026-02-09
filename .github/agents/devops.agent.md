@@ -4,9 +4,9 @@ description: Specialist in DevOps operations, CI/CD pipelines, and Kubernetes or
 tools:
   - search/codebase
   - edit/editFiles
-  - terminalCommand
+  - runInTerminal
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "Security Review"
     agent: security

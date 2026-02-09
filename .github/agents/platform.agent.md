@@ -4,9 +4,9 @@ description: Specialist in IDP (Internal Developer Platform), Golden Paths, and 
 tools:
   - search/codebase
   - edit/editFiles
-  - terminalCommand
+  - runInTerminal
   - read/problems
-infer: false
+user-invokable: true
 handoffs:
   - label: "GitOps Deployment"
     agent: devops

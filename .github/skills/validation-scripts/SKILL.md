@@ -1,9 +1,6 @@
 ---
 name: validation-scripts
 description: Validation scripts for deployment and configuration verification
-version: "1.0.0"
-license: MIT
-tools_required: ["bash"]
 ---
 
 ## When to Use

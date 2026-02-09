@@ -1,11 +1,6 @@
 ---
 name: oc-cli
 description: OpenShift CLI operations for ARO cluster management
-version: "1.0.0"
-license: MIT
-tools_required: ["oc"]
-min_versions:
-  oc: "4.14.0"
 ---
 
 ## When to Use

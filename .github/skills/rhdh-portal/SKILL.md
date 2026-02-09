@@ -1,9 +1,6 @@
 ---
 name: rhdh-portal
 description: Red Hat Developer Hub — installation, configuration, Golden Path registration, TechDocs, and portal management
-version: "2.0.0"
-license: MIT
-tools_required: ["kubectl", "helm", "curl"]
 ---
 
 ## When to Use

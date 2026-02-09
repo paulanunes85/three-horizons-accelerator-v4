@@ -1,10 +1,10 @@
 ---
 name: troubleshoot-incident
 description: Analyze logs, metrics, and traces to resolve production incidents
-mode: agent
+agent: "agent"
 tools:
   - search/codebase
-  - terminalCommand
+  - runInTerminal
   - read/problems
 ---
 

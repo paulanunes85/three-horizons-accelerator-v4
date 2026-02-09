@@ -1,9 +1,6 @@
 ---
 name: observability-stack
 description: Observability stack — deploy Prometheus, Grafana, Loki, and Alertmanager, plus day-2 monitoring operations
-version: "2.0.0"
-license: MIT
-tools_required: ["kubectl", "helm", "promtool"]
 ---
 
 ## When to Use
