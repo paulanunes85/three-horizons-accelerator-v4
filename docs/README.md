@@ -42,14 +42,11 @@
 | Document | Description |
 |----------|-------------|
 | [Branching Strategy](BRANCHING_STRATEGY.md) | Git workflow and branch protection |
-| [Agent System](../AGENTS.md) | **Copilot Chat Agents** (10 v2 agents in VS Code) |
-| [Legacy Deployment Agents](legacy/agents_v1/README.md) | **Archived v1 Agents** (23 agents, IssueOps) |
+| [Agent System](../AGENTS.md) | **Copilot Chat Agents** (10 agents in VS Code) |
 
 ### Agent Documentation
 
-The agent system has been migrated to v2 (Copilot Chat Agents). See [AGENTS.md](../AGENTS.md) for full details.
-
-The 10 v2 agents are located in `.github/agents/`:
+The 10 Copilot Chat Agents are located in `.github/agents/`. See [AGENTS.md](../AGENTS.md) for full details.
 
 | Agent | Role |
 |-------|------|
@@ -63,8 +60,6 @@ The 10 v2 agents are located in `.github/agents/`:
 | @sre | Reliability engineering, incident response, monitoring |
 | @terraform | Infrastructure as Code, Terraform modules |
 | @test | Test generation, validation, quality assurance |
-
-Legacy v1 agents (23 agents) are archived in [legacy/agents_v1/](legacy/agents_v1/README.md).
 
 ---
 

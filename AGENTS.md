@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Three Horizons Accelerator uses **GitHub Copilot Chat Agents** (v2) — a role-based AI assistant system that operates directly within VS Code / GitHub Copilot Chat. These agents replace the legacy infrastructure-specific agents (v1) with a streamlined set of 10 role-based agents.
+The Three Horizons Accelerator uses **GitHub Copilot Chat Agents** — a role-based AI assistant system that operates directly within VS Code / GitHub Copilot Chat. The platform includes 10 specialized agents for interactive development assistance.
 
 ## Architecture
 
@@ -16,7 +16,7 @@ The Three Horizons Accelerator uses **GitHub Copilot Chat Agents** (v2) — a ro
 └── ISSUE_TEMPLATE/  # 28 issue templates
 ```
 
-## Chat Agents (v2)
+## Chat Agents
 
 | Agent | File | Role |
 |-------|------|------|
@@ -93,47 +93,6 @@ The 17 skills in [.github/skills/](.github/skills/) provide domain-specific know
 | `rhdh-portal` | Red Hat Developer Hub portal |
 | `terraform-cli` | Terraform CLI for Azure infra |
 | `validation-scripts` | Validation scripts for deployments |
-
-## Legacy Agent System (v1)
-
-The original v1 agent system contained 23 infrastructure-specific agents organized by horizon. These have been archived to [docs/legacy/agents_v1/](docs/legacy/agents_v1/) for reference.
-
-| Resource | Link |
-|----------|------|
-| V1 Agent Index | [docs/legacy/agents_v1/README.md](docs/legacy/agents_v1/README.md) |
-| V1 Full Index | [docs/legacy/agents_v1/INDEX.md](docs/legacy/agents_v1/INDEX.md) |
-| Deployment Sequence | [docs/legacy/agents_v1/DEPLOYMENT_SEQUENCE.md](docs/legacy/agents_v1/DEPLOYMENT_SEQUENCE.md) |
-| MCP Servers Guide | [docs/legacy/agents_v1/MCP_SERVERS_GUIDE.md](docs/legacy/agents_v1/MCP_SERVERS_GUIDE.md) |
-| Dependency Graph | [docs/legacy/agents_v1/DEPENDENCY_GRAPH.md](docs/legacy/agents_v1/DEPENDENCY_GRAPH.md) |
-| Terraform Module Ref | [docs/legacy/agents_v1/TERRAFORM_MODULES_REFERENCE.md](docs/legacy/agents_v1/TERRAFORM_MODULES_REFERENCE.md) |
-
-### V1 → V2 Agent Mapping
-
-| V1 Agent (legacy) | V2 Agent |
-|-------------------|----------|
-| infrastructure-agent | @terraform |
-| networking-agent | @terraform |
-| security-agent | @security |
-| database-agent | @terraform |
-| container-registry-agent | @devops |
-| defender-cloud-agent | @security |
-| aro-platform-agent | @platform |
-| purview-governance-agent | @security |
-| gitops-agent | @devops |
-| observability-agent | @sre |
-| rhdh-portal-agent | @platform |
-| golden-paths-agent | @devops |
-| github-runners-agent | @devops |
-| ai-foundry-agent | @architect |
-| mlops-pipeline-agent | @devops |
-| sre-agent | @sre |
-| multi-agent | @architect |
-| validation-agent | @test |
-| migration-agent | @devops |
-| rollback-agent | @sre |
-| cost-optimization-agent | @architect |
-| github-app-agent | @devops |
-| identity-federation-agent | @security |
 
 ## Related Documentation
 

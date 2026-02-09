@@ -100,7 +100,7 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ```
 three-horizons-accelerator-v4/
 │
-├── .github/agents/                 # 10 Copilot Chat Agents (v2)
+├── .github/agents/                 # 10 Copilot Chat Agents
 │   ├── architect.agent.md          # System architecture, AI Foundry
 │   ├── devops.agent.md             # CI/CD, GitOps, MLOps, pipelines
 │   ├── docs.agent.md               # Documentation generation
@@ -165,11 +165,9 @@ three-horizons-accelerator-v4/
 
 | Document | Description |
 |----------|-------------|
-| [Agent System](./AGENTS.md) | Copilot Chat Agents overview (10 v2 agents) |
-| [Legacy Agent Index](./docs/legacy/agents_v1/README.md) | Original 23 deployment agents (archived) |
-| [Legacy Deployment Sequence](./docs/legacy/agents_v1/DEPLOYMENT_SEQUENCE.md) | Step-by-step agent deployment order |
+| [Agent System](./AGENTS.md) | Copilot Chat Agents (10 agents) |
 | [MCP Servers Guide](./mcp-servers/USAGE.md) | Model Context Protocol server setup |
-| [Legacy Dependency Graph](./docs/legacy/agents_v1/DEPENDENCY_GRAPH.md) | Visual agent dependencies |
+| [Agent Best Practices](./docs/guides/copilot-agents-best-practices.md) | Copilot agents usage guide |
 
 ### Reference
 
@@ -504,7 +502,7 @@ After reviewing this README:
 2. **Using AI agents?**
    - Start with the [Agent System](./AGENTS.md) overview
    - See [MCP Servers Usage](./mcp-servers/USAGE.md) for tool access
-   - Reference [Legacy Agents](./docs/legacy/agents_v1/README.md) for deployment automation
+   - Read [Agent Best Practices](./docs/guides/copilot-agents-best-practices.md)
 
 3. **Operating the platform?**
    - Use the [Administrator Guide](./docs/guides/ADMINISTRATOR_GUIDE.md) for day-2 operations
