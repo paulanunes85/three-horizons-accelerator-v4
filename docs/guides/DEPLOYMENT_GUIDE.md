@@ -60,9 +60,61 @@ This guide is designed for:
 > 🤖 **Need help?**
 > Use the **Copilot Agents** in VS Code for guidance.
 >
-> - Ask `@onboarding` for a walkthrough.
-> - Ask `@terraform` to explain configurations.
-> - See [AGENTS.md](../../AGENTS.md) for the full playbook.
+> - Ask `@deploy` to deploy the platform (recommended!)
+> - Ask `@onboarding` for a walkthrough
+> - Ask `@terraform` to explain configurations
+> - See [AGENTS.md](../../AGENTS.md) for the full playbook
+
+---
+
+## Choose Your Deployment Method
+
+There are **three ways** to deploy the Three Horizons platform. Choose the one that fits your experience level:
+
+### Option A: Agent-Guided (Easiest — Interactive)
+
+In VS Code with GitHub Copilot Chat, simply type:
+```
+@deploy Deploy the platform to dev environment
+```
+The `@deploy` agent walks you through each step interactively, running commands, validating results, and fixing issues along the way.
+
+**Best for:** First-time deployments, learning the platform.
+
+### Option B: Automated Script (Recommended — Fast)
+
+```bash
+# Dry-run first (no resources created)
+./scripts/deploy-full.sh --environment dev --dry-run
+
+# Deploy everything
+./scripts/deploy-full.sh --environment dev
+
+# Deploy specific horizon
+./scripts/deploy-full.sh --environment dev --horizon h1
+
+# Production with all features
+./scripts/deploy-full.sh --environment prod --horizon all
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--environment`, `-e` | **Required:** dev, staging, or prod |
+| `--horizon`, `-h` | h1, h2, h3, or all (default: all) |
+| `--dry-run` | Only terraform plan, no apply |
+| `--auto-approve` | Skip prompts (for CI/CD) |
+| `--destroy` | Teardown in reverse order |
+| `--resume` | Resume from last checkpoint |
+
+**Best for:** Experienced users, CI/CD integration, repeatable deployments.
+
+### Option C: Manual Step-by-Step (Full Control)
+
+Follow the rest of this guide — 10 detailed steps with copy-paste commands, explanations, and verification at each phase.
+
+**Best for:** Learning, custom configurations, environments with special requirements.
 
 ---
 

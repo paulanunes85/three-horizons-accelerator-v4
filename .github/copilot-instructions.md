@@ -86,24 +86,40 @@ This is the Three Horizons Accelerator v4.0.0 - an enterprise-grade platform acc
 ./scripts/create-module.sh <module-name>
 ```
 
-### Deploying infrastructure
+### Deploying the platform (3 options)
+
+**Option A — Agent-guided:**
+```
+@deploy Deploy the platform to dev environment
+```
+
+**Option B — Automated script:**
+```bash
+./scripts/deploy-full.sh --environment dev --dry-run
+./scripts/deploy-full.sh --environment dev
+```
+
+**Option C — Manual:**
 ```bash
 cd terraform
 terraform init
 terraform plan -var-file=environments/dev.tfvars
-terraform apply
+terraform apply -var-file=environments/dev.tfvars
 ```
 
 ### Running validation
 ```bash
+./scripts/validate-prerequisites.sh
+./scripts/validate-config.sh --environment dev
 ./scripts/validate-deployment.sh --environment dev
 ```
 
 ## Agent System
 
-The platform uses 10 Copilot Chat Agents in `.github/agents/` for interactive development assistance, plus 17 skills for specialized CLI operations. There are also 16 Terraform modules, 22 Golden Path templates, and 28 Issue templates.
+The platform uses 11 Copilot Chat Agents in `.github/agents/` for interactive development assistance, plus 18 skills for specialized CLI operations. There are also 16 Terraform modules, 22 Golden Path templates, and 28 Issue templates.
 
 ### Agent Organization
+- **@deploy**: Deployment orchestration, end-to-end platform deployment
 - **@architect**: System architecture, AI Foundry, multi-agent design
 - **@devops**: CI/CD, GitOps, MLOps, Golden Paths, pipelines
 - **@docs**: Documentation generation and maintenance

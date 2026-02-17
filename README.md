@@ -11,7 +11,7 @@ The **Three Horizons Implementation Accelerator** is a complete kit of Infrastru
 | Component | Quantity | Description |
 |-----------|----------|-------------|
 | **Terraform Modules** | 16 | Complete Azure infrastructure |
-| **AI Agents** | 10 | **[Copilot Chat Agents](./AGENTS.md)** (VS Code) |
+| **AI Agents** | 11 | **[Copilot Chat Agents](./AGENTS.md)** (VS Code) |
 | **Golden Path Templates** | 22 | Self-service templates for RHDH |
 | **Issue Templates** | 28 | GitHub Issues templates |
 | **Automation Scripts** | 14 | Bootstrap and operations |
@@ -49,29 +49,48 @@ gh auth login
 > 📘 **New to this accelerator?**
 > We strongly recommend following the **[Step-by-Step Deployment Guide](docs/guides/DEPLOYMENT_GUIDE.md)** for a detailed walkthrough.
 
-### Quick Deploy
+### Quick Deploy — 3 Options
 
+Choose the deployment method that fits your experience level:
+
+#### Option A: Agent-Guided (Easiest — Interactive)
+```
+# In VS Code with GitHub Copilot Chat:
+@deploy Deploy the platform to dev environment
+```
+The `@deploy` agent walks you through each step interactively.
+
+#### Option B: Automated Script (Recommended)
 ```bash
-# 1. Clone the accelerator
+# 1. Clone and prepare
 git clone https://github.com/YOUR_ORG/three-horizons-accelerator-v4.git
 cd three-horizons-accelerator-v4
-
-# 2. Make scripts executable
 chmod +x scripts/*.sh
 
-# 3. Validate prerequisites and configure variables
-./scripts/validate-cli-prerequisites.sh
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit terraform.tfvars with your values
+# 2. Validate prerequisites
+./scripts/validate-prerequisites.sh
 
-# 4. Complete deploy (Dev)
-./scripts/platform-bootstrap.sh --environment dev
+# 3. Configure environment
+cp terraform/terraform.tfvars.example terraform/environments/dev.tfvars
+# Edit dev.tfvars with your values
 
-# Or deploy by horizon
-./scripts/platform-bootstrap.sh --horizon h1 --environment dev
-./scripts/platform-bootstrap.sh --horizon h2 --environment staging
-./scripts/platform-bootstrap.sh --horizon h3 --environment prod
+# 4. Set sensitive variables
+export TF_VAR_azure_subscription_id="$(az account show --query id -o tsv)"
+export TF_VAR_azure_tenant_id="$(az account show --query tenantId -o tsv)"
+export TF_VAR_github_token="ghp_your_token"
+export TF_VAR_admin_group_id="your-aad-group-id"
+export TF_VAR_github_org="your-org"
+
+# 5. Deploy (dry-run first!)
+./scripts/deploy-full.sh --environment dev --dry-run
+./scripts/deploy-full.sh --environment dev
+
+# 6. Validate
+./scripts/validate-deployment.sh --environment dev
 ```
+
+#### Option C: Manual Step-by-Step (Full Control)
+Follow the detailed **[Deployment Guide](docs/guides/DEPLOYMENT_GUIDE.md)** — 10 steps with copy-paste commands for each phase.
 
 ---
 

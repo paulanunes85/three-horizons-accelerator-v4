@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Three Horizons Accelerator uses **GitHub Copilot Chat Agents** — a role-based AI assistant system that operates directly within VS Code / GitHub Copilot Chat. The platform includes 10 specialized agents for interactive development assistance.
+The Three Horizons Accelerator uses **GitHub Copilot Chat Agents** — a role-based AI assistant system that operates directly within VS Code / GitHub Copilot Chat. The platform includes 11 specialized agents for interactive development assistance.
 
 ## Architecture
 
@@ -30,12 +30,14 @@ The Three Horizons Accelerator uses **GitHub Copilot Chat Agents** — a role-ba
 | **SRE** | [sre.agent.md](.github/agents/sre.agent.md) | Reliability engineering, incident response, monitoring |
 | **Terraform** | [terraform.agent.md](.github/agents/terraform.agent.md) | Infrastructure as Code, Terraform modules |
 | **Test** | [test.agent.md](.github/agents/test.agent.md) | Test generation, validation, quality assurance |
+| **Deploy** | [deploy.agent.md](.github/agents/deploy.agent.md) | Deployment orchestration, end-to-end platform deployment |
 
 ### How to Use
 
 In VS Code with GitHub Copilot Chat, mention an agent by name:
 
 ```text
+@deploy Deploy the platform to dev environment
 @architect Design a microservice architecture for order processing
 @devops Set up GitOps deployment with ArgoCD
 @terraform Create a new AKS module with private networking
@@ -55,6 +57,7 @@ In VS Code with GitHub Copilot Chat, mention an agent by name:
 
 | Prompt | File | Purpose |
 |--------|------|---------|
+| **Deploy Platform** | [deploy-platform.prompt.md](.github/prompts/deploy-platform.prompt.md) | **Deploy the Three Horizons platform** |
 | Create Service | [create-service.prompt.md](.github/prompts/create-service.prompt.md) | Scaffold a new microservice |
 | Deploy Service | [deploy-service.prompt.md](.github/prompts/deploy-service.prompt.md) | Deploy a service to AKS/ARO |
 | Generate Docs | [generate-docs.prompt.md](.github/prompts/generate-docs.prompt.md) | Generate documentation |
