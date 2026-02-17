@@ -23,18 +23,7 @@ AI-powered SRE Agent for automated incident response and self-healing infrastruc
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   SRE AI Agent                       │
-├─────────────────────────────────────────────────────┤
-│  ┌───────────┐  ┌───────────┐  ┌───────────────┐   │
-│  │ Incident  │  │    RCA    │  │  Self-Heal    │   │
-│  │ Response  │  │  Analysis │  │   Actions     │   │
-│  └───────────┘  └───────────┘  └───────────────┘   │
-├─────────────────────────────────────────────────────┤
-│            Azure Monitor │ PagerDuty │ ServiceNow   │
-└─────────────────────────────────────────────────────┘
-```
+![SRE Agent](../../../../../docs/assets/gp-sre-agent.svg)
 
 ## Capabilities
 

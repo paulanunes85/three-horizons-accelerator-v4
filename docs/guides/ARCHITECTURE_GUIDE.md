@@ -69,63 +69,7 @@ After reading this guide, you'll understand:
 
 The Three Horizons model organizes the platform into three layers with different purposes:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│  ┌───────────────────────────────────────────────────────────────────────┐ │
-│  │                        H3: INNOVATION                                  │ │
-│  │                                                                        │ │
-│  │  PURPOSE: Enable next-generation capabilities                          │ │
-│  │                                                                        │ │
-│  │  • AI/ML models and intelligent automation                             │ │
-│  │  • Experimental features and proof-of-concepts                         │ │
-│  │  • Future platform evolution                                           │ │
-│  │                                                                        │ │
-│  │  CHARACTERISTICS:                                                      │ │
-│  │  ✓ Optional - not required for basic operation                         │ │
-│  │  ✓ Experimental - features may change                                  │ │
-│  │  ✓ High value - enables competitive advantages                         │ │
-│  └───────────────────────────────────────────────────────────────────────┘ │
-│                                    ▲                                        │
-│                                    │ Builds upon                            │
-│  ┌───────────────────────────────────────────────────────────────────────┐ │
-│  │                        H2: ENHANCEMENT                                 │ │
-│  │                                                                        │ │
-│  │  PURPOSE: Improve developer productivity and operations                │ │
-│  │                                                                        │ │
-│  │  • GitOps continuous deployment (ArgoCD)                               │ │
-│  │  • Developer self-service portal (RHDH)                                │ │
-│  │  • Observability stack (Prometheus, Grafana)                           │ │
-│  │  • Secret synchronization (External Secrets)                           │ │
-│  │  • Policy enforcement (Gatekeeper)                                     │ │
-│  │                                                                        │ │
-│  │  CHARACTERISTICS:                                                      │ │
-│  │  ✓ Recommended - significantly improves operations                     │ │
-│  │  ✓ Stable - production-ready components                                │ │
-│  │  ✓ Integrated - components work together seamlessly                    │ │
-│  └───────────────────────────────────────────────────────────────────────┘ │
-│                                    ▲                                        │
-│                                    │ Builds upon                            │
-│  ┌───────────────────────────────────────────────────────────────────────┐ │
-│  │                        H1: FOUNDATION                                  │ │
-│  │                                                                        │ │
-│  │  PURPOSE: Provide core infrastructure that everything runs on          │ │
-│  │                                                                        │ │
-│  │  • Compute: AKS (Kubernetes cluster)                                   │ │
-│  │  • Container Registry: ACR (image storage)                             │ │
-│  │  • Secrets: Key Vault (secure storage)                                 │ │
-│  │  • Networking: VNet, Subnets, NSGs                                     │ │
-│  │  • Security: Defender, Purview, Managed Identities                     │ │
-│  │  • Data: PostgreSQL, Redis                                             │ │
-│  │                                                                        │ │
-│  │  CHARACTERISTICS:                                                      │ │
-│  │  ✓ Required - platform cannot function without it                      │ │
-│  │  ✓ Stable - changes are rare and carefully managed                     │ │
-│  │  ✓ Foundational - all other horizons depend on it                      │ │
-│  └───────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Three Horizons Framework](../assets/arch-three-horizons-framework.svg)
 
 ### 2.2 Why Use Three Horizons?
 
@@ -182,96 +126,7 @@ The Three Horizons model organizes the platform into three layers with different
 
 ### 3.1 Layered Architecture Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           EXTERNAL LAYER                                     │
-│                                                                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │  Developers │  │   GitHub    │  │   Azure     │  │  External   │        │
-│  │             │  │  (Source)   │  │   Portal    │  │    APIs     │        │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
-└─────────┼────────────────┼────────────────┼────────────────┼────────────────┘
-          │                │                │                │
-          ▼                ▼                ▼                ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           INGRESS LAYER                                      │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                    Azure Application Gateway                         │    │
-│  │                                                                      │    │
-│  │    FUNCTIONS:                                                        │    │
-│  │    • SSL/TLS termination (offloads encryption from pods)            │    │
-│  │    • Web Application Firewall (WAF) - protects against attacks      │    │
-│  │    • Load balancing (distributes traffic across pods)               │    │
-│  │    • URL-based routing (routes to different services)               │    │
-│  │                                                                      │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         KUBERNETES CLUSTER (AKS)                             │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                         SYSTEM NAMESPACE                             │    │
-│  │                                                                      │    │
-│  │  These are Kubernetes system components that run automatically:      │    │
-│  │                                                                      │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐               │    │
-│  │  │ CoreDNS  │ │ Metrics  │ │Gatekeeper│ │  CSI     │               │    │
-│  │  │          │ │ Server   │ │          │ │ Drivers  │               │    │
-│  │  │ DNS for  │ │ Resource │ │ Policy   │ │ Storage  │               │    │
-│  │  │ services │ │ metrics  │ │ enforce  │ │ drivers  │               │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘               │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                      PLATFORM NAMESPACES                             │    │
-│  │                                                                      │    │
-│  │  These are the H2 Enhancement components:                            │    │
-│  │                                                                      │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐               │    │
-│  │  │  ArgoCD  │ │   RHDH   │ │ External │ │Observa-  │               │    │
-│  │  │          │ │          │ │ Secrets  │ │bility    │               │    │
-│  │  │ GitOps   │ │ Developer│ │ Secret   │ │ Metrics  │               │    │
-│  │  │ deploy   │ │ portal   │ │ sync     │ │ & alerts │               │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘               │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                    APPLICATION NAMESPACES                            │    │
-│  │                                                                      │    │
-│  │  Your applications run here, isolated by namespace:                  │    │
-│  │                                                                      │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐               │    │
-│  │  │  app-a   │ │  app-b   │ │  app-c   │ │  app-n   │               │    │
-│  │  │  (dev)   │ │(staging) │ │  (prod)  │ │   ...    │               │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘               │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │
-          │ Private Endpoints (secure connection)
-          ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          AZURE PaaS SERVICES                                 │
-│                                                                              │
-│  These services are managed by Azure (you don't manage the servers):        │
-│                                                                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │
-│  │   ACR    │ │Key Vault │ │PostgreSQL│ │  Redis   │ │AI Foundry│         │
-│  │          │ │          │ │ Flexible │ │  Cache   │ │ (OpenAI) │         │
-│  │ Container│ │ Secrets  │ │ Database │ │  Fast    │ │ AI/ML    │         │
-│  │ images   │ │ storage  │ │ storage  │ │  cache   │ │ models   │         │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘         │
-│                                                                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐                       │
-│  │ Defender │ │ Purview  │ │ Monitor  │ │ Storage  │                       │
-│  │for Cloud │ │          │ │          │ │ Account  │                       │
-│  │ Security │ │ Data     │ │ Logs &   │ │ Blob     │                       │
-│  │ scanning │ │ catalog  │ │ metrics  │ │ storage  │                       │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘                       │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Layered Platform Architecture](../assets/arch-layered-architecture.svg)
 
 ### 3.2 Design Principles
 
@@ -303,73 +158,7 @@ The Three Horizons model organizes the platform into three layers with different
 > the control plane (API server, etcd, scheduler), and you only manage the
 > worker nodes where your applications run.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                               AKS CLUSTER                                    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                  CONTROL PLANE (Azure Managed)                       │    │
-│  │                                                                      │    │
-│  │  You don't see or manage these - Azure handles them:                 │    │
-│  │                                                                      │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐               │    │
-│  │  │ API      │ │ etcd     │ │Controller│ │Scheduler │               │    │
-│  │  │ Server   │ │          │ │ Manager  │ │          │               │    │
-│  │  │          │ │ Stores   │ │ Manages  │ │ Places   │               │    │
-│  │  │ Receives │ │ cluster  │ │ desired  │ │ pods on  │               │    │
-│  │  │ commands │ │ state    │ │ state    │ │ nodes    │               │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘               │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                         NODE POOLS                                   │    │
-│  │                                                                      │    │
-│  │  These are the VMs where your workloads run:                         │    │
-│  │                                                                      │    │
-│  │  ┌────────────────────────────────────────────────────────────┐     │    │
-│  │  │  SYSTEM NODE POOL                                          │     │    │
-│  │  │                                                            │     │    │
-│  │  │  Purpose: Run Kubernetes system components                 │     │    │
-│  │  │  Configuration:                                            │     │    │
-│  │  │  • 3 nodes (across availability zones 1, 2, 3)            │     │    │
-│  │  │  • VM Size: Standard_D4s_v5 (4 vCPU, 16 GB RAM)           │     │    │
-│  │  │  • OS: Ubuntu 22.04 LTS                                    │     │    │
-│  │  │  • Taint: CriticalAddonsOnly (only system pods run here)  │     │    │
-│  │  │                                                            │     │    │
-│  │  │  ┌────────┐ ┌────────┐ ┌────────┐                         │     │    │
-│  │  │  │ Node 1 │ │ Node 2 │ │ Node 3 │                         │     │    │
-│  │  │  │ Zone 1 │ │ Zone 2 │ │ Zone 3 │                         │     │    │
-│  │  │  └────────┘ └────────┘ └────────┘                         │     │    │
-│  │  └────────────────────────────────────────────────────────────┘     │    │
-│  │                                                                      │    │
-│  │  ┌────────────────────────────────────────────────────────────┐     │    │
-│  │  │  WORKLOAD NODE POOL                                        │     │    │
-│  │  │                                                            │     │    │
-│  │  │  Purpose: Run your applications                            │     │    │
-│  │  │  Configuration:                                            │     │    │
-│  │  │  • 3-10 nodes (auto-scales based on demand)               │     │    │
-│  │  │  • VM Size: Standard_D8s_v5 (8 vCPU, 32 GB RAM)           │     │    │
-│  │  │  • OS: Ubuntu 22.04 LTS                                    │     │    │
-│  │  │  • No taints (any pod can run here)                       │     │    │
-│  │  │                                                            │     │    │
-│  │  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐  ┌─────────┐│     │    │
-│  │  │  │ Node 1 │ │ Node 2 │ │ Node 3 │ │ Node 4 │  │ ...     ││     │    │
-│  │  │  │ Zone 1 │ │ Zone 2 │ │ Zone 3 │ │ Zone 1 │  │ (auto)  ││     │    │
-│  │  │  └────────┘ └────────┘ └────────┘ └────────┘  └─────────┘│     │    │
-│  │  └────────────────────────────────────────────────────────────┘     │    │
-│  │                                                                      │    │
-│  │  ┌────────────────────────────────────────────────────────────┐     │    │
-│  │  │  AI NODE POOL (Optional - H3 only)                         │     │    │
-│  │  │                                                            │     │    │
-│  │  │  Purpose: Run AI/ML workloads with GPU                     │     │    │
-│  │  │  Configuration:                                            │     │    │
-│  │  │  • 0-3 nodes (scales to 0 when not in use)                │     │    │
-│  │  │  • VM Size: Standard_NC8as_T4_v3 (GPU)                    │     │    │
-│  │  │  • Taint: nvidia.com/gpu (only GPU pods run here)         │     │    │
-│  │  └────────────────────────────────────────────────────────────┘     │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![AKS Cluster Architecture](../assets/arch-aks-cluster.svg)
 
 ### 4.2 Why Multiple Node Pools?
 
@@ -404,91 +193,7 @@ These are additional capabilities we enable on the AKS cluster:
 > - **Performance:** Reducing latency between components
 > - **Compliance:** Meeting regulatory requirements for data isolation
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           AZURE VIRTUAL NETWORK                              │
-│                           CIDR: 10.0.0.0/16 (65,536 IPs)                    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  AKS NODES SUBNET                                                    │    │
-│  │  CIDR: 10.0.0.0/22 (1,024 IPs)                                      │    │
-│  │                                                                      │    │
-│  │  PURPOSE: Where AKS worker node VMs get their IP addresses          │    │
-│  │                                                                      │    │
-│  │  NSG RULES:                                                          │    │
-│  │  ✓ Allow: HTTPS (443) from Application Gateway                      │    │
-│  │  ✓ Allow: Kube API (6443) from control plane                        │    │
-│  │  ✓ Allow: Internal cluster communication                            │    │
-│  │  ✗ Deny: Direct internet access                                     │    │
-│  │                                                                      │    │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                    │    │
-│  │  │10.0.0.4 │ │10.0.0.5 │ │10.0.0.6 │ │10.0.0.7 │ ...               │    │
-│  │  │ Node 1  │ │ Node 2  │ │ Node 3  │ │ Node 4  │                    │    │
-│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘                    │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  AKS PODS SUBNET (Azure CNI)                                         │    │
-│  │  CIDR: 10.0.16.0/20 (4,096 IPs)                                     │    │
-│  │                                                                      │    │
-│  │  PURPOSE: Where Kubernetes pods get their IP addresses               │    │
-│  │                                                                      │    │
-│  │  WHY SEPARATE: Azure CNI assigns VNet IPs directly to pods,         │    │
-│  │  allowing them to communicate with Azure services without NAT        │    │
-│  │                                                                      │    │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                    │    │
-│  │  │10.0.16.1│ │10.0.16.2│ │10.0.16.3│ │10.0.16.4│ ...               │    │
-│  │  │ Pod A   │ │ Pod B   │ │ Pod C   │ │ Pod D   │                    │    │
-│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘                    │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  PRIVATE ENDPOINTS SUBNET                                            │    │
-│  │  CIDR: 10.0.4.0/24 (256 IPs)                                        │    │
-│  │                                                                      │    │
-│  │  PURPOSE: Secure connections to Azure PaaS services                  │    │
-│  │                                                                      │    │
-│  │  Private endpoints give Azure services a private IP in your VNet,   │    │
-│  │  so traffic never goes over the public internet:                    │    │
-│  │                                                                      │    │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │    │
-│  │  │ 10.0.4.4    │ │ 10.0.4.5    │ │ 10.0.4.6    │ │ 10.0.4.7    │   │    │
-│  │  │ ACR PE      │ │ Key Vault PE│ │ PostgreSQL  │ │ AI Foundry  │   │    │
-│  │  │             │ │             │ │ PE          │ │ PE          │   │    │
-│  │  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘   │    │
-│  │         │               │               │               │           │    │
-│  │         ▼               ▼               ▼               ▼           │    │
-│  │  ┌─────────────────────────────────────────────────────────────┐   │    │
-│  │  │        Azure PaaS Services (accessed via private IPs)       │   │    │
-│  │  └─────────────────────────────────────────────────────────────┘   │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  APPLICATION GATEWAY SUBNET                                          │    │
-│  │  CIDR: 10.0.6.0/24 (256 IPs)                                        │    │
-│  │                                                                      │    │
-│  │  PURPOSE: Azure Application Gateway (Layer 7 load balancer)         │    │
-│  │                                                                      │    │
-│  │  Application Gateway needs its own dedicated subnet.                 │    │
-│  │  It handles:                                                         │    │
-│  │  • SSL termination                                                   │    │
-│  │  • WAF (Web Application Firewall)                                    │    │
-│  │  • Path-based routing                                                │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  AZURE BASTION SUBNET                                                │    │
-│  │  Name: AzureBastionSubnet (required exact name)                      │    │
-│  │  CIDR: 10.0.5.0/26 (64 IPs)                                         │    │
-│  │                                                                      │    │
-│  │  PURPOSE: Secure RDP/SSH access to VMs without public IPs           │    │
-│  │                                                                      │    │
-│  │  Azure Bastion provides browser-based secure shell access.          │    │
-│  │  No need to expose SSH ports to the internet.                       │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Network Topology](../assets/arch-network-topology.svg)
 
 ### 5.2 Private DNS Zones
 
@@ -544,55 +249,7 @@ NSGs act as firewalls at the subnet level:
 > Zero Trust is a security model where you never trust anything by default,
 > even if it's inside your network. Every request must be verified.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        ZERO TRUST IMPLEMENTATION                             │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  1. IDENTITY VERIFICATION                                            │    │
-│  │                                                                      │    │
-│  │  Every request must prove who is making it:                          │    │
-│  │                                                                      │    │
-│  │  • Users: Azure AD authentication with MFA                           │    │
-│  │  • Services: Managed Identity (no passwords!)                        │    │
-│  │  • Pods: Workload Identity (Azure AD tokens for pods)               │    │
-│  │  • CI/CD: Federated credentials (GitHub OIDC)                       │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  2. LEAST PRIVILEGE ACCESS                                           │    │
-│  │                                                                      │    │
-│  │  Grant minimum permissions needed:                                    │    │
-│  │                                                                      │    │
-│  │  • RBAC roles: Specific roles instead of Owner/Contributor          │    │
-│  │  • Key Vault: Access policies per secret                            │    │
-│  │  • K8s RBAC: Namespace-scoped permissions                           │    │
-│  │  • Network policies: Only allowed pod-to-pod traffic               │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  3. NETWORK SEGMENTATION                                             │    │
-│  │                                                                      │    │
-│  │  Isolate traffic at multiple levels:                                 │    │
-│  │                                                                      │    │
-│  │  • Subnets: Separate subnets for different workloads                │    │
-│  │  • NSGs: Firewall rules per subnet                                   │    │
-│  │  • Private endpoints: No public internet exposure                    │    │
-│  │  • Network policies: Pod-level traffic control                      │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │  4. CONTINUOUS VERIFICATION                                          │    │
-│  │                                                                      │    │
-│  │  Always monitor and verify:                                          │    │
-│  │                                                                      │    │
-│  │  • Defender for Cloud: Continuous security scanning                 │    │
-│  │  • Azure Monitor: Audit logs for all operations                     │    │
-│  │  • Gatekeeper: Policy enforcement on every deployment               │    │
-│  │  • TFSec: Infrastructure code scanning in CI                        │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Zero Trust Implementation](../assets/arch-zero-trust.svg)
 
 ### 6.2 Workload Identity
 
@@ -601,114 +258,11 @@ NSGs act as firewalls at the subnet level:
 > Workload Identity allows Kubernetes pods to authenticate to Azure services
 > using Azure AD tokens, without needing secrets or passwords.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    HOW WORKLOAD IDENTITY WORKS                               │
-│                                                                              │
-│  TRADITIONAL (BAD):                                                         │
-│  ┌──────────┐     Store password     ┌──────────┐    Password      ┌─────┐  │
-│  │   Pod    │ ──────────────────────►│  Secret  │ ─────────────────►│Azure│  │
-│  └──────────┘    in K8s Secret       └──────────┘   in request     └─────┘  │
-│                                                                              │
-│  Problems:                                                                   │
-│  ✗ Secrets can leak                                                         │
-│  ✗ Secrets need rotation                                                    │
-│  ✗ Secrets stored in multiple places                                        │
-│                                                                              │
-│  ────────────────────────────────────────────────────────────────────────   │
-│                                                                              │
-│  WORKLOAD IDENTITY (GOOD):                                                  │
-│                                                                              │
-│  ┌──────────┐   1. Request token    ┌──────────┐   2. Get token  ┌────────┐ │
-│  │   Pod    │ ─────────────────────►│ Azure AD │ ───────────────►│Managed │ │
-│  │ (Service │                       │ (OIDC)   │                 │Identity│ │
-│  │ Account) │◄───────────────────── └──────────┘ ◄───────────────└────────┘ │
-│  └──────────┘   3. JWT token                      4. Verified               │
-│       │                                                                      │
-│       │ 5. Use token                                                        │
-│       ▼                                                                      │
-│  ┌──────────┐                                                               │
-│  │Key Vault │  No secrets needed!                                           │
-│  │PostgreSQL│  Just a short-lived token                                     │
-│  │   ACR    │                                                               │
-│  └──────────┘                                                               │
-│                                                                              │
-│  Benefits:                                                                   │
-│  ✓ No secrets to manage                                                     │
-│  ✓ Tokens auto-rotate                                                       │
-│  ✓ Azure AD handles authentication                                          │
-│  ✓ Audit trail in Azure AD                                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Workload Identity](../assets/arch-workload-identity.svg)
 
 ### 6.3 Secret Management Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    SECRET MANAGEMENT ARCHITECTURE                            │
-│                                                                              │
-│   ┌─────────────┐                                                           │
-│   │  Developer  │                                                           │
-│   │  creates    │                                                           │
-│   │  secret in  │                                                           │
-│   │  Key Vault  │                                                           │
-│   └──────┬──────┘                                                           │
-│          │                                                                   │
-│          ▼                                                                   │
-│   ┌─────────────────────────────────────────────────────────────────┐       │
-│   │                    AZURE KEY VAULT                               │       │
-│   │                                                                  │       │
-│   │  Single source of truth for all secrets:                        │       │
-│   │                                                                  │       │
-│   │  • database-password                                             │       │
-│   │  • api-keys                                                      │       │
-│   │  • certificates                                                  │       │
-│   │  • connection-strings                                            │       │
-│   │                                                                  │       │
-│   │  Access controlled by:                                           │       │
-│   │  • Azure RBAC roles                                              │       │
-│   │  • Access policies                                               │       │
-│   │  • Private endpoint (network isolation)                         │       │
-│   └─────────────────────┬───────────────────────────────────────────┘       │
-│                         │                                                    │
-│                         │ Sync via Workload Identity                        │
-│                         ▼                                                    │
-│   ┌─────────────────────────────────────────────────────────────────┐       │
-│   │              EXTERNAL SECRETS OPERATOR                           │       │
-│   │                                                                  │       │
-│   │  Runs in Kubernetes, watches for ExternalSecret resources:      │       │
-│   │                                                                  │       │
-│   │  1. Reads ExternalSecret custom resource                        │       │
-│   │  2. Uses Workload Identity to authenticate to Key Vault         │       │
-│   │  3. Fetches secret value                                         │       │
-│   │  4. Creates Kubernetes Secret                                    │       │
-│   │  5. Periodically refreshes (every 1h by default)                │       │
-│   └─────────────────────┬───────────────────────────────────────────┘       │
-│                         │                                                    │
-│                         │ Creates K8s Secret                                │
-│                         ▼                                                    │
-│   ┌─────────────────────────────────────────────────────────────────┐       │
-│   │                  KUBERNETES SECRET                               │       │
-│   │                                                                  │       │
-│   │  kind: Secret                                                    │       │
-│   │  metadata:                                                       │       │
-│   │    name: my-app-secrets                                         │       │
-│   │  data:                                                           │       │
-│   │    database-password: <base64>                                  │       │
-│   └─────────────────────┬───────────────────────────────────────────┘       │
-│                         │                                                    │
-│                         │ Mounted as volume or env var                      │
-│                         ▼                                                    │
-│   ┌─────────────────────────────────────────────────────────────────┐       │
-│   │                    APPLICATION POD                               │       │
-│   │                                                                  │       │
-│   │  Pod can access secrets as:                                      │       │
-│   │  • Environment variables: $DATABASE_PASSWORD                    │       │
-│   │  • Volume mount: /secrets/database-password                     │       │
-│   └─────────────────────────────────────────────────────────────────┘       │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Secret Management Architecture](../assets/arch-secret-management.svg)
 
 ---
 
@@ -724,102 +278,11 @@ NSGs act as firewalls at the subnet level:
 
 ### 7.2 GitOps Workflow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         GITOPS WORKFLOW                                      │
-│                                                                              │
-│   ┌─────────────┐                                                           │
-│   │  Developer  │                                                           │
-│   │  makes      │                                                           │
-│   │  change     │                                                           │
-│   └──────┬──────┘                                                           │
-│          │                                                                   │
-│          │ 1. Push code change                                              │
-│          ▼                                                                   │
-│   ┌─────────────────────────────────────────────────────────────────┐       │
-│   │                       GITHUB REPOSITORY                          │       │
-│   │                                                                  │       │
-│   │  Contains:                                                       │       │
-│   │  • Application code (src/)                                       │       │
-│   │  • Kubernetes manifests (k8s/)                                  │       │
-│   │  • ArgoCD application definitions (argocd/)                     │       │
-│   │                                                                  │       │
-│   │  Example structure:                                              │       │
-│   │  ├── src/                    # Application source code          │       │
-│   │  ├── k8s/                                                        │       │
-│   │  │   ├── base/               # Base Kubernetes manifests        │       │
-│   │  │   └── overlays/                                              │       │
-│   │  │       ├── dev/            # Dev environment patches          │       │
-│   │  │       ├── staging/        # Staging patches                  │       │
-│   │  │       └── prod/           # Production patches               │       │
-│   │  └── argocd/                                                     │       │
-│   │      └── application.yaml    # ArgoCD app definition            │       │
-│   └─────────────────────────┬───────────────────────────────────────┘       │
-│                             │                                                │
-│          ┌──────────────────┼──────────────────────┐                        │
-│          │                  │                      │                        │
-│          │ 2. CI runs       │ 3. ArgoCD polls     │                        │
-│          ▼                  ▼                      │                        │
-│   ┌─────────────┐    ┌─────────────┐              │                        │
-│   │   GitHub    │    │   ARGOCD    │              │                        │
-│   │   Actions   │    │             │              │                        │
-│   │             │    │  Watches    │              │                        │
-│   │  • Tests    │    │  Git repos  │              │                        │
-│   │  • Build    │    │  every 3min │              │                        │
-│   │  • Scan     │    │             │              │                        │
-│   └──────┬──────┘    └──────┬──────┘              │                        │
-│          │                  │                      │                        │
-│          │ 4. Push image    │ 5. Detect diff      │                        │
-│          ▼                  ▼                      │                        │
-│   ┌─────────────┐    ┌─────────────┐              │                        │
-│   │     ACR     │    │ Kubernetes  │◄─────────────┘                        │
-│   │             │    │   Cluster   │                                        │
-│   │  Container  │    │             │                                        │
-│   │  images     │    │ 6. Apply    │                                        │
-│   │             │    │ manifests   │                                        │
-│   └─────────────┘    └─────────────┘                                        │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![GitOps Workflow](../assets/arch-gitops-workflow.svg)
 
 ### 7.3 ArgoCD Application Model
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ARGOCD APPLICATION HIERARCHY                              │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────┐       │
-│   │                    APP-OF-APPS (Root)                            │       │
-│   │                                                                  │       │
-│   │  This is the "master" application that manages all others.      │       │
-│   │  When you deploy this, it creates all child applications.       │       │
-│   │                                                                  │       │
-│   │  Source: argocd/apps/app-of-apps.yaml                           │       │
-│   └─────────────────────────┬───────────────────────────────────────┘       │
-│                             │                                                │
-│          ┌──────────────────┼──────────────────┐                            │
-│          │                  │                  │                            │
-│          ▼                  ▼                  ▼                            │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                     │
-│   │   Wave 0    │    │   Wave 1    │    │   Wave 2    │                     │
-│   │             │    │             │    │             │                     │
-│   │ External    │    │ Gatekeeper  │    │Observability│                     │
-│   │ Secrets     │    │ (policies)  │    │(Prometheus) │                     │
-│   │             │    │             │    │             │                     │
-│   │ Must deploy │    │ Depends on  │    │ Depends on  │                     │
-│   │ first!      │    │ Wave 0      │    │ Wave 0,1    │                     │
-│   └─────────────┘    └─────────────┘    └─────────────┘                     │
-│                                                                              │
-│   WHY WAVES?                                                                 │
-│   ──────────                                                                 │
-│   Some applications depend on others. For example:                          │
-│   • Gatekeeper can't enforce policies until External Secrets               │
-│     provides the secrets it needs                                           │
-│   • Prometheus can't scrape metrics until other apps are running           │
-│                                                                              │
-│   ArgoCD sync waves ensure apps deploy in the correct order.               │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![ArgoCD Application Hierarchy](../assets/arch-argocd-app-model.svg)
 
 ### 7.4 Sync Strategies
 
@@ -841,134 +304,15 @@ NSGs act as firewalls at the subnet level:
 > Observability is the ability to understand what's happening inside your system
 > by looking at its external outputs: **metrics**, **logs**, and **traces**.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      OBSERVABILITY ARCHITECTURE                              │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                         DATA SOURCES                                 │   │
-│   │                                                                      │   │
-│   │   ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐       │   │
-│   │   │    AKS    │  │   Pods    │  │  Azure    │  │ External  │       │   │
-│   │   │   Nodes   │  │           │  │ Services  │  │  Probes   │       │   │
-│   │   └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘       │   │
-│   │         │              │              │              │              │   │
-│   │         │ Node metrics │ Pod metrics  │ Azure diag   │ Black-box   │   │
-│   │         │              │              │ metrics      │ metrics     │   │
-│   │         └──────────────┴──────────────┴──────────────┘              │   │
-│   │                                │                                     │   │
-│   └────────────────────────────────┼────────────────────────────────────┘   │
-│                                    │                                         │
-│                                    ▼                                         │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                         PROMETHEUS                                   │   │
-│   │                                                                      │   │
-│   │   TIME-SERIES DATABASE FOR METRICS                                  │   │
-│   │                                                                      │   │
-│   │   • Scrapes metrics from targets every 15-30 seconds               │   │
-│   │   • Stores time-series data (who, what, when, how much)            │   │
-│   │   • Provides query language (PromQL) for analysis                   │   │
-│   │   • Evaluates alerting rules continuously                          │   │
-│   │                                                                      │   │
-│   │   Example metric:                                                    │   │
-│   │   container_cpu_usage_seconds_total{pod="my-app",namespace="prod"}  │   │
-│   │                                                                      │   │
-│   └─────────────────────────┬───────────────────────────────────────────┘   │
-│                             │                                                │
-│             ┌───────────────┼───────────────┐                               │
-│             │               │               │                               │
-│             ▼               ▼               ▼                               │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                    │
-│   │   GRAFANA   │    │ALERTMANAGER │    │   AZURE     │                    │
-│   │             │    │             │    │  MONITOR    │                    │
-│   │ DASHBOARDS  │    │   ALERTS    │    │  (Logs)     │                    │
-│   │             │    │             │    │             │                    │
-│   │ Visualize   │    │ Route       │    │ Store logs  │                    │
-│   │ metrics in  │    │ alerts to   │    │ for long    │                    │
-│   │ graphs      │    │ Slack/PD    │    │ retention   │                    │
-│   └─────────────┘    └─────────────┘    └─────────────┘                    │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Observability Architecture](../assets/arch-observability-stack.svg)
 
 ### 8.2 Metrics Collection
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    HOW METRICS ARE COLLECTED                                 │
-│                                                                              │
-│   SCRAPE TARGETS (what Prometheus collects from):                           │
-│                                                                              │
-│   ┌────────────────────────────────────────────────────────────────────┐    │
-│   │  1. NODE EXPORTER (runs on every node)                              │    │
-│   │                                                                     │    │
-│   │  Collects: CPU, memory, disk, network stats for the VM             │    │
-│   │  Endpoint: http://node:9100/metrics                                │    │
-│   │                                                                     │    │
-│   │  Example metrics:                                                   │    │
-│   │  • node_cpu_seconds_total                                          │    │
-│   │  • node_memory_MemAvailable_bytes                                  │    │
-│   │  • node_disk_read_bytes_total                                      │    │
-│   └────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│   ┌────────────────────────────────────────────────────────────────────┐    │
-│   │  2. KUBE-STATE-METRICS                                              │    │
-│   │                                                                     │    │
-│   │  Collects: Kubernetes object states (pods, deployments, etc.)      │    │
-│   │  Endpoint: http://kube-state-metrics:8080/metrics                  │    │
-│   │                                                                     │    │
-│   │  Example metrics:                                                   │    │
-│   │  • kube_pod_status_phase                                           │    │
-│   │  • kube_deployment_status_replicas_ready                           │    │
-│   │  • kube_node_status_condition                                      │    │
-│   └────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│   ┌────────────────────────────────────────────────────────────────────┐    │
-│   │  3. APPLICATION METRICS (your apps expose these)                    │    │
-│   │                                                                     │    │
-│   │  Collects: Business and application-specific metrics               │    │
-│   │  Endpoint: http://your-app:8080/metrics                            │    │
-│   │                                                                     │    │
-│   │  Example metrics:                                                   │    │
-│   │  • http_requests_total{method="GET",status="200"}                  │    │
-│   │  • order_processing_duration_seconds                               │    │
-│   │  • active_users_gauge                                              │    │
-│   └────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Metrics Collection](../assets/arch-metrics-collection.svg)
 
 ### 8.3 Alert Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         ALERT FLOW                                           │
-│                                                                              │
-│   ┌────────────┐     ┌────────────┐     ┌────────────┐     ┌────────────┐   │
-│   │ Prometheus │ ──► │Alertmanager│ ──► │  Routing   │ ──► │   Action   │   │
-│   │  (detects) │     │ (receives) │     │  (decides) │     │  (notifies)│   │
-│   └────────────┘     └────────────┘     └────────────┘     └────────────┘   │
-│                                                                              │
-│   EXAMPLE ALERT FLOW:                                                        │
-│   ─────────────────────                                                      │
-│                                                                              │
-│   1. Prometheus detects: CPU > 85% for 10 minutes                           │
-│      │                                                                       │
-│      ▼                                                                       │
-│   2. Fires alert: HighNodeCPU (severity: warning)                           │
-│      │                                                                       │
-│      ▼                                                                       │
-│   3. Alertmanager receives, groups similar alerts                           │
-│      │                                                                       │
-│      ▼                                                                       │
-│   4. Routes based on severity:                                              │
-│      │                                                                       │
-│      ├── critical ──► PagerDuty (wake someone up!)                          │
-│      ├── warning ───► Slack #platform-alerts                                │
-│      └── info ──────► Log only                                               │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Alert Flow](../assets/arch-alert-flow.svg)
 
 ---
 
@@ -988,58 +332,7 @@ NSGs act as firewalls at the subnet level:
 > - **MLOps Integration:** Model versioning, deployment pipelines, and monitoring
 > - **Enterprise Security:** Private endpoints, managed identities, and compliance certifications
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      AI FOUNDRY ARCHITECTURE                                 │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                     AZURE OPENAI SERVICE                             │   │
-│   │                                                                      │   │
-│   │  Model Deployments:                                                  │   │
-│   │                                                                      │   │
-│   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │   │
-│   │  │   GPT-4o    │  │ GPT-4o-mini │  │ text-embed  │                  │   │
-│   │  │             │  │             │  │ -3-large    │                  │   │
-│   │  │ Complex     │  │ Simple      │  │             │                  │   │
-│   │  │ reasoning   │  │ tasks       │  │ Vector      │                  │   │
-│   │  │ $$$        │  │ $           │  │ embeddings  │                  │   │
-│   │  │             │  │             │  │ $$          │                  │   │
-│   │  │ Capacity:   │  │ Capacity:   │  │ Capacity:   │                  │   │
-│   │  │ 10 TPM     │  │ 20 TPM     │  │ 50 TPM     │                  │   │
-│   │  └─────────────┘  └─────────────┘  └─────────────┘                  │   │
-│   │                                                                      │   │
-│   │  Access: Private Endpoint (10.0.4.7)                                │   │
-│   │  Auth: Managed Identity (no API keys in code!)                      │   │
-│   └─────────────────────────┬───────────────────────────────────────────┘   │
-│                             │                                                │
-│                             │ Private endpoint                              │
-│                             ▼                                                │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    KUBERNETES PODS                                   │   │
-│   │                                                                      │   │
-│   │   Applications access AI via:                                        │   │
-│   │                                                                      │   │
-│   │   1. Azure SDK with Managed Identity                                │   │
-│   │   2. OpenAI Python client                                           │   │
-│   │   3. REST API calls                                                 │   │
-│   │                                                                      │   │
-│   │   Example usage:                                                     │   │
-│   │   ┌──────────────────────────────────────────────────────────────┐  │   │
-│   │   │  from azure.identity import DefaultAzureCredential           │  │   │
-│   │   │  from openai import AzureOpenAI                              │  │   │
-│   │   │                                                               │  │   │
-│   │   │  client = AzureOpenAI(                                       │  │   │
-│   │   │      azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],     │  │   │
-│   │   │      azure_ad_token_provider=get_bearer_token_provider(      │  │   │
-│   │   │          DefaultAzureCredential(), "https://cognitiveservic..│  │   │
-│   │   │      ),                                                       │  │   │
-│   │   │      api_version="2024-02-15-preview"                        │  │   │
-│   │   │  )                                                            │  │   │
-│   │   └──────────────────────────────────────────────────────────────┘  │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![AI Foundry Architecture](../assets/arch-ai-foundry.svg)
 
 ### 9.2 Model Selection Guide
 
@@ -1057,50 +350,7 @@ NSGs act as firewalls at the subnet level:
 
 The platform includes 23 pre-defined agents organized by horizon:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         AGENT ARCHITECTURE                                   │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  H1 FOUNDATION AGENTS (Infrastructure)                               │   │
-│   │                                                                      │   │
-│   │  • infrastructure-analyzer    - Analyzes Terraform code             │   │
-│   │  • security-scanner          - Scans for vulnerabilities            │   │
-│   │  • cost-optimizer            - Recommends cost savings              │   │
-│   │  • compliance-checker        - Validates against policies           │   │
-│   │  • network-diagnostics       - Troubleshoots network issues         │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  H2 ENHANCEMENT AGENTS (Operations)                                  │   │
-│   │                                                                      │   │
-│   │  • deployment-assistant      - Helps with deployments               │   │
-│   │  • incident-responder        - Assists during incidents             │   │
-│   │  • performance-tuner         - Optimizes application performance    │   │
-│   │  • log-analyzer              - Analyzes logs for patterns           │   │
-│   │  • documentation-generator   - Creates documentation                │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  H3 INNOVATION AGENTS (AI/ML)                                        │   │
-│   │                                                                      │   │
-│   │  • code-reviewer             - Reviews PRs automatically            │   │
-│   │  • test-generator            - Generates test cases                 │   │
-│   │  • api-designer              - Helps design APIs                    │   │
-│   │  • data-analyst              - Analyzes data patterns               │   │
-│   │  • ml-model-optimizer        - Tunes ML models                      │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  CROSS-CUTTING AGENTS (Platform-wide)                                │   │
-│   │                                                                      │   │
-│   │  • platform-orchestrator     - Coordinates other agents             │   │
-│   │  • knowledge-base            - Answers platform questions           │   │
-│   │  • onboarding-assistant      - Helps new team members               │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Agent Architecture](../assets/arch-agent-categories.svg)
 
 ---
 
@@ -1108,110 +358,11 @@ The platform includes 23 pre-defined agents organized by horizon:
 
 ### 11.1 Application Deployment Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    APPLICATION DEPLOYMENT DATA FLOW                          │
-│                                                                              │
-│   Developer                                                                  │
-│      │                                                                       │
-│      │ 1. git push                                                          │
-│      ▼                                                                       │
-│   ┌──────────┐                                                              │
-│   │  GitHub  │                                                              │
-│   └────┬─────┘                                                              │
-│        │                                                                     │
-│        │ 2. Trigger CI                                                      │
-│        ▼                                                                     │
-│   ┌──────────────────────────────────────────────────────────────────┐      │
-│   │                    GITHUB ACTIONS CI                              │      │
-│   │                                                                   │      │
-│   │  Jobs:                                                            │      │
-│   │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐         │      │
-│   │  │  Test    │─►│  Build   │─►│  Scan    │─►│  Push    │         │      │
-│   │  │          │  │  Image   │  │  Image   │  │  to ACR  │         │      │
-│   │  └──────────┘  └──────────┘  └──────────┘  └────┬─────┘         │      │
-│   └──────────────────────────────────────────────────┼───────────────┘      │
-│                                                      │                       │
-│                                                      │ 3. Push image        │
-│                                                      ▼                       │
-│                                                 ┌──────────┐                │
-│                                                 │   ACR    │                │
-│                                                 └────┬─────┘                │
-│                                                      │                       │
-│   ┌──────────────────────────────────────────────────┼───────────────┐      │
-│   │                       ARGOCD                      │               │      │
-│   │                                                   │               │      │
-│   │  4. Detect Git change                            │               │      │
-│   │  5. Compare desired vs actual state              │               │      │
-│   │  6. Sync manifests to cluster                    │               │      │
-│   │                                                   │               │      │
-│   └───────────────────────────┬──────────────────────┘               │      │
-│                               │                                       │      │
-│                               │ 7. Apply manifests                   │      │
-│                               ▼                                       │      │
-│   ┌──────────────────────────────────────────────────────────────────┐      │
-│   │                    KUBERNETES CLUSTER                             │      │
-│   │                                                                   │      │
-│   │  8. Create/Update deployment                                     │      │
-│   │  9. Pull image from ACR ◄────────────────────────────────────────┘      │
-│   │  10. Start new pods                                                     │
-│   │  11. Route traffic to new pods                                          │
-│   │                                                                          │
-│   └──────────────────────────────────────────────────────────────────────────┘
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Application Deployment Flow](../assets/arch-deployment-flow.svg)
 
 ### 11.2 Secret Access Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         SECRET ACCESS DATA FLOW                              │
-│                                                                              │
-│   ┌──────────┐  1. Creates ExternalSecret CR  ┌──────────────────────┐      │
-│   │ Developer│ ─────────────────────────────► │    Kubernetes API    │      │
-│   └──────────┘                                └──────────┬───────────┘      │
-│                                                          │                   │
-│                                                          │ 2. Notify        │
-│                                                          ▼                   │
-│   ┌──────────────────────────────────────────────────────────────────┐      │
-│   │            EXTERNAL SECRETS OPERATOR (Controller)                 │      │
-│   │                                                                   │      │
-│   │  3. Read ExternalSecret resource                                 │      │
-│   │  4. Determine target: ClusterSecretStore "azure-key-vault"      │      │
-│   └───────────────────────────┬──────────────────────────────────────┘      │
-│                               │                                              │
-│                               │ 5. Request secret via Workload Identity     │
-│                               ▼                                              │
-│   ┌──────────────────────────────────────────────────────────────────┐      │
-│   │                      AZURE KEY VAULT                              │      │
-│   │                                                                   │      │
-│   │  6. Verify identity (Workload Identity token)                    │      │
-│   │  7. Check access policy                                          │      │
-│   │  8. Return secret value                                          │      │
-│   └───────────────────────────┬──────────────────────────────────────┘      │
-│                               │                                              │
-│                               │ 9. Secret value                             │
-│                               ▼                                              │
-│   ┌──────────────────────────────────────────────────────────────────┐      │
-│   │            EXTERNAL SECRETS OPERATOR                              │      │
-│   │                                                                   │      │
-│   │  10. Create Kubernetes Secret with value                         │      │
-│   │  11. Set ownership reference to ExternalSecret                   │      │
-│   │  12. Schedule refresh (every 1h)                                 │      │
-│   └───────────────────────────┬──────────────────────────────────────┘      │
-│                               │                                              │
-│                               │ 13. K8s Secret created                      │
-│                               ▼                                              │
-│   ┌──────────────────────────────────────────────────────────────────┐      │
-│   │                    APPLICATION POD                                │      │
-│   │                                                                   │      │
-│   │  14. Mount secret as volume or environment variable              │      │
-│   │  15. Use secret in application                                   │      │
-│   └──────────────────────────────────────────────────────────────────┘      │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Secret Access Data Flow](../assets/arch-secret-access-flow.svg)
 
 ---
 

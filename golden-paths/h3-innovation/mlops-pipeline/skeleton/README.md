@@ -24,18 +24,7 @@ Production-grade MLOps pipeline for model training, versioning, and deployment.
 
 ## Pipeline Stages
 
-```
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│  Data   │───▶│  Train  │───▶│  Test   │───▶│ Deploy  │
-│ Prepare │    │  Model  │    │ Evaluate│    │ Serve   │
-└─────────┘    └─────────┘    └─────────┘    └─────────┘
-     │                              │              │
-     ▼                              ▼              ▼
-┌─────────┐                  ┌─────────┐    ┌─────────┐
-│ Feature │                  │  Model  │    │ Monitor │
-│  Store  │                  │Registry │    │  Drift  │
-└─────────┘                  └─────────┘    └─────────┘
-```
+![MLOps Pipeline](../../../../../docs/assets/gp-mlops-pipeline.svg)
 
 ## Directory Structure
 

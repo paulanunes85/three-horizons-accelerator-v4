@@ -15,21 +15,7 @@ This RAG (Retrieval-Augmented Generation) application was created using the Thre
 
 ## Architecture
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Client    │────▶│  RAG API    │────▶│  OpenAI     │
-└─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │  AI Search  │
-                    └─────────────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │ Blob Storage│
-                    └─────────────┘
-```
+![RAG Architecture](../../../../../docs/assets/gp-rag-application.svg)
 
 ## Features
 

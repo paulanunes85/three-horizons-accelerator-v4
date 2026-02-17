@@ -42,39 +42,7 @@ Before diving into specific issues, understand the general approach:
 
 ### 1.2 Decision Tree: Where to Start
 
-```
-What's the problem?
-         │
-         ├─► "I can't deploy infrastructure"
-         │   └─► Go to Section 3 (Terraform Issues)
-         │
-         ├─► "I can't connect to the cluster"
-         │   └─► Go to Section 4 (AKS Cluster Issues)
-         │
-         ├─► "My pods aren't starting/running"
-         │   └─► Go to Section 5 (Pod Issues)
-         │
-         ├─► "My application isn't deploying via GitOps"
-         │   └─► Go to Section 6 (ArgoCD Issues)
-         │
-         ├─► "Services can't communicate"
-         │   └─► Go to Section 7 (Networking Issues)
-         │
-         ├─► "Secrets aren't syncing from Key Vault"
-         │   └─► Go to Section 8 (External Secrets Issues)
-         │
-         ├─► "I can't see metrics/logs"
-         │   └─► Go to Section 9 (Observability Issues)
-         │
-         ├─► "AI/OpenAI APIs aren't working"
-         │   └─► Go to Section 10 (AI Foundry Issues)
-         │
-         ├─► "Authentication/permission errors"
-         │   └─► Go to Section 11 (Auth Issues)
-         │
-         └─► "Things are slow"
-             └─► Go to Section 12 (Performance Issues)
-```
+![Troubleshooting Decision Tree](../assets/ts-decision-tree.svg)
 
 ### 1.3 Severity Classification
 
@@ -334,17 +302,7 @@ ps aux | grep terraform
 
 **Decision Tree:**
 
-```
-Is another terraform process running?
-    │
-    ├─► YES: Wait for it to finish
-    │
-    └─► NO: How old is the lock?
-            │
-            ├─► Less than 30 minutes: Wait, might be in progress
-            │
-            └─► More than 30 minutes: Probably stale, force unlock
-```
+![State Lock Decision Tree](../assets/ts-state-lock.svg)
 
 **Solutions:**
 
@@ -395,31 +353,7 @@ terraform state list | grep resource_group
 
 **Solutions:**
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│           RESOURCE ALREADY EXISTS - Decision Tree                   │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Was the resource created by Terraform that lost state?             │
-│      │                                                              │
-│      ├─► YES → Import it into state                                 │
-│      │         terraform import azurerm_resource_group.main \       │
-│      │           /subscriptions/.../resourceGroups/rg-name          │
-│      │                                                              │
-│      └─► NO → Was it created manually and should Terraform manage it?
-│               │                                                     │
-│               ├─► YES → Import it (same as above)                   │
-│               │                                                     │
-│               └─► NO → Should it be deleted?                        │
-│                       │                                             │
-│                       ├─► YES → Delete in Azure, then apply         │
-│                       │         az group delete -n rg-name --yes    │
-│                       │                                             │
-│                       └─► NO → Rename your Terraform resource       │
-│                                to avoid conflict                    │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+![Resource Already Exists](../assets/ts-resource-exists.svg)
 
 **Import Examples:**
 
@@ -506,39 +440,7 @@ Unable to connect to the server: dial tcp 10.0.0.1:443: i/o timeout
 
 **Diagnostic Flowchart:**
 
-```
-Cannot connect to cluster
-         │
-         ├─► Step 1: Is kubeconfig correct?
-         │   kubectl config current-context
-         │   kubectl config view
-         │       │
-         │       └─► Wrong context? kubectl config use-context <name>
-         │
-         ├─► Step 2: Is the cluster running?
-         │   az aks show -g $RG -n $CLUSTER --query "powerState.code"
-         │       │
-         │       ├─► "Stopped" → az aks start -g $RG -n $CLUSTER
-         │       └─► "Running" → Continue to Step 3
-         │
-         ├─► Step 3: Are your credentials valid?
-         │   az aks get-credentials -g $RG -n $CLUSTER --overwrite-existing
-         │       │
-         │       └─► Retry kubectl command
-         │
-         ├─► Step 4: Is it a private cluster?
-         │   az aks show -g $RG -n $CLUSTER --query "apiServerAccessProfile"
-         │       │
-         │       └─► Private? Must connect via:
-         │           - Azure Bastion
-         │           - VPN to the VNet
-         │           - Authorized IP range
-         │
-         └─► Step 5: Check network
-             - Are you on VPN (if required)?
-             - Is your IP in authorized ranges?
-             - Check firewall/proxy settings
-```
+![Cluster Connectivity Diagnostics](../assets/ts-cluster-connect.svg)
 
 **Quick Fixes:**
 
@@ -858,26 +760,7 @@ kubectl describe pod my-app-xxx -n my-namespace | grep -A 10 "Events:"
 
 **Diagnostic Flow:**
 
-```
-ImagePullBackOff
-      │
-      ├─► "manifest not found"
-      │   └─► Image or tag doesn't exist
-      │       - Check: docker pull <image> (locally)
-      │       - Verify image name and tag are correct
-      │       - Check if image was pushed to registry
-      │
-      ├─► "unauthorized" or "authentication required"
-      │   └─► Registry authentication issue
-      │       - ACR: Check AKS-ACR attachment
-      │       - Private registry: Check imagePullSecrets
-      │
-      └─► "connection refused" or "timeout"
-          └─► Network issue
-              - Private registry: Check private endpoint
-              - Check NSG allows outbound to registry
-              - Check firewall rules
-```
+![ImagePullBackOff Diagnostics](../assets/ts-image-pull.svg)
 
 **Solutions:**
 
@@ -1191,25 +1074,7 @@ kubectl get pods -n production -l app=my-app
 
 **Common Causes:**
 
-```
-Progressing Forever
-        │
-        ├─► Deployment not completing rollout
-        │   - Check: kubectl rollout status deployment/my-app
-        │   - See: Section 5 (Pod Issues)
-        │
-        ├─► Service waiting for endpoints
-        │   - Check: kubectl get endpoints my-app
-        │   - Fix: Ensure pods have correct labels
-        │
-        ├─► HPA scaling
-        │   - Check: kubectl get hpa
-        │   - Fix: Wait or adjust HPA thresholds
-        │
-        └─► Custom health check failing
-            - Check: Application has custom health defined
-            - Fix: Review .status of the resource
-```
+![App Stuck in Progressing](../assets/ts-app-progressing.svg)
 
 ### 6.4 Cannot Login to ArgoCD
 
@@ -1342,28 +1207,7 @@ exit
 
 **Decision Tree:**
 
-```
-Cannot reach external service
-            │
-            ├─► DNS resolution fails?
-            │   "nslookup: can't resolve"
-            │       │
-            │       └─► Check CoreDNS:
-            │           kubectl get pods -n kube-system -l k8s-app=kube-dns
-            │           kubectl logs -n kube-system -l k8s-app=kube-dns
-            │
-            ├─► DNS works but connection times out?
-            │       │
-            │       └─► Check outbound rules:
-            │           - NSG allows outbound on port 443
-            │           - No restrictive Network Policies
-            │           - Azure Firewall (if using) allows destination
-            │
-            └─► Connection refused?
-                    │
-                    └─► Service is blocking your IP or
-                        Service is down
-```
+![External Service Connectivity](../assets/ts-external-service.svg)
 
 **Common Fixes:**
 

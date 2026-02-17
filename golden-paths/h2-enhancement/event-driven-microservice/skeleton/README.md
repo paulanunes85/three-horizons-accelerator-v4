@@ -24,18 +24,7 @@ Event-driven microservice with message broker integration for asynchronous commu
 
 ## Architecture
 
-```
-┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│  Event Source   │────▶│ Message      │────▶│  This Service   │
-│                 │     │ Broker       │     │                 │
-└─────────────────┘     └──────────────┘     └─────────────────┘
-                                                     │
-                                                     ▼
-                                             ┌─────────────────┐
-                                             │  Output Topic/  │
-                                             │  Queue          │
-                                             └─────────────────┘
-```
+![Event-Driven Architecture](../../../../../docs/assets/gp-event-driven.svg)
 
 ## Message Handlers
 

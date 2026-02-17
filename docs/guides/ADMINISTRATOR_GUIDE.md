@@ -359,28 +359,7 @@ kubectl get secret prometheus-grafana -n observability \
 
 **What you'll see in Grafana:**
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    GRAFANA DASHBOARD OVERVIEW                                │
-│                                                                              │
-│  HOME                                                                        │
-│  ├── Platform Overview         ← Start here! Overall platform health        │
-│  │                                                                           │
-│  ├── Kubernetes                                                              │
-│  │   ├── Cluster Overview      ← Node and pod counts, resource usage        │
-│  │   ├── Node Metrics          ← Individual node CPU/memory/disk            │
-│  │   ├── Pod Metrics           ← Individual pod resource usage              │
-│  │   └── Namespace Overview    ← Resources by namespace                     │
-│  │                                                                           │
-│  ├── Applications                                                            │
-│  │   ├── ArgoCD Dashboard      ← Application sync status                    │
-│  │   └── API Metrics           ← Request rates, error rates, latency        │
-│  │                                                                           │
-│  └── Cost                                                                    │
-│      └── Cost Dashboard        ← Resource costs by namespace/team           │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Grafana Dashboard Overview](../assets/admin-grafana-overview.svg)
 
 #### Prometheus (Metrics Query)
 
@@ -562,34 +541,7 @@ groups:
 > - **VPA (Vertical Pod Autoscaler):** Adjusts pod resource requests
 > - **Cluster Autoscaler:** Adds/removes nodes from the cluster
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    AUTOSCALING HIERARCHY                                     │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    CLUSTER AUTOSCALER                                │   │
-│   │                                                                      │   │
-│   │   Watches: Pending pods that can't be scheduled                     │   │
-│   │   Action: Add nodes when pods can't fit, remove when underutilized │   │
-│   │   Scope: Entire cluster                                             │   │
-│   │   Speed: Slow (minutes to add node)                                 │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                    │                                         │
-│                                    ▼                                         │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    HORIZONTAL POD AUTOSCALER (HPA)                   │   │
-│   │                                                                      │   │
-│   │   Watches: CPU/memory usage, custom metrics                         │   │
-│   │   Action: Add/remove pod replicas                                   │   │
-│   │   Scope: Single deployment                                          │   │
-│   │   Speed: Fast (seconds to add pod)                                  │   │
-│   │                                                                      │   │
-│   │   Example:                                                           │   │
-│   │   Load ↑ → HPA adds pods → Pods pending → CA adds node → Pods run  │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Autoscaling Hierarchy](../assets/admin-autoscaling-hierarchy.svg)
 
 ### 4.2 Manual Node Scaling
 
@@ -721,35 +673,7 @@ my-app-hpa   Deployment/my-app   23%/70%   3         20        5          2m
 > - **Velero:** Kubernetes resources and PV snapshots
 > - **Azure Backup:** Managed services (PostgreSQL, etc.)
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    BACKUP ARCHITECTURE                                       │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                        DATA SOURCES                                  │   │
-│   │                                                                      │   │
-│   │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐        │   │
-│   │  │Kubernetes │  │ Terraform │  │  GitHub   │  │  Azure    │        │   │
-│   │  │ Resources │  │   State   │  │   Repos   │  │  PaaS     │        │   │
-│   │  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘        │   │
-│   └────────┼──────────────┼──────────────┼──────────────┼───────────────┘   │
-│            │              │              │              │                    │
-│            ▼              ▼              ▼              ▼                    │
-│   ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐   │
-│   │    VELERO     │ │Azure Storage  │ │   GitHub      │ │ Azure Backup  │   │
-│   │               │ │ (versioned)   │ │               │ │               │   │
-│   │ • K8s objects │ │ • tfstate     │ │ • All code    │ │ • PostgreSQL  │   │
-│   │ • PV snapshots│ │ • Locked      │ │ • All configs │ │ • Key Vault   │   │
-│   │ • Namespaces  │ │               │ │ • History     │ │               │   │
-│   └───────────────┘ └───────────────┘ └───────────────┘ └───────────────┘   │
-│                                                                              │
-│   RETENTION POLICIES:                                                        │
-│   • Daily backups: 7 days                                                   │
-│   • Weekly backups: 4 weeks                                                 │
-│   • Monthly backups: 12 months                                              │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Backup Architecture](../assets/admin-backup-architecture.svg)
 
 ### 5.2 Velero Backup Commands
 
@@ -862,33 +786,7 @@ velero restore describe <restore-name>
 > - **External Secrets Operator:** Syncs secrets to Kubernetes
 > - **Kubernetes Secrets:** What applications actually read
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    SECRET MANAGEMENT FLOW                                    │
-│                                                                              │
-│   1. Admin creates secret     2. ESO syncs        3. App uses secret        │
-│   in Key Vault                to K8s              from K8s Secret           │
-│                                                                              │
-│   ┌──────────────┐           ┌──────────────┐         ┌──────────────┐      │
-│   │  Key Vault   │   ──►     │   External   │   ──►   │  Kubernetes  │      │
-│   │              │           │   Secrets    │         │    Secret    │      │
-│   │ db-password  │           │   Operator   │         │              │      │
-│   │ api-key      │           │              │         │ data:        │      │
-│   │ cert.pem     │           │ Polls every  │         │   password:  │      │
-│   │              │           │ 1 hour       │         │   api-key:   │      │
-│   └──────────────┘           └──────────────┘         └──────────────┘      │
-│                                                              │               │
-│                                                              ▼               │
-│                                                       ┌──────────────┐      │
-│                                                       │     Pod      │      │
-│                                                       │              │      │
-│                                                       │ env:         │      │
-│                                                       │   DB_PASS:   │      │
-│                                                       │     from:    │      │
-│                                                       │     secret   │      │
-│                                                       └──────────────┘      │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Secret Management Flow](../assets/admin-secret-management-flow.svg)
 
 ### 6.2 Managing Secrets in Key Vault
 
@@ -1018,33 +916,7 @@ kubectl get secret my-app-secrets -n my-app -o jsonpath='{.data.DATABASE_PASSWOR
 > - **Azure RBAC:** Who can access Azure resources
 > - **Kubernetes RBAC:** Who can access Kubernetes resources
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ACCESS CONTROL HIERARCHY                                  │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    AZURE AD GROUPS                                   │   │
-│   │                                                                      │   │
-│   │  Platform-Admins          Platform-Operators      Platform-Viewers  │   │
-│   │  ────────────────        ──────────────────      ────────────────   │   │
-│   │  Full access             Operations access       Read-only access   │   │
-│   │  (Owner role)            (Contributor role)     (Reader role)       │   │
-│   │                                                                      │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                    │                                         │
-│                                    ▼                                         │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    KUBERNETES RBAC                                   │   │
-│   │                                                                      │   │
-│   │  cluster-admin            edit                    view               │   │
-│   │  ────────────            ────                    ────               │   │
-│   │  All K8s access          Create/update          Read-only          │   │
-│   │  All namespaces          Limited namespaces     All namespaces     │   │
-│   │                                                                      │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Access Control Hierarchy](../assets/admin-access-control.svg)
 
 ### 7.2 Adding a New User
 
@@ -1191,22 +1063,7 @@ az keyvault certificate create \
 > 3. **Storage:** Disks, blobs, logs
 > 4. **Network:** Egress traffic
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    TYPICAL COST BREAKDOWN                                    │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                                                                      │   │
-│   │  ████████████████████████████████████████████░░░░░░░░░░  AKS (65%)  │   │
-│   │  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  AI (15%)             │   │
-│   │  ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Storage (10%)        │   │
-│   │  ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Network (5%)         │   │
-│   │  ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Other (5%)           │   │
-│   │                                                                      │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Cost Breakdown](../assets/admin-cost-breakdown.svg)
 
 ### 9.2 Cost Monitoring
 

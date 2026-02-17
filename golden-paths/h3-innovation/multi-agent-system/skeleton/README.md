@@ -24,20 +24,7 @@ Multi-Agent AI System with orchestration, collaboration, and human-in-the-loop c
 
 ## Architecture
 
-```
-                    ┌─────────────────┐
-                    │  Orchestrator   │
-                    │     Agent       │
-                    └────────┬────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-         ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│   Researcher    │ │    Analyst      │ │    Writer       │
-│     Agent       │ │     Agent       │ │     Agent       │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-```
+![Multi-Agent System](../../../../../docs/assets/gp-multi-agent.svg)
 
 ## Agents
 

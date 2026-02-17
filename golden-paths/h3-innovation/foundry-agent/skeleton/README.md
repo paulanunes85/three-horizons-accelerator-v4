@@ -24,17 +24,7 @@ Autonomous AI Agent powered by Azure AI Foundry with tools, RAG, and orchestrati
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│                  AI Foundry Agent               │
-├─────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
-│  │  Tools   │  │   RAG    │  │   Memory     │  │
-│  └──────────┘  └──────────┘  └──────────────┘  │
-├─────────────────────────────────────────────────┤
-│            Azure OpenAI (GPT-4)                 │
-└─────────────────────────────────────────────────┘
-```
+![AI Foundry Agent](../../../../../docs/assets/gp-foundry-agent.svg)
 
 ## Tools
 

@@ -86,25 +86,7 @@ GitHub Copilot Agents represent a paradigm shift in AI-assisted development, mov
 
 GitHub Copilot customization follows a layered architecture where each level builds upon the previous. **Agents sit below Custom Instructions in the System Prompt**, meaning instructions are always respected while agents extend behavior.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      SKILLS                                  │
-│     Progressive loading - metadata read first, then scripts  │
-│     Perfect for modular capabilities without bloating context │
-├─────────────────────────────────────────────────────────────┤
-│                      AGENTS                                  │
-│     "Personalities" with role-based thinking & handoffs      │
-│     Sit BELOW Instructions in System Prompt hierarchy        │
-├─────────────────────────────────────────────────────────────┤
-│                   PROMPT FILES                               │
-│     Reusable task templates (slash commands)                 │
-│     Support tools array for capabilities                     │
-├─────────────────────────────────────────────────────────────┤
-│                  INSTRUCTIONS                                │
-│     Foundation: Repository-wide and path-scoped rules        │
-│     ALWAYS applied - agents cannot override                  │
-└─────────────────────────────────────────────────────────────┘
-```
+![Customization Hierarchy](assets/copilot-customization-hierarchy.svg)
 
 ### System Prompt Loading Order
 
@@ -129,43 +111,7 @@ When Copilot processes a request, context is loaded in this order:
 
 For a full-stack project like the Three Horizons Accelerator, layer usage follows this pattern:
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│ LAYER 1: PROJECT-WIDE RULES (Instructions)                      │
-│ .github/copilot-instructions.md                                 │
-│ • Tech stack: Terraform 1.9+, AKS 1.29+, Python 3.11+          │
-│ • Naming conventions: CAF naming, kebab-case for K8s            │
-│ • Security: Workload Identity, private endpoints                │
-│ • Git workflow: feature/* → develop → main                      │
-└────────────────────────────────────────────────────────────────┘
-                              ↓
-┌────────────────────────────────────────────────────────────────┐
-│ LAYER 2: COMMON TASKS (Prompt Files)                            │
-│ .github/prompts/                                                │
-│ • /create-service - Scaffold new microservice                   │
-│ • /generate-tests - Generate test suites                        │
-│ • /review-terraform - Terraform code review                     │
-│ • /deploy-app - ArgoCD application deployment                   │
-└────────────────────────────────────────────────────────────────┘
-                              ↓
-┌────────────────────────────────────────────────────────────────┐
-│ LAYER 3: COMPLEX WORKFLOWS (Agents)                             │
-│ .github/agents/                                                 │
-│ • @infrastructure - Azure IaC provisioning                      │
-│ • @security - Compliance and security reviews                   │
-│ • @gitops - ArgoCD operations                                   │
-│ • @validation - Deployment validation gates                     │
-└────────────────────────────────────────────────────────────────┘
-                              ↓
-┌────────────────────────────────────────────────────────────────┐
-│ LAYER 4: SPECIALIZED CAPABILITIES (Skills)                      │
-│ .github/skills/                                                 │
-│ • terraform-cli - Terraform command execution                   │
-│ • kubectl-cli - Kubernetes cluster operations                   │
-│ • azure-cli - Azure resource management                         │
-│ • validation-scripts - Deployment validation scripts            │
-└────────────────────────────────────────────────────────────────┘
-```
+![Layered Usage Pattern](assets/copilot-layered-usage.svg)
 
 ### Agents as "Personalities"
 
@@ -1153,17 +1099,7 @@ The Coding Agent is an asynchronous AI teammate that independently writes, runs,
 
 ### How It Works
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Task Assigned │───▶│   Agent Works   │───▶│   PR Created    │
-│   via Issue/UI  │    │   Autonomously  │    │   for Review    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-        │                      │                      │
-        ▼                      ▼                      ▼
-   @github tag           Explores repo           Draft PR [WIP]
-   Agents panel          Makes changes           Runs CI/CD
-   VS Code ext           Runs tests              Updates title
-```
+![Coding Agent Workflow](assets/copilot-coding-agent-flow.svg)
 
 ### How to Assign Tasks
 
@@ -1250,15 +1186,7 @@ Mission Control is a centralized dashboard for managing Copilot coding agent tas
 
 ### Task Lifecycle
 
-```
-┌─────────┐   ┌──────────┐   ┌───────────┐   ┌──────────┐   ┌──────────┐
-│ Created │──▶│ In-Queue │──▶│ Running   │──▶│ Awaiting │──▶│ Complete │
-└─────────┘   └──────────┘   └───────────┘   │ Feedback │   └──────────┘
-                                   │         └──────────┘
-                                   ▼               │
-                              Real-time  ◀─────────┘
-                              Steering
-```
+![Task Lifecycle](assets/copilot-task-lifecycle.svg)
 
 ### Multi-Agent Orchestration
 
