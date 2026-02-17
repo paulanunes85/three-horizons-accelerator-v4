@@ -159,6 +159,7 @@ three-horizons-accelerator-v4/
 | [Architecture Guide](./docs/guides/ARCHITECTURE_GUIDE.md) | Three Horizons architecture explained |
 | [Administrator Guide](./docs/guides/ADMINISTRATOR_GUIDE.md) | Day-2 operations and maintenance |
 | [Module Reference](./docs/guides/MODULE_REFERENCE.md) | All Terraform modules with examples |
+| [Performance Tuning Guide](./docs/guides/PERFORMANCE_TUNING_GUIDE.md) | Performance optimization recommendations |
 | [Troubleshooting Guide](./docs/guides/TROUBLESHOOTING_GUIDE.md) | Problem diagnosis and resolution |
 
 ### Agent Documentation
@@ -278,12 +279,14 @@ kubectl apply -f golden-paths/h1-foundation/basic-cicd/template.yaml
 
 | Template | Use Case |
 |----------|----------|
+| `ado-to-github-migration` | Azure DevOps migration |
+| `api-gateway` | API Management |
+| `api-microservice` | API microservices |
+| `batch-job` | Scheduled jobs |
+| `data-pipeline` | ETL with Databricks |
+| `event-driven-microservice` | Event Hubs/Service Bus |
 | `gitops-deployment` | ArgoCD applications |
 | `microservice` | Complete microservice |
-| `api-gateway` | API Management |
-| `event-driven-microservice` | Event Hubs/Service Bus |
-| `data-pipeline` | ETL with Databricks |
-| `batch-job` | Scheduled jobs |
 | `reusable-workflows` | GitHub workflows |
 
 #### H3 Innovation (AI/Agents)

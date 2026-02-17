@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README files for all Terraform modules
 
 ### Changed
-- Updated agent-router.yml with all 23 agents mapped
+- Updated agent-router.yml with all 11 Copilot Chat Agents mapped
 - Fixed soft_fail settings in CI workflow
 - Updated documentation counts to reflect current state
 

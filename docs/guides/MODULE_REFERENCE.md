@@ -1442,6 +1442,134 @@ jobs:
 
 ---
 
+### 4.5 RHDH (Red Hat Developer Hub) Module
+
+**Path:** `terraform/modules/rhdh`
+
+> 💡 **Why This Module Exists**
+>
+> Red Hat Developer Hub (based on Backstage) is your **Internal Developer Portal**.
+> It provides:
+> - A single place for developers to discover services, APIs, and documentation
+> - Golden Path templates for scaffolding new projects
+> - TechDocs for automatic documentation publishing
+> - Kubernetes plugin to view workloads
+> - ArgoCD integration for deployment status
+>
+> Think of RHDH as the **developer's front door** to the entire platform.
+
+#### What Gets Created
+
+![RHDH Architecture](../assets/mod-rhdh-architecture.svg)
+
+#### Inputs
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `customer_name` | string | **Yes** | - | Customer name for resource naming |
+| `environment` | string | **Yes** | - | Environment (dev, staging, prod) |
+| `location` | string | **Yes** | - | Azure region |
+| `resource_group_name` | string | **Yes** | - | Resource group name |
+| `namespace` | string | No | `"rhdh"` | Kubernetes namespace |
+| `rhdh_version` | string | No | `"1.2.0"` | RHDH Helm chart version |
+| `base_url` | string | **Yes** | - | Base URL (e.g., `https://developer.example.com`) |
+| `postgresql_host` | string | **Yes** | - | PostgreSQL server hostname |
+| `postgresql_database` | string | No | `"rhdh"` | Database name |
+| `postgresql_username` | string | No | `"rhdh"` | Database username |
+| `postgresql_password` | string | **Yes** | - | Database password (sensitive) |
+| `github_org` | string | **Yes** | - | GitHub organization name |
+| `github_app_id` | string | **Yes** | - | GitHub App ID |
+| `github_app_client_id` | string | **Yes** | - | GitHub App client ID |
+| `github_app_client_secret` | string | **Yes** | - | GitHub App client secret (sensitive) |
+| `github_app_private_key` | string | **Yes** | - | GitHub App private key PEM (sensitive) |
+| `github_app_webhook_secret` | string | **Yes** | - | GitHub App webhook secret (sensitive) |
+| `argocd_url` | string | **Yes** | - | ArgoCD server URL |
+| `argocd_auth_token` | string | **Yes** | - | ArgoCD auth token (sensitive) |
+| `azure_tenant_id` | string | **Yes** | - | Azure AD tenant ID |
+| `azure_client_id` | string | **Yes** | - | Azure AD app client ID |
+| `azure_client_secret` | string | **Yes** | - | Azure AD app client secret (sensitive) |
+| `key_vault_name` | string | **Yes** | - | Key Vault for secrets |
+| `aks_oidc_issuer_url` | string | **Yes** | - | AKS OIDC issuer URL |
+| `subnet_id` | string | **Yes** | - | Subnet for private endpoints |
+| `replicas` | number | No | `2` | Number of RHDH replicas |
+| `enable_techdocs` | bool | No | `true` | Enable TechDocs with Azure Blob Storage |
+| `enable_search` | bool | No | `true` | Enable search functionality |
+| `enable_kubernetes_plugin` | bool | No | `true` | Enable Kubernetes plugin |
+| `tags` | map(string) | No | `{}` | Resource tags |
+
+#### Outputs
+
+| Output | Description |
+|--------|-------------|
+| `namespace` | RHDH Kubernetes namespace |
+| `url` | RHDH URL |
+| `service_account` | RHDH service account name |
+| `managed_identity_client_id` | RHDH managed identity client ID |
+| `storage_account_name` | TechDocs storage account name |
+| `storage_container_name` | TechDocs storage container name |
+
+#### Usage Example
+
+```hcl
+module "rhdh" {
+  source = "./modules/rhdh"
+
+  customer_name       = var.customer_name
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = module.naming.resource_group_name
+
+  base_url           = "https://developer.${var.customer_name}.com"
+  namespace          = "rhdh"
+
+  # Database
+  postgresql_host     = module.databases.postgresql_fqdn
+  postgresql_password = var.rhdh_db_password
+
+  # GitHub App
+  github_org                = var.github_org
+  github_app_id             = var.github_app_id
+  github_app_client_id      = var.github_app_client_id
+  github_app_client_secret  = var.github_app_client_secret
+  github_app_private_key    = var.github_app_private_key
+  github_app_webhook_secret = var.github_app_webhook_secret
+
+  # ArgoCD
+  argocd_url        = "https://argocd.${var.customer_name}.com"
+  argocd_auth_token = var.argocd_auth_token
+
+  # Azure AD
+  azure_tenant_id     = data.azurerm_client_config.current.tenant_id
+  azure_client_id     = var.rhdh_azure_client_id
+  azure_client_secret = var.rhdh_azure_client_secret
+
+  # Infrastructure
+  key_vault_name      = module.security.key_vault_name
+  aks_oidc_issuer_url = module.aks.oidc_issuer_url
+  subnet_id           = module.networking.subnet_ids["aks"]
+
+  # Features
+  enable_techdocs          = true
+  enable_kubernetes_plugin = true
+
+  tags = local.common_tags
+}
+```
+
+#### Key Features
+
+- **Helm-based deployment** using official RHDH chart
+- **Workload Identity** for secure Azure authentication
+- **TechDocs** with Azure Blob Storage backend
+- **PostgreSQL** external database (from databases module)
+- **GitHub App** integration for SCM and scaffolding
+- **ArgoCD** integration for deployment status
+- **Kubernetes plugin** for workload visibility
+- **Pod Disruption Budget** for high availability
+- **RBAC ClusterRole** for Kubernetes read access
+
+---
+
 ## 5. H3 Innovation Modules
 
 These modules add advanced AI/ML capabilities.

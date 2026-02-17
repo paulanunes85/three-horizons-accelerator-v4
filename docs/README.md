@@ -36,21 +36,23 @@
 | [Administrator Guide](guides/ADMINISTRATOR_GUIDE.md) | Day-2 operations, scaling, backup, monitoring | ~40 |
 | [Troubleshooting Guide](guides/TROUBLESHOOTING_GUIDE.md) | Common issues and solutions | ~35 |
 | [Module Reference](guides/MODULE_REFERENCE.md) | Terraform module documentation | ~30 |
+| [Performance Tuning Guide](guides/PERFORMANCE_TUNING_GUIDE.md) | Performance optimization recommendations | ~20 |
 
 ### Reference Documentation
 
 | Document | Description |
 |----------|-------------|
 | [Branching Strategy](BRANCHING_STRATEGY.md) | Git workflow and branch protection |
-| [Agent System](../AGENTS.md) | **Copilot Chat Agents** (10 agents in VS Code) |
+| [Agent System](../AGENTS.md) | **Copilot Chat Agents** (11 agents in VS Code) |
 
 ### Agent Documentation
 
-The 10 Copilot Chat Agents are located in `.github/agents/`. See [AGENTS.md](../AGENTS.md) for full details.
+The 11 Copilot Chat Agents are located in `.github/agents/`. See [AGENTS.md](../AGENTS.md) for full details.
 
 | Agent | Role |
 |-------|------|
 | @architect | System architecture, AI Foundry, multi-agent design |
+| @deploy | Deployment orchestration, end-to-end platform deployment |
 | @devops | CI/CD, GitOps, MLOps, Golden Paths, pipelines |
 | @docs | Documentation generation and maintenance |
 | @onboarding | New team member onboarding and guidance |
@@ -181,6 +183,7 @@ Terraform module documentation:
 - ArgoCD
 - external-secrets
 - GitHub-runners
+- rhdh
 - cost-management
 - disaster-recovery
 - ai-foundry
@@ -194,12 +197,22 @@ docs/
 ├── README.md                    # This index file
 ├── BRANCHING_STRATEGY.md        # Git workflow
 │
-└── guides/
-    ├── DEPLOYMENT_GUIDE.md      # Step-by-step deployment
-    ├── ARCHITECTURE_GUIDE.md    # System architecture
-    ├── ADMINISTRATOR_GUIDE.md   # Operations manual
-    ├── TROUBLESHOOTING_GUIDE.md # Problem solving
-    └── MODULE_REFERENCE.md      # Terraform modules
+├── guides/
+│   ├── DEPLOYMENT_GUIDE.md      # Step-by-step deployment
+│   ├── ARCHITECTURE_GUIDE.md    # System architecture
+│   ├── ADMINISTRATOR_GUIDE.md   # Operations manual
+│   ├── TROUBLESHOOTING_GUIDE.md # Problem solving
+│   ├── MODULE_REFERENCE.md      # Terraform modules
+│   └── PERFORMANCE_TUNING_GUIDE.md # Performance optimization
+│
+└── runbooks/
+    ├── README.md                # Runbook index
+    ├── deployment-runbook.md    # Deployment procedures
+    ├── rollback-runbook.md      # Rollback procedures
+    ├── incident-response.md     # Incident response
+    ├── emergency-procedures.md  # Emergency actions
+    ├── disaster-recovery.md     # DR procedures
+    └── node-replacement.md      # Node drain/replace
 ```
 
 ---

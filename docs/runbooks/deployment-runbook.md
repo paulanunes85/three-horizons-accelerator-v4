@@ -20,7 +20,7 @@ This runbook provides procedures for deploying the Three Horizons Platform. Use 
 ```
 
 Required versions:
-- Terraform >= 1.6.0
+- Terraform >= 1.5.0
 - Azure CLI >= 2.50.0
 - kubectl >= 1.28.0
 - Helm >= 3.12.0

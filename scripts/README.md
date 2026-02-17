@@ -10,22 +10,20 @@ This directory contains automation scripts for the Three Horizons Platform.
 
 | Script | Description | Usage |
 |--------|-------------|-------|
+| `deploy-full.sh` | **Full automated deployment (recommended)** | `./deploy-full.sh --environment dev` |
 | `platform-bootstrap.sh` | Full platform deployment | `./platform-bootstrap.sh --environment dev` |
 | `bootstrap.sh` | H1 infrastructure setup | `./bootstrap.sh` |
 | `deploy-aro.sh` | Azure Red Hat OpenShift deployment | `./deploy-aro.sh` |
 
 ### Validation Scripts
 
-> **Note:** Validation scripts are located in `.github/skills/validation-scripts/scripts/`, not in this directory.
-> They are part of the agent skills system. See [AGENTS.md](../AGENTS.md) for details.
-
 | Script | Description | Usage |
 |--------|-------------|-------|
-| `validate-config.sh` | Configuration validation | `.github/skills/validation-scripts/scripts/validate-config.sh --config terraform.tfvars` |
-| `validate-prerequisites.sh` | CLI tools verification | `.github/skills/validation-scripts/scripts/validate-prerequisites.sh` |
-| `validate-naming.sh` | Naming conventions check | `.github/skills/validation-scripts/scripts/validate-naming.sh` |
-| `validate-agents.sh` | Agent specifications validation | `.github/skills/validation-scripts/scripts/validate-agents.sh` |
-| `validate-deployment.sh` | Post-deployment health check | `.github/skills/validation-scripts/scripts/validate-deployment.sh --environment prod` |
+| `validate-prerequisites.sh` | CLI tools verification | `./validate-prerequisites.sh` |
+| `validate-config.sh` | Configuration validation | `./validate-config.sh --config terraform.tfvars` |
+| `validate-deployment.sh` | Post-deployment health check | `./validate-deployment.sh --environment prod` |
+| `validate-agents.sh` | Agent specifications validation | `./validate-agents.sh` |
+| `validate-docs.sh` | Documentation validation | `./validate-docs.sh` |
 
 ### Setup Scripts
 
@@ -35,6 +33,7 @@ This directory contains automation scripts for the Three Horizons Platform.
 | `setup-identity-federation.sh` | OIDC workload identity | `./setup-identity-federation.sh` |
 | `setup-pre-commit.sh` | Pre-commit hooks | `./setup-pre-commit.sh` |
 | `setup-branch-protection.sh` | GitHub branch rules | `./setup-branch-protection.sh` |
+| `setup-terraform-backend.sh` | Terraform state backend setup | `./setup-terraform-backend.sh` |
 
 ### Operations Scripts
 
@@ -69,7 +68,15 @@ This directory contains automation scripts for the Three Horizons Platform.
 ### Deploy Platform
 
 ```bash
-# Full deployment (all horizons)
+# Recommended: Full automated deployment (3 options)
+# Option A — Agent-guided:
+#   @deploy Deploy the platform to dev environment
+
+# Option B — Automated script:
+./deploy-full.sh --environment dev --dry-run
+./deploy-full.sh --environment dev
+
+# Option C — Manual:
 ./platform-bootstrap.sh --environment dev --horizon all
 
 # Deploy specific horizon

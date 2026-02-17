@@ -10,6 +10,7 @@ This directory contains operational runbooks for the Three Horizons Platform.
 | [Emergency Procedures](emergency-procedures.md) | Critical emergency actions and escalation | P1 |
 | [Deployment Runbook](deployment-runbook.md) | Manual deployment procedures | P2 |
 | [Rollback Runbook](rollback-runbook.md) | Rollback procedures for failed deployments | P2 |
+| [Node Replacement](node-replacement.md) | Node drain and replacement procedures | P2 |
 | [Disaster Recovery](disaster-recovery.md) | DR procedures and failover | P1 |
 
 ## Runbook Structure

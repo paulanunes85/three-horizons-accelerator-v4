@@ -1,5 +1,11 @@
 # Performance Tuning Guide
 
+> **Version:** 4.0.0
+> **Last Updated:** December 2025
+> **Audience:** Platform Engineers, SRE Teams
+
+---
+
 ## Overview
 
 This guide provides recommendations for optimizing the performance of the Three Horizons Platform across all components.
