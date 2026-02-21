@@ -160,7 +160,7 @@ fi
 
 # -- Phase 1: Create kind Cluster ---------------------------------------------
 if should_run_phase 1; then
-  echo -e "\n${BOLD}━━━ Phase 1/6: Create kind Cluster ━━━${NC}"
+  echo -e "\n${BOLD}━━━ Phase 1/7: Create kind Cluster ━━━${NC}"
 
   if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     warn "Cluster $CLUSTER_NAME already exists — using existing"
@@ -185,7 +185,7 @@ fi
 
 # -- Phase 2: H1 Foundation ---------------------------------------------------
 if should_run_phase 2; then
-  echo -e "\n${BOLD}━━━ Phase 2/6: H1 Foundation ━━━${NC}"
+  echo -e "\n${BOLD}━━━ Phase 2/7: H1 Foundation ━━━${NC}"
 
   # Namespaces
   log "Creating namespaces..."
@@ -243,7 +243,7 @@ fi
 
 # -- Phase 3: H2 Enhancement --------------------------------------------------
 if should_run_phase 3; then
-  echo -e "\n${BOLD}━━━ Phase 3/6: H2 Enhancement — GitOps + Observability ━━━${NC}"
+  echo -e "\n${BOLD}━━━ Phase 3/7: H2 Enhancement — GitOps + Observability ━━━${NC}"
 
   # ArgoCD
   helm_install "argocd" "argo/argo-cd" "$NS_ARGOCD" \
@@ -274,7 +274,7 @@ fi
 
 # -- Phase 4: Databases -------------------------------------------------------
 if should_run_phase 4; then
-  echo -e "\n${BOLD}━━━ Phase 4/6: Databases ━━━${NC}"
+  echo -e "\n${BOLD}━━━ Phase 4/7: Databases ━━━${NC}"
 
   if [[ "$DRY_RUN" == "false" ]]; then
     # PostgreSQL
@@ -297,7 +297,7 @@ fi
 
 # -- Phase 5: Platform (Developer Portal) — Optional --------------------------
 if should_run_phase 5; then
-  echo -e "\n${BOLD}━━━ Phase 5/6: Developer Portal ━━━${NC}"
+  echo -e "\n${BOLD}━━━ Phase 5/7: Developer Portal ━━━${NC}"
 
   if [[ "$SKIP_RHDH" == "true" || "$RHDH_ENABLED" != "true" ]]; then
     warn "Developer portal skipped (set RHDH_ENABLED=true to enable)"
@@ -344,9 +344,50 @@ if should_run_phase 5; then
   save_checkpoint 5
 fi
 
-# -- Phase 6: Dashboards + Validation -----------------------------------------
+# -- Phase 6: AWX (Ansible Automation) — Optional -----------------------------
 if should_run_phase 6; then
-  echo -e "\n${BOLD}━━━ Phase 6/6: Dashboards + Validation ━━━${NC}"
+  echo -e "\n${BOLD}━━━ Phase 6/7: AWX (Ansible Automation Platform) ━━━${NC}"
+
+  if [[ "${AWX_ENABLED:-false}" != "true" ]]; then
+    warn "AWX skipped (set AWX_ENABLED=true to enable)"
+  else
+    if [[ "$DRY_RUN" == "true" ]]; then
+      log "[DRY-RUN] Would install AWX Operator + AWX instance in namespace awx"
+    else
+      # Create AWX namespace
+      kubectl create namespace awx --dry-run=client -o yaml | kubectl apply -f -
+
+      # Install AWX Operator via kustomize
+      log "Installing AWX Operator v2.19.1..."
+      kubectl apply -k "$SCRIPT_DIR/manifests/awx-operator/"
+      log "Waiting for AWX Operator to be ready..."
+      sleep 15
+      kubectl wait --for=condition=available deployment/awx-operator-controller-manager \
+        -n awx --timeout=120s 2>/dev/null || warn "Operator still starting..."
+
+      # Deploy AWX instance
+      log "Deploying AWX instance (this takes 3-5 minutes)..."
+      kubectl apply -f "$SCRIPT_DIR/manifests/awx-instance.yaml"
+
+      # Wait for AWX pods (takes a while — operator creates PostgreSQL + AWX pods)
+      log "Waiting for AWX pods to start..."
+      sleep 30
+      kubectl wait --for=condition=ready pod -l app.kubernetes.io/managed-by=awx-operator \
+        -n awx --timeout=300s 2>/dev/null || warn "AWX still starting — check: kubectl get pods -n awx"
+
+      # Get admin password
+      AWX_PASS=$(kubectl get secret awx-demo-admin-password -n awx \
+        -o jsonpath="{.data.password}" 2>/dev/null | base64 -d 2>/dev/null || echo "pending")
+      ok "AWX ready — admin password: $AWX_PASS"
+    fi
+  fi
+
+  save_checkpoint 6
+fi
+
+# -- Phase 7: Dashboards + Validation -----------------------------------------
+if should_run_phase 7; then
+  echo -e "\n${BOLD}━━━ Phase 7/7: Dashboards + Validation ━━━${NC}"
 
   # Import Grafana dashboards
   if [[ -x "$SCRIPT_DIR/dashboards/import-dashboards.sh" && "$DRY_RUN" == "false" ]]; then
@@ -384,7 +425,10 @@ else
   echo -e "  ${GREEN}Grafana${NC}     http://localhost:3000       (admin / admin)"
   echo -e "  ${GREEN}Prometheus${NC}  http://localhost:9090"
   if [[ "$RHDH_ENABLED" == "true" && "$SKIP_RHDH" != "true" ]]; then
-    echo -e "  ${GREEN}RHDH${NC}        http://localhost:7007"
+    echo -e "  ${GREEN}Portal${NC}      http://localhost:7007       (${PORTAL_TYPE:-backstage})"
+  fi
+  if [[ "${AWX_ENABLED:-false}" == "true" ]]; then
+    echo -e "  ${GREEN}AWX${NC}         http://localhost:8052       (admin / make awx-password)"
   fi
   echo ""
   echo -e "  ${BOLD}ArgoCD Credentials:${NC}"

@@ -129,11 +129,26 @@ fi
 
 # --- RHDH ---
 if [[ "$RHDH_ENABLED" == "true" ]]; then
-  header "Red Hat Developer Hub"
-  if kubectl get svc -n "$NS_RHDH" --no-headers 2>/dev/null | grep -q "rhdh"; then
-    pass "RHDH service exists"
+  header "Developer Portal (${PORTAL_TYPE:-backstage})"
+  if kubectl get svc -n "$NS_RHDH" --no-headers 2>/dev/null | grep -qE "rhdh|backstage"; then
+    pass "Developer portal service exists"
   else
-    warn "RHDH service not found (may not be installed)"
+    warn "Developer portal service not found (may not be installed)"
+  fi
+fi
+
+# --- AWX ---
+if [[ "${AWX_ENABLED:-false}" == "true" ]]; then
+  header "AWX (Ansible Automation)"
+  if kubectl get pods -n awx --no-headers 2>/dev/null | grep -q "Running"; then
+    pass "AWX pods running"
+    if kubectl get svc awx-demo-service -n awx &>/dev/null; then
+      pass "AWX service exists"
+    else
+      fail "AWX service missing"
+    fi
+  else
+    warn "AWX not running (may still be starting — takes 3-5 min)"
   fi
 fi
 

@@ -1,0 +1,61 @@
+# =============================================================================
+# THREE HORIZONS ACCELERATOR — AWX Instance (Local Demo)
+# =============================================================================
+# AWX is the upstream/open-source version of Ansible Automation Platform.
+# Deployed via the AWX Operator on kind.
+#
+# Access: http://localhost:8052
+# Login:  admin / (run: make -C local awx-password)
+# =============================================================================
+---
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx-demo
+  namespace: awx
+  labels:
+    app.kubernetes.io/part-of: three-horizons
+spec:
+  service_type: nodeport
+  nodeport_port: 30052
+
+  # Reduced resource limits for kind
+  web_resource_requirements:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  task_resource_requirements:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  ee_resource_requirements:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+  redis_resource_requirements:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  postgres_resource_requirements:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi

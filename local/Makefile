@@ -106,6 +106,15 @@ argocd-password: ## Show ArgoCD admin password
 	@kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d && echo "" || \
 		echo "Secret not found — is ArgoCD installed?"
 
+awx: ## Port-forward AWX → http://localhost:8052
+	@echo "AWX → http://localhost:8052"
+	@echo "Password: $$(kubectl get secret awx-demo-admin-password -n awx -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo 'run: make awx-password')"
+	@kubectl port-forward svc/awx-demo-service -n awx 8052:80
+
+awx-password: ## Show AWX admin password
+	@kubectl get secret awx-demo-admin-password -n awx -o jsonpath='{.data.password}' 2>/dev/null | base64 -d && echo "" || \
+		echo "Secret not found — is AWX installed?"
+
 # ---------------------------------------------------------------------------
 # Dashboards
 # ---------------------------------------------------------------------------
