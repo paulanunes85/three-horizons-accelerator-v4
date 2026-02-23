@@ -1,11 +1,11 @@
 # =============================================================================
-# THREE HORIZONS ACCELERATOR — Backstage (Upstream) Local Values Override
+# THREE HORIZONS ACCELERATOR — Backstage (Custom Build) Local Values Override
 # =============================================================================
-# Open-source Backstage from Spotify — no Red Hat registry required.
-# Functionally identical to RHDH for demos: catalog, templates, scaffolding.
+# Custom-built Backstage image with GitHub auth, catalog, scaffolder modules.
+# Includes all 22 Golden Path templates and TechDocs support.
 #
 # Chart: backstage/backstage (https://backstage.github.io/charts)
-# Image: ghcr.io/backstage/backstage (free, public)
+# Image: three-horizons-portal:local (built from backstage/)
 #
 # Use with: PORTAL_TYPE="backstage" in local/config/local.env
 # =============================================================================
@@ -14,9 +14,12 @@ backstage:
   replicas: 1
 
   image:
-    registry: ghcr.io
-    repository: backstage/backstage
-    tag: latest
+    registry: ""
+    repository: three-horizons-portal
+    tag: local
+    pullPolicy: Never
+
+  command: ["node", "packages/backend", "--config", "app-config.yaml", "--config", "app-config.production.yaml"]
 
   resources:
     requests:
@@ -27,6 +30,16 @@ backstage:
       memory: 2Gi
 
   extraEnvVars:
+    - name: APP_BASE_URL
+      value: "http://localhost:7007"
+    - name: POSTGRES_HOST
+      value: "postgresql.databases.svc.cluster.local"
+    - name: POSTGRES_PORT
+      value: "5432"
+    - name: POSTGRES_USER
+      value: "postgres"
+    - name: POSTGRES_PASSWORD
+      value: "demo-postgres-2026"
     - name: GITHUB_APP_ID
       valueFrom:
         secretKeyRef:
@@ -51,66 +64,6 @@ backstage:
           name: backstage-github-app
           key: private-key
           optional: true
-
-  appConfig:
-    app:
-      title: "Three Horizons — Developer Portal (Local)"
-      baseUrl: http://localhost:7007
-
-    backend:
-      baseUrl: http://localhost:7007
-      listen:
-        port: 7007
-      database:
-        client: pg
-        connection:
-          host: postgresql.databases.svc.cluster.local
-          port: 5432
-          user: postgres
-          password: demo-postgres-2026
-
-    auth:
-      environment: development
-      providers:
-        guest:
-          dangerouslyAllowOutsideDevelopment: true
-        github:
-          development:
-            clientId: ${GITHUB_APP_CLIENT_ID}
-            clientSecret: ${GITHUB_APP_CLIENT_SECRET}
-
-    integrations:
-      github:
-        - host: github.com
-          apps:
-            - appId: ${GITHUB_APP_ID}
-              clientId: ${GITHUB_APP_CLIENT_ID}
-              clientSecret: ${GITHUB_APP_CLIENT_SECRET}
-              privateKey: ${GITHUB_APP_PRIVATE_KEY}
-
-    catalog:
-      rules:
-        - allow: [Component, System, API, Resource, Location, Template]
-      locations:
-        - type: url
-          target: https://github.com/paulanunes85/three-horizons-accelerator-v4/blob/main/golden-paths/h1-foundation/*/template.yaml
-          rules:
-            - allow: [Template]
-        - type: url
-          target: https://github.com/paulanunes85/three-horizons-accelerator-v4/blob/main/golden-paths/h2-enhancement/*/template.yaml
-          rules:
-            - allow: [Template]
-        - type: url
-          target: https://github.com/paulanunes85/three-horizons-accelerator-v4/blob/main/golden-paths/h3-innovation/*/template.yaml
-          rules:
-            - allow: [Template]
-
-    techdocs:
-      builder: local
-      generator:
-        runIn: local
-      publisher:
-        type: local
 
 service:
   type: NodePort

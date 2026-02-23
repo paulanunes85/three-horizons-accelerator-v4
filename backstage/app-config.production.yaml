@@ -1,0 +1,146 @@
+# THREE HORIZONS ACCELERATOR - Backstage Production Config
+app:
+  title: Three Horizons Developer Portal
+  baseUrl: http://localhost:7007
+
+organization:
+  name: Three Horizons Accelerator
+
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    port: 7007
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+
+auth:
+  environment: development
+  providers:
+    guest:
+      dangerouslyAllowOutsideDevelopment: true
+    github:
+      development:
+        clientId: ${GITHUB_APP_CLIENT_ID}
+        clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+
+integrations:
+  github:
+    - host: github.com
+      apps:
+        - appId: ${GITHUB_APP_ID}
+          clientId: ${GITHUB_APP_CLIENT_ID}
+          clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+          privateKey: ${GITHUB_APP_PRIVATE_KEY}
+
+techdocs:
+  builder: local
+  generator:
+    runIn: local
+  publisher:
+    type: local
+
+scaffolder: {}
+
+catalog:
+  rules:
+    - allow: [Component, System, API, Resource, Location, Template, User, Group]
+  locations:
+    # -- h1-foundation --
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h1-foundation/new-microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h1-foundation/web-application/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h1-foundation/security-baseline/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h1-foundation/documentation-site/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h1-foundation/basic-cicd/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h1-foundation/infrastructure-provisioning/template.yaml
+      rules:
+        - allow: [Template]
+    # -- h2-enhancement --
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/api-microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/api-gateway/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/batch-job/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/data-pipeline/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/event-driven-microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/gitops-deployment/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/reusable-workflows/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/ado-to-github-migration/template.yaml
+      rules:
+        - allow: [Template]
+    # -- h3-innovation --
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/foundry-agent/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/rag-application/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/mlops-pipeline/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/multi-agent-system/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/ai-evaluation-pipeline/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/sre-agent-integration/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/copilot-extension/template.yaml
+      rules:
+        - allow: [Template]
+
+permission:
+  enabled: true
