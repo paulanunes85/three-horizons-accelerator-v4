@@ -31,9 +31,20 @@ Use `--dry-run` to preview first.
 ### Option C: Manual Guide
 Follow the step-by-step instructions in `docs/guides/DEPLOYMENT_GUIDE.md`.
 
+### Option D: Local Demo (No Azure Required)
+```bash
+make -C local up
+```
+Deploys the full platform locally on Docker Desktop + kind. No Azure subscription needed.
+
 ---
 
+**Before deployment, I need to know:**
+1. **Portal type:** Backstage (upstream, AKS only) or RHDH (enterprise, AKS or ARO)?
+2. **Portal name:** What should the developer portal be called?
+
 Which option would you prefer? If you're not sure, I recommend:
-- **New to the platform** → Option A (I'll guide you)
-- **Familiar with the platform** → Option B (fastest)
-- **Want full control** → Option C (manual)
+- **New to the platform** -> Option A (I'll guide you)
+- **Familiar with the platform** -> Option B (fastest)
+- **Want full control** -> Option C (manual)
+- **No Azure / Demo** -> Option D (local)

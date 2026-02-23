@@ -15,6 +15,10 @@ handoffs:
     agent: terraform
     prompt: "The user needs deep assistance with Terraform variable configuration."
     send: false
+  - label: "Start Deployment"
+    agent: deploy
+    prompt: "The user is ready to deploy the platform after onboarding."
+    send: false
 ---
 
 # Onboarding Agent

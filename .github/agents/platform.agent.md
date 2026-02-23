@@ -16,6 +16,14 @@ handoffs:
     agent: security
     prompt: "Review this template for security compliance."
     send: false
+  - label: "Backstage Portal"
+    agent: backstage-expert
+    prompt: "Configure or troubleshoot the Backstage developer portal."
+    send: false
+  - label: "RHDH Portal"
+    agent: rhdh-expert
+    prompt: "Configure or troubleshoot the Red Hat Developer Hub portal."
+    send: false
 ---
 
 # Platform Agent
