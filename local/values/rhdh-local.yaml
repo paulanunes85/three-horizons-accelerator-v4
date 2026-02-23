@@ -1,22 +1,11 @@
 # =============================================================================
-# THREE HORIZONS ACCELERATOR — RHDH Local Values Override
+# paulasilvatech — Three Horizons Agentic DevOps Platform (RHDH)
 # =============================================================================
-# Supports TWO authentication modes:
-#
-#   1. GUEST MODE (default) — No GitHub App required, instant access.
-#      Just set RHDH_ENABLED=true in local/config/local.env
-#
-#   2. GITHUB APP MODE — Full GitHub integration with catalog discovery,
-#      scaffolding, and org-based auth.
-#      Set these in local/config/local.env:
-#        RHDH_AUTH_MODE="github"
-#        GITHUB_APP_ID="..."
-#        GITHUB_APP_CLIENT_ID="..."
-#        GITHUB_APP_CLIENT_SECRET="..."
-#        GITHUB_APP_PRIVATE_KEY_FILE="/path/to/private-key.pem"
+# Red Hat Developer Hub — enterprise-grade developer portal.
+# Deploys via openshift-helm-charts/redhat-developer-hub.
 #
 # Requires: registry.redhat.io pull credentials (free developer account).
-# Enable with: RHDH_ENABLED=true in local/config/local.env
+# Enable with: PORTAL_TYPE="rhdh" + RHDH_ENABLED=true in local/config/local.env
 # =============================================================================
 
 upstream:
@@ -60,7 +49,7 @@ upstream:
 
     appConfig:
       app:
-        title: "paulasilvatech — Developer Hub (Local)"
+        title: "paulasilvatech — Three Horizons Developer Hub"
         baseUrl: http://localhost:7007
 
       backend:
@@ -101,16 +90,21 @@ upstream:
         rules:
           - allow: [Component, System, API, Resource, Location, Template]
         locations:
+          # Valid Golden Path Templates (YAML-compatible)
           - type: url
-            target: https://github.com/paulanunes85/three-horizons-accelerator-v4/blob/main/golden-paths/h1-foundation/*/template.yaml
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/ado-to-github-migration/template.yaml
             rules:
               - allow: [Template]
           - type: url
-            target: https://github.com/paulanunes85/three-horizons-accelerator-v4/blob/main/golden-paths/h2-enhancement/*/template.yaml
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h2-enhancement/api-microservice/template.yaml
             rules:
               - allow: [Template]
           - type: url
-            target: https://github.com/paulanunes85/three-horizons-accelerator-v4/blob/main/golden-paths/h3-innovation/*/template.yaml
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/copilot-extension/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/main/golden-paths/h3-innovation/rag-application/template.yaml
             rules:
               - allow: [Template]
 

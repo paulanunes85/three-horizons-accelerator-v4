@@ -1,11 +1,11 @@
 # =============================================================================
-# THREE HORIZONS ACCELERATOR — Backstage (Custom Build) Local Values Override
+# paulasilvatech — Agentic DevOps Platform (Backstage)
 # =============================================================================
 # Custom-built Backstage image with GitHub auth, catalog, scaffolder modules.
-# Includes all 22 Golden Path templates and TechDocs support.
+# Upstream open-source Backstage — no Red Hat registry required.
 #
 # Chart: backstage/backstage (https://backstage.github.io/charts)
-# Image: three-horizons-portal:local (built from backstage/)
+# Image: paulasilvatech-portal:local (built from backstage/)
 #
 # Use with: PORTAL_TYPE="backstage" in local/config/local.env
 # =============================================================================
@@ -15,7 +15,7 @@ backstage:
 
   image:
     registry: ""
-    repository: three-horizons-portal
+    repository: paulasilvatech-portal
     tag: local
     pullPolicy: Never
 
