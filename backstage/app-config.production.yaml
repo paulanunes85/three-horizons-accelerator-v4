@@ -1,6 +1,6 @@
-# Agentic DevOps Platform (Backstage) Production Config
+# Agentic DevOps Platform — Open Horizons (Backstage) Production Config
 app:
-  title: ${PORTAL_NAME:-paulasilvatech} — Agentic DevOps Platform
+  title: ${PORTAL_NAME:-paulasilvatech} — Agentic DevOps Platform (Open Horizons)
   baseUrl: ${APP_BASE_URL:-http://localhost:7007}
 
 organization:

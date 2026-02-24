@@ -1,6 +1,8 @@
 ---
 # =============================================================================
-# THREE HORIZONS ACCELERATOR — Organization Structure
+# AGENTIC DEVOPS PLATFORM — Organization Structure
+# =============================================================================
+# Shared across both Open Horizons (Backstage) and Three Horizons (RHDH).
 # =============================================================================
 # Domain, Systems, Groups, and Users for the developer portal catalog.
 # Groups here are referenced by Golden Path templates via OwnerPicker.
@@ -13,8 +15,8 @@ apiVersion: backstage.io/v1alpha1
 kind: Domain
 metadata:
   name: three-horizons-platform
-  title: Three Horizons Platform
-  description: Enterprise platform accelerator spanning Foundation (H1), Enhancement (H2), and Innovation (H3) horizons.
+  title: Agentic DevOps Platform
+  description: Enterprise platform accelerator spanning Foundation (H1), Enhancement (H2), and Innovation (H3) horizons. Deploys as Open Horizons (Backstage) or Three Horizons (RHDH).
 spec:
   owner: group:default/platform-engineering
 

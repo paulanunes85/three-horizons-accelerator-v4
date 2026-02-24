@@ -49,7 +49,7 @@ upstream:
 
     appConfig:
       app:
-        title: "paulasilvatech — Three Horizons Developer Hub"
+        title: "paulasilvatech — Agentic DevOps Platform (Three Horizons)"
         baseUrl: http://localhost:7007
 
       backend:

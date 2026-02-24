@@ -67,7 +67,7 @@ const resources = [
 ];
 
 const platformDocs = [
-  { title: 'Three Horizons Architecture', description: 'Platform architecture covering H1 Foundation, H2 Enhancement, and H3 Innovation.', url: '/docs' },
+  { title: 'Platform Architecture', description: 'Agentic DevOps Platform architecture covering H1 Foundation, H2 Enhancement, and H3 Innovation.', url: '/docs' },
   { title: 'Golden Path Templates', description: 'Scaffold new services using 22 standardized templates with best practices.', url: '/create' },
   { title: 'API Registry', description: 'Discover and consume APIs across the platform.', url: '/api-docs' },
   { title: 'Service Catalog', description: 'Browse all registered components, systems, and domains.', url: '/catalog' },

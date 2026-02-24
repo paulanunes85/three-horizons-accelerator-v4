@@ -99,7 +99,7 @@ const app = createApp({
           },
           'guest',
         ]}
-        title="paulasilvatech"
+        title="Open Horizons"
       />
     ),
   },

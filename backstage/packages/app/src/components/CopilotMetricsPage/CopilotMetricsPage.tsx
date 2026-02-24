@@ -62,8 +62,6 @@ interface DevStats {
   isLive: boolean;
 }
 
-const GITHUB_ORG = '3horizons';
-
 function useGitHubProductivity(): { data: DevStats; loading: boolean } {
   const config = useApi(configApiRef);
   const identityApi = useApi(identityApiRef);

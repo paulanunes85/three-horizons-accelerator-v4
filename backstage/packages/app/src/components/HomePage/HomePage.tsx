@@ -189,7 +189,7 @@ const HomePage = () => {
 
   return (
     <Page themeId="home">
-      <Header title="Dev Portal" subtitle="Three Horizons Accelerator" />
+      <Header title="Open Horizons" subtitle="Agentic DevOps Platform — Powered by Backstage" />
       <Content>
         {/* Hero Section */}
         <div className={classes.hero}>
@@ -236,7 +236,7 @@ const HomePage = () => {
           {/* Three Horizons Cards */}
           <Grid item xs={12}>
             <Typography className={classes.sectionTitle}>
-              <BubbleChartIcon color="primary" /> Three Horizons
+              <BubbleChartIcon color="primary" /> The Three Horizons
             </Typography>
           </Grid>
 

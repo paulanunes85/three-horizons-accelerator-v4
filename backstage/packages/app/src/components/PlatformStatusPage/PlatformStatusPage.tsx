@@ -49,7 +49,7 @@ const PlatformStatusPage = () => {
   const ok = services.filter(s => s.status === 'healthy').length;
   return (
     <Page themeId="tool">
-      <Header title="Platform Status" subtitle="Real-time health and status of the Three Horizons platform" />
+      <Header title="Platform Status" subtitle="Real-time health and status of the Agentic DevOps Platform" />
       <Content>
         <div className={classes.statusBanner}>
           <div>

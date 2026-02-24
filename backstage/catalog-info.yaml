@@ -2,8 +2,8 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: three-horizons-portal
-  title: Three Horizons Developer Portal
-  description: Enterprise developer portal powered by Backstage — the central hub for Golden Path templates, Service Catalog, TechDocs, APIs, and platform services.
+  title: Open Horizons Developer Portal
+  description: Enterprise developer portal powered by Backstage — the Open Horizons edition of the Agentic DevOps Platform. Central hub for Golden Path templates, Service Catalog, TechDocs, APIs, and platform services.
   annotations:
     github.com/project-slug: 3horizons/three-horizons-accelerator
     backstage.io/techdocs-ref: dir:.
