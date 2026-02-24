@@ -34,6 +34,12 @@ backstage:
       value: "paulasilvatech"
     - name: APP_BASE_URL
       value: "http://localhost:7007"
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: paulasilvatech-backstage-github-token
+          key: token
+          optional: true
     - name: POSTGRES_HOST
       value: "postgresql.databases.svc.cluster.local"
     - name: POSTGRES_PORT
