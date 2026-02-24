@@ -68,9 +68,19 @@ const resources = [
 
 const platformDocs = [
   { title: 'Three Horizons Architecture', description: 'Platform architecture covering H1 Foundation, H2 Enhancement, and H3 Innovation.', url: '/docs' },
-  { title: 'Golden Path Templates', description: 'Scaffold new services using standardized templates with best practices built in.', url: '/create' },
+  { title: 'Golden Path Templates', description: 'Scaffold new services using 22 standardized templates with best practices.', url: '/create' },
   { title: 'API Registry', description: 'Discover and consume APIs across the platform.', url: '/api-docs' },
   { title: 'Service Catalog', description: 'Browse all registered components, systems, and domains.', url: '/catalog' },
+  { title: 'Catalog Graph', description: 'Visualize entity relationships and system dependencies.', url: '/catalog-graph' },
+  { title: 'Notifications', description: 'Stay informed about platform events and template executions.', url: '/notifications' },
+];
+
+const onboardingSteps = [
+  { step: '1', title: 'Sign in with GitHub', description: 'Authenticate with your GitHub account to access all features.', done: true },
+  { step: '2', title: 'Explore the Catalog', description: 'Browse existing components, APIs, and systems in the Service Catalog.', done: false },
+  { step: '3', title: 'Create a Service', description: 'Use a Golden Path template to scaffold a new service with best practices.', done: false },
+  { step: '4', title: 'Open in Codespaces', description: 'Launch your scaffolded project in GitHub Codespaces for instant development.', done: false },
+  { step: '5', title: 'Read the TechDocs', description: 'Access documentation for any component directly from the catalog.', done: false },
 ];
 
 const LearningPage = () => {
@@ -119,7 +129,7 @@ const LearningPage = () => {
         </Typography>
         <Grid container spacing={3}>
           {platformDocs.map(doc => (
-            <Grid item xs={12} sm={6} md={3} key={doc.title}>
+            <Grid item xs={12} sm={6} md={4} key={doc.title}>
               <Card className={classes.card} variant="outlined">
                 <CardContent className={classes.cardContent}>
                   <Typography variant="h6" gutterBottom>{doc.title}</Typography>
@@ -130,6 +140,42 @@ const LearningPage = () => {
                     Explore
                   </Button>
                 </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Typography className={classes.sectionTitle} variant="h5">
+          Getting Started — Onboarding Checklist
+        </Typography>
+        <Grid container spacing={2}>
+          {onboardingSteps.map(item => (
+            <Grid item xs={12} sm={6} key={item.step}>
+              <Card variant="outlined" style={{ borderRadius: 8 }}>
+                <CardContent style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <Typography
+                    variant="h5"
+                    style={{
+                      background: 'linear-gradient(135deg, #0078D4, #00B7C3)',
+                      color: '#fff',
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {item.step}
+                  </Typography>
+                  <div>
+                    <Typography variant="subtitle1" style={{ fontWeight: 600 }}>{item.title}</Typography>
+                    <Typography variant="body2" color="textSecondary">{item.description}</Typography>
+                  </div>
+                </CardContent>
               </Card>
             </Grid>
           ))}

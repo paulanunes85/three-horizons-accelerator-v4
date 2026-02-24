@@ -501,19 +501,6 @@ spec:
         sourcePath: ./output
 
     # -------------------------------------------------------------------------
-    # Register in ArgoCD
-    # -------------------------------------------------------------------------
-    - id: register-argocd
-      name: Register Applications in ArgoCD
-      action: argocd:create-resources
-      input:
-        appName: ${{ parameters.appName }}
-        argoInstance: main
-        projectName: ${{ parameters.team }}
-        path: ./output/argocd
-        repoUrl: ${{ steps['create-repo'].output.remoteUrl }}
-
-    # -------------------------------------------------------------------------
     # Register in Catalog
     # -------------------------------------------------------------------------
     - id: register-catalog

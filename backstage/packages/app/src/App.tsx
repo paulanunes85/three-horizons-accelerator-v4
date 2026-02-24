@@ -26,6 +26,8 @@ import { searchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import HomePage from './components/HomePage/HomePage';
 import LearningPage from './components/LearningPage/LearningPage';
+import CopilotMetricsPage from './components/CopilotMetricsPage/CopilotMetricsPage';
+import PlatformStatusPage from './components/PlatformStatusPage/PlatformStatusPage';
 import { microsoftLightTheme, microsoftDarkTheme } from './theme';
 import { UnifiedThemeProvider } from '@backstage/theme';
 
@@ -139,6 +141,8 @@ const routes = (
     <Route path="/settings" element={<UserSettingsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
     <Route path="/learning" element={<LearningPage />} />
+    <Route path="/copilot-metrics" element={<CopilotMetricsPage />} />
+    <Route path="/platform-status" element={<PlatformStatusPage />} />
     <Route path="/notifications" element={<NotificationsPage />} />
   </FlatRoutes>
 );

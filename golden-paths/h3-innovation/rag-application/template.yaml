@@ -443,84 +443,14 @@ spec:
       name: Create GitHub Repository
       action: publish:github
       input:
+        allowedHosts: ['github.com']
         repoUrl: github.com?owner=${{ parameters.owner }}&repo=${{ parameters.repoName }}
         description: ${{ parameters.description }}
         defaultBranch: main
         repoVisibility: ${{ parameters.visibility }}
-        deleteBranchOnMerge: true
-        gitAuthorName: Three Horizons Platform
-        gitAuthorEmail: platform@${{ parameters.owner }}.com
         
     # -------------------------------------------------------------------------
-    # Step 6: Configure Repository Settings
-    # -------------------------------------------------------------------------
-    - id: configure-repo
-      name: Configure Repository
-      action: github:repo:push
-      input:
-        repoUrl: ${{ steps['create-repo'].output.repoUrl }}
-        branchProtection:
-          enabled: ${{ parameters.branchProtection }}
-          requirePullRequest: true
-          requiredReviewers: 1
-          dismissStaleReviews: true
-          requireCodeOwnerReviews: true
-          requireStatusChecks: true
-          requiredStatusChecks:
-            - build
-            - test
-            - security-scan
-        features:
-          copilot: ${{ parameters.enableCopilot }}
-          issues: true
-          wiki: false
-          projects: true
-          
-    # -------------------------------------------------------------------------
-    # Step 7: Enable GHAS
-    # -------------------------------------------------------------------------
-    - id: enable-ghas
-      name: Enable GitHub Advanced Security
-      if: ${{ parameters.enableGHAS }}
-      action: github:actions:dispatch
-      input:
-        repoUrl: ${{ steps['create-repo'].output.repoUrl }}
-        workflowId: enable-ghas.yml
-        branchOrTag: main
-        
-    # -------------------------------------------------------------------------
-    # Step 8: Create Azure Resources
-    # -------------------------------------------------------------------------
-    - id: create-azure-resources
-      name: Provision Azure AI Resources
-      action: azure:deploy
-      input:
-        templatePath: ./deploy/infrastructure/main.bicep
-        parameters:
-          appName: ${{ parameters.appName }}
-          environment: dev
-          searchTier: ${{ parameters.searchTier }}
-        resourceGroup: rg-${{ parameters.appName }}-dev
-        
-    # -------------------------------------------------------------------------
-    # Step 9: Create ArgoCD Application
-    # -------------------------------------------------------------------------
-    - id: create-argocd-app
-      name: Create ArgoCD Application
-      action: argocd:create-application
-      input:
-        appName: ${{ parameters.appName }}
-        repoUrl: ${{ steps['create-repo'].output.repoUrl }}
-        path: deploy/kubernetes/overlays/dev
-        namespace: ${{ parameters.owner }}-dev
-        project: ${{ parameters.owner }}
-        syncPolicy:
-          automated:
-            prune: true
-            selfHeal: true
-            
-    # -------------------------------------------------------------------------
-    # Step 10: Register in Catalog
+    # Step 6: Register in Catalog
     # -------------------------------------------------------------------------
     - id: register-catalog
       name: Register in Backstage Catalog
@@ -528,57 +458,6 @@ spec:
       input:
         repoContentsUrl: ${{ steps['create-repo'].output.repoContentsUrl }}
         catalogInfoPath: /catalog-info.yaml
-        
-    # -------------------------------------------------------------------------
-    # Step 11: Create Welcome PR
-    # -------------------------------------------------------------------------
-    - id: welcome-pr
-      name: Create Welcome PR
-      action: publish:github:pull-request
-      input:
-        repoUrl: ${{ steps['create-repo'].output.repoUrl }}
-        branchName: welcome-setup
-        title: '🚀 Welcome to your RAG Application!'
-        description: |
-          # Welcome to ${{ parameters.appName }}! 🎉
-          
-          Your RAG application has been created with the following configuration:
-          
-          ## 📋 Configuration
-          
-          | Setting | Value |
-          |---------|-------|
-          | Use Case | ${{ parameters.useCase }} |
-          | Embedding Model | ${{ parameters.embeddingModel }} |
-          | Chat Model | ${{ parameters.chatModel }} |
-          | Search Tier | ${{ parameters.searchTier }} |
-          | Content Safety | ${{ parameters.enableContentSafety }} |
-          | Groundedness | ${{ parameters.enableGroundedness }} |
-          
-          ## 🚀 Next Steps
-          
-          1. **Review this PR** and merge to enable the welcome changes
-          2. **Add your documents** to the `data/` folder or configure document sources
-          3. **Run the ingestion pipeline**: `python scripts/ingest.py`
-          4. **Test locally**: `uvicorn app.main:app --reload`
-          5. **Check your deployment** in ArgoCD
-          
-          ## 📚 Documentation
-          
-          - [Architecture](./docs/architecture.md)
-          - [API Reference](./docs/api.md)
-          - [Deployment Guide](./docs/deployment.md)
-          - [Adding Documents](./docs/ingestion.md)
-          
-          ## 🔗 Quick Links
-          
-          - [ArgoCD Application](https://argocd.${DNS_ZONE_NAME}/applications/${{ parameters.appName }})
-          - [Grafana Dashboard](https://grafana.${DNS_ZONE_NAME}/d/rag-${{ parameters.appName }})
-          - [API Docs](https://${{ parameters.appName }}.${DNS_ZONE_NAME}/docs)
-          
-          ---
-          
-          Happy building! 🤖
 
   # ===========================================================================
   # OUTPUT
@@ -593,23 +472,3 @@ spec:
       - title: Backstage Catalog
         url: ${{ steps['register-catalog'].output.entityRef }}
         icon: catalog
-        
-      - title: ArgoCD Application
-        url: https://argocd.${DNS_ZONE_NAME}/applications/${{ parameters.appName }}
-        icon: cloud
-        
-      - title: API Documentation
-        url: https://${{ parameters.appName }}.${DNS_ZONE_NAME}/docs
-        icon: docs
-        
-      - title: Grafana Dashboard
-        url: https://grafana.${DNS_ZONE_NAME}/d/rag-${{ parameters.appName }}
-        icon: dashboard
-        
-      - title: Azure Portal
-        url: https://portal.azure.com/#resource/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/rg-${{ parameters.appName }}-dev
-        icon: cloud
-        
-      - title: Welcome PR
-        url: ${{ steps['welcome-pr'].output.pullRequestUrl }}
-        icon: github

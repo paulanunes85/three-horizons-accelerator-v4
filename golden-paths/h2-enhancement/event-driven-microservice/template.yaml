@@ -405,7 +405,7 @@ spec:
       name: Fetch Base Template
       action: fetch:template
       input:
-        url: ./skeleton/${{ parameters.language }}
+        url: ./skeleton
         targetPath: ./repo
         values:
           serviceName: ${{ parameters.serviceName }}
@@ -539,30 +539,6 @@ spec:
         protectDefaultBranch: ${{ parameters.enableBranchProtection }}
         requireCodeOwnerReviews: true
         requiredApprovingReviewCount: 2
-
-    # -------------------------------------------------------------------------
-    # Enable GHAS
-    # -------------------------------------------------------------------------
-    - id: enable-ghas
-      name: Enable GitHub Advanced Security
-      if: ${{ parameters.enableGHAS }}
-      action: github:repo:push
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        defaultBranch: main
-
-    # -------------------------------------------------------------------------
-    # Create ArgoCD Application
-    # -------------------------------------------------------------------------
-    - id: create-argocd
-      name: Create ArgoCD Application
-      action: argocd:create-resources
-      input:
-        appName: ${{ parameters.serviceName }}
-        argoInstance: main
-        projectName: ${{ parameters.team }}
-        path: kubernetes/overlays/dev
-        repoUrl: ${{ steps['create-repo'].output.remoteUrl }}
 
     # -------------------------------------------------------------------------
     # Register in Catalog

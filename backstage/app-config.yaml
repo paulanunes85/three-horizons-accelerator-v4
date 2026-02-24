@@ -44,12 +44,15 @@ integrations:
     #   token: ${GHE_TOKEN}
 
 proxy:
-  ### Example for how to add a proxy endpoint for the frontend.
-  ### A typical reason to do this is to handle HTTPS and CORS for internal services.
-  # endpoints:
-  #   '/test':
-  #     target: 'https://example.com'
-  #     changeOrigin: true
+  endpoints:
+    '/github/api':
+      target: 'https://api.github.com'
+      headers:
+        Authorization: 'Bearer ${GITHUB_TOKEN}'
+        Accept: 'application/vnd.github+json'
+        X-GitHub-Api-Version: '2022-11-28'
+      changeOrigin: true
+      allowedMethods: ['GET']
 
 # Reference documentation http://backstage.io/docs/features/techdocs/configuration
 # Note: After experimenting with basic setup, use CI/CD to generate docs
@@ -76,33 +79,135 @@ catalog:
     entityFilename: catalog-info.yaml
     pullRequestBranchName: backstage-integration
   rules:
-    - allow: [Component, System, API, Resource, Location]
+    - allow: [Component, System, API, Resource, Location, Domain, Template, User, Group]
   locations:
-    # Local example data, file locations are relative to the backend process, typically `packages/backend`
+    # -----------------------------------------------------------------
+    # Platform Self-Registration
+    # -----------------------------------------------------------------
+    - type: file
+      target: ../../catalog-info.yaml
+
+    # -----------------------------------------------------------------
+    # Organization Data (groups, users, domain, systems)
+    # -----------------------------------------------------------------
+    - type: file
+      target: ../../examples/org.yaml
+      rules:
+        - allow: [User, Group, Domain, System]
+
+    # -----------------------------------------------------------------
+    # Platform Entities (components, APIs, resources)
+    # -----------------------------------------------------------------
     - type: file
       target: ../../examples/entities.yaml
 
-    # Local example template
+    # -----------------------------------------------------------------
+    # H1 Foundation Golden Path Templates (6)
+    # -----------------------------------------------------------------
+    - type: file
+      target: ../../../golden-paths/h1-foundation/web-application/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h1-foundation/new-microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h1-foundation/basic-cicd/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h1-foundation/documentation-site/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h1-foundation/infrastructure-provisioning/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h1-foundation/security-baseline/template.yaml
+      rules:
+        - allow: [Template]
+
+    # -----------------------------------------------------------------
+    # H2 Enhancement Golden Path Templates (9)
+    # -----------------------------------------------------------------
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/api-microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/api-gateway/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/gitops-deployment/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/event-driven-microservice/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/batch-job/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/data-pipeline/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/reusable-workflows/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h2-enhancement/ado-to-github-migration/template.yaml
+      rules:
+        - allow: [Template]
+
+    # -----------------------------------------------------------------
+    # H3 Innovation Golden Path Templates (7)
+    # -----------------------------------------------------------------
+    - type: file
+      target: ../../../golden-paths/h3-innovation/rag-application/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h3-innovation/copilot-extension/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h3-innovation/foundry-agent/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h3-innovation/multi-agent-system/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h3-innovation/mlops-pipeline/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h3-innovation/ai-evaluation-pipeline/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../../golden-paths/h3-innovation/sre-agent-integration/template.yaml
+      rules:
+        - allow: [Template]
+
+    # -----------------------------------------------------------------
+    # Example Template (Backstage stock)
+    # -----------------------------------------------------------------
     - type: file
       target: ../../examples/template/template.yaml
       rules:
         - allow: [Template]
-
-    # Local example organizational data
-    - type: file
-      target: ../../examples/org.yaml
-      rules:
-        - allow: [User, Group]
-
-    ## Uncomment these lines to add more example data
-    # - type: url
-    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
-
-    ## Uncomment these lines to add an example org
-    # - type: url
-    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/acme-corp.yaml
-    #   rules:
-    #     - allow: [User, Group]
 
 kubernetes:
   # see https://backstage.io/docs/features/kubernetes/configuration for kubernetes configuration options

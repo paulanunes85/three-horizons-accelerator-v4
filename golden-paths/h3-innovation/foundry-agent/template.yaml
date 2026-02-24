@@ -564,19 +564,6 @@ spec:
         requiredApprovingReviewCount: 2
 
     # -------------------------------------------------------------------------
-    # Create ArgoCD Application
-    # -------------------------------------------------------------------------
-    - id: create-argocd
-      name: Create ArgoCD Application
-      action: argocd:create-resources
-      input:
-        appName: ${{ parameters.agentName }}
-        argoInstance: main
-        projectName: ${{ parameters.team }}
-        path: kubernetes/overlays/dev
-        repoUrl: ${{ steps['create-repo'].output.remoteUrl }}
-
-    # -------------------------------------------------------------------------
     # Register in Catalog
     # -------------------------------------------------------------------------
     - id: register-catalog

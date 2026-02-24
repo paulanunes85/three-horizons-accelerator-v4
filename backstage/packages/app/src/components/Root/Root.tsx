@@ -7,6 +7,8 @@ import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
 import SchoolIcon from '@material-ui/icons/School';
 import DashboardIcon from '@material-ui/icons/Dashboard';
+import AssessmentIcon from '@material-ui/icons/Assessment';
+import FavoriteIcon from '@material-ui/icons/Favorite';
 import LogoFull from './LogoFull';
 import LogoIcon from './LogoIcon';
 import {
@@ -82,6 +84,8 @@ export const Root = ({ children }: PropsWithChildren<{}>) => (
         <SidebarItem icon={CreateComponentIcon} to="create" text="Create..." />
         <SidebarDivider />
         <SidebarItem icon={SchoolIcon} to="learning" text="Learning" />
+        <SidebarItem icon={AssessmentIcon} to="copilot-metrics" text="Copilot" />
+        <SidebarItem icon={FavoriteIcon} to="platform-status" text="Status" />
         <SidebarItem icon={DashboardIcon} to="catalog-graph" text="Graph" />
         {/* End global nav */}
         <SidebarDivider />

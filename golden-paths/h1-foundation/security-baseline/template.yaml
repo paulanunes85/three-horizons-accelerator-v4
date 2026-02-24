@@ -394,18 +394,6 @@ spec:
         sourcePath: ./output
         targetPath: .
 
-    # -------------------------------------------------------------------------
-    # Configure Repository Settings
-    # -------------------------------------------------------------------------
-    - id: configure-repo
-      name: Configure Repository Security Settings
-      action: github:repo:push
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        defaultBranch: main
-        gitAuthorName: RHDH Scaffolder
-        gitAuthorEmail: scaffolder@${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}.com
-
   # ===========================================================================
   # OUTPUT
   # ===========================================================================
