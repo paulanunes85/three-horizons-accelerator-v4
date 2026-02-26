@@ -298,15 +298,15 @@ upstream:
         branding:
           theme:
             light:
-              primaryColor: '#0078D4'
-              headerColor1: '#005A9E'
-              headerColor2: '#0078D4'
-              navigationIndicatorColor: '#0078D4'
+              primaryColor: '#EE0000'
+              headerColor1: '#7A0000'
+              headerColor2: '#EE0000'
+              navigationIndicatorColor: '#EE0000'
             dark:
-              primaryColor: '#4AA3FF'
-              headerColor1: '#005A9E'
-              headerColor2: '#0078D4'
-              navigationIndicatorColor: '#4AA3FF'
+              primaryColor: '#FF6666'
+              headerColor1: '#5C0000'
+              headerColor2: '#A30000'
+              navigationIndicatorColor: '#FF6666'
 
       organization:
         name: paulasilvatech
