@@ -1,0 +1,448 @@
+# =============================================================================
+# Developer Hub — Azure AKS Demo Deployment
+# =============================================================================
+# Helm values for RHDH on AKS with Azure PostgreSQL and NGINX Ingress
+# URLs: devhub.135.18.141.224.nip.io
+# =============================================================================
+
+global:
+  dynamic:
+    includes:
+      - dynamic-plugins.default.yaml
+    plugins:
+      # --- GitHub Catalog Auto-Discovery ---
+      - package: ./dynamic-plugins/dist/backstage-plugin-catalog-backend-module-github-dynamic
+        disabled: false
+        pluginConfig:
+          catalog:
+            providers:
+              github:
+                providerId:
+                  organization: paulanunes85
+      - package: ./dynamic-plugins/dist/backstage-plugin-catalog-backend-module-github-org-dynamic
+        disabled: false
+        pluginConfig:
+          catalog:
+            providers:
+              githubOrg:
+                id: production
+                githubUrl: https://github.com
+                orgs:
+                  - paulanunes85
+                schedule:
+                  frequency:
+                    minutes: 60
+                  initialDelay:
+                    seconds: 15
+                  timeout:
+                    minutes: 15
+      # --- GitHub Scaffolder ---
+      - package: ./dynamic-plugins/dist/backstage-plugin-scaffolder-backend-module-github-dynamic
+        disabled: false
+      # --- GitHub Actions ---
+      - package: ./dynamic-plugins/dist/backstage-community-plugin-github-actions
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage-community.plugin-github-actions:
+                mountPoints:
+                  - mountPoint: entity.page.ci/cards
+                    importName: EntityGithubActionsContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                      if:
+                        allOf:
+                          - isGithubActionsAvailable
+      # --- GitHub Issues ---
+      - package: ./dynamic-plugins/dist/backstage-community-plugin-github-issues
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage-community.plugin-github-issues:
+                mountPoints:
+                  - mountPoint: entity.page.issues/cards
+                    importName: GithubIssuesCard
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                      if:
+                        allOf:
+                          - hasAnnotation: github.com/project-slug
+      # --- GitHub Insights ---
+      - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-github-insights
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              roadiehq.backstage-plugin-github-insights:
+                mountPoints:
+                  - mountPoint: entity.page.overview/cards
+                    importName: EntityGithubInsightsComplianceCard
+                    config:
+                      layout:
+                        gridColumnEnd:
+                          lg: span 4
+                          md: span 6
+                          xs: span 12
+                      if:
+                        allOf:
+                          - isGithubInsightsAvailable
+      # --- GitHub Pull Requests ---
+      - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-github-pull-requests
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              roadiehq.backstage-plugin-github-pull-requests:
+                mountPoints:
+                  - mountPoint: entity.page.overview/cards
+                    importName: EntityGithubPullRequestsOverviewCard
+                    config:
+                      layout:
+                        gridColumnEnd:
+                          lg: span 4
+                          md: span 6
+                          xs: span 12
+                      if:
+                        allOf:
+                          - isGithubPullRequestsAvailable
+                  - mountPoint: entity.page.pull-requests/cards
+                    importName: EntityGithubPullRequestsContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                      if:
+                        allOf:
+                          - isGithubPullRequestsAvailable
+      # --- Kubernetes ---
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage.plugin-kubernetes:
+                mountPoints:
+                  - mountPoint: entity.page.kubernetes/cards
+                    importName: EntityKubernetesContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                      if:
+                        anyOf:
+                          - hasAnnotation: backstage.io/kubernetes-id
+                          - hasAnnotation: backstage.io/kubernetes-namespace
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
+        disabled: false
+        pluginConfig:
+          kubernetes:
+            serviceLocatorMethod:
+              type: multiTenant
+            clusterLocatorMethods:
+              - type: config
+                clusters: []
+      # --- Notifications ---
+      - package: ./dynamic-plugins/dist/backstage-plugin-notifications
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage.plugin-notifications:
+                dynamicRoutes:
+                  - importName: NotificationsPage
+                    menuItem:
+                      config:
+                        props:
+                          titleCounterEnabled: true
+                          webNotificationsEnabled: false
+                      importName: NotificationsSidebarItem
+                    path: /notifications
+      - package: ./dynamic-plugins/dist/backstage-plugin-notifications-backend-dynamic
+        disabled: false
+      # --- Signals ---
+      - package: ./dynamic-plugins/dist/backstage-plugin-signals
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage.plugin-signals: {}
+      - package: ./dynamic-plugins/dist/backstage-plugin-signals-backend-dynamic
+        disabled: false
+
+upstream:
+  backstage:
+    replicas: 1
+
+    image:
+      registry: quay.io
+      repository: rhdh/rhdh-hub-rhel9
+      tag: "1.4"
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+    podSecurityContext:
+      fsGroup: 1001
+      runAsUser: 1001
+      runAsGroup: 1001
+
+    containerSecurityContext:
+      readOnlyRootFilesystem: false
+      allowPrivilegeEscalation: false
+
+    extraEnvVars:
+      - name: GITHUB_APP_ID
+        valueFrom:
+          secretKeyRef:
+            name: rhdh-github-app
+            key: app-id
+            optional: true
+      - name: GITHUB_APP_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: rhdh-github-app
+            key: client-id
+            optional: true
+      - name: GITHUB_APP_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: rhdh-github-app
+            key: client-secret
+            optional: true
+      - name: GITHUB_APP_PRIVATE_KEY
+        valueFrom:
+          secretKeyRef:
+            name: rhdh-github-app
+            key: private-key
+            optional: true
+
+    extraAppConfig:
+      - filename: app-config-branding.yaml
+        configMapRef: rhdh-branding
+
+    appConfig:
+      app:
+        title: "paulasilvatech — Agentic DevOps Platform (Three Horizons)"
+        baseUrl: http://devhub.135.18.141.224.nip.io
+        branding:
+          theme:
+            light:
+              primaryColor: '#EE0000'
+              headerColor1: '#7A0000'
+              headerColor2: '#EE0000'
+              navigationIndicatorColor: '#EE0000'
+            dark:
+              primaryColor: '#FF6666'
+              headerColor1: '#5C0000'
+              headerColor2: '#A30000'
+              navigationIndicatorColor: '#FF6666'
+
+      organization:
+        name: paulasilvatech
+
+      backend:
+        baseUrl: http://devhub.135.18.141.224.nip.io
+        helmet:
+          contentSecurityPolicy: false
+          hsts:
+            maxAge: 0
+            includeSubDomains: false
+            preload: false
+        cors:
+          origin: http://devhub.135.18.141.224.nip.io
+          methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+          credentials: true
+        csp:
+          upgrade-insecure-requests: false
+        auth:
+          externalAccess:
+            - type: static
+              options:
+                token: demo-azure-token-3horizons-2026
+                subject: legacy-default
+        database:
+          client: pg
+          pluginDivisionMode: schema
+          connection:
+            host: pg-threehorizons-demo.postgres.database.azure.com
+            port: 5432
+            user: pgadmin
+            password: Thr33H0rizons2026Demo
+            database: rhdh
+            ssl:
+              require: true
+              rejectUnauthorized: false
+
+      auth:
+        environment: development
+        providers:
+          guest:
+            dangerouslyAllowOutsideDevelopment: true
+
+      # GitHub Integration — disabled until GitHub App is configured
+      # integrations:
+      #   github:
+      #     - host: github.com
+      #       apps:
+      #         - appId: ${GITHUB_APP_ID}
+      #           clientId: ${GITHUB_APP_CLIENT_ID}
+      #           clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+      #           privateKey: ${GITHUB_APP_PRIVATE_KEY}
+
+      proxy:
+        endpoints:
+          '/github/api':
+            target: https://api.github.com
+            headers:
+              Accept: application/vnd.github+json
+            changeOrigin: true
+            allowedMethods: ['GET']
+
+      scaffolder:
+        defaultAuthor:
+          name: Three Horizons Platform
+          email: platform@paulasilvatech.dev
+        defaultCommitMessage: "feat: initial scaffold from Golden Path"
+
+      catalog:
+        rules:
+          - allow: [Component, System, API, Resource, Location, Domain, Template, User, Group]
+        locations:
+          # H1 Foundation (6)
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h1-foundation/web-application/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h1-foundation/new-microservice/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h1-foundation/basic-cicd/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h1-foundation/documentation-site/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h1-foundation/infrastructure-provisioning/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h1-foundation/security-baseline/template.yaml
+            rules:
+              - allow: [Template]
+          # H2 Enhancement (9)
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/api-microservice/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/microservice/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/api-gateway/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/gitops-deployment/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/event-driven-microservice/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/batch-job/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/data-pipeline/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/reusable-workflows/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h2-enhancement/ado-to-github-migration/template.yaml
+            rules:
+              - allow: [Template]
+          # H3 Innovation (7)
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h3-innovation/rag-application/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h3-innovation/copilot-extension/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h3-innovation/foundry-agent/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h3-innovation/multi-agent-system/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h3-innovation/mlops-pipeline/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h3-innovation/ai-evaluation-pipeline/template.yaml
+            rules:
+              - allow: [Template]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/golden-paths/h3-innovation/sre-agent-integration/template.yaml
+            rules:
+              - allow: [Template]
+          # Organization Data
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/backstage/examples/org.yaml
+            rules:
+              - allow: [User, Group, Domain, System]
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/backstage/examples/entities.yaml
+          - type: url
+            target: https://github.com/paulanunes85/three-horizons-accelerator/blob/demo/backstage/catalog-info.yaml
+
+      techdocs:
+        builder: local
+        generator:
+          runIn: local
+        publisher:
+          type: local
+
+      kubernetes:
+        serviceLocatorMethod:
+          type: multiTenant
+        clusterLocatorMethods:
+          - type: config
+            clusters: []
+
+  ingress:
+    enabled: true
+    className: nginx
+    host: devhub.135.18.141.224.nip.io
+
+  service:
+    type: ClusterIP
+    ports:
+      backend: 7007
+      targetPort: "backend"
+
+  postgresql:
+    enabled: false
+
+route:
+  enabled: false
