@@ -286,6 +286,12 @@ upstream:
             name: rhdh-github-app
             key: private-key
             optional: true
+      - name: GITHUB_WEBHOOK_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: rhdh-github-app
+            key: webhook-secret
+            optional: true
 
     extraAppConfig:
       - filename: app-config-branding.yaml
@@ -347,18 +353,21 @@ upstream:
       auth:
         environment: development
         providers:
-          guest:
-            dangerouslyAllowOutsideDevelopment: true
+          github:
+            development:
+              clientId: ${GITHUB_APP_CLIENT_ID}
+              clientSecret: ${GITHUB_APP_CLIENT_SECRET}
 
-      # GitHub Integration — disabled until GitHub App is configured
-      # integrations:
-      #   github:
-      #     - host: github.com
-      #       apps:
-      #         - appId: ${GITHUB_APP_ID}
-      #           clientId: ${GITHUB_APP_CLIENT_ID}
-      #           clientSecret: ${GITHUB_APP_CLIENT_SECRET}
-      #           privateKey: ${GITHUB_APP_PRIVATE_KEY}
+      # GitHub Integration — enabled via rhdh-github-app secret
+      integrations:
+        github:
+          - host: github.com
+            apps:
+              - appId: ${GITHUB_APP_ID}
+                clientId: ${GITHUB_APP_CLIENT_ID}
+                clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+                webhookSecret: ${GITHUB_WEBHOOK_SECRET}
+                privateKey: ${GITHUB_APP_PRIVATE_KEY}
 
       proxy:
         endpoints:
