@@ -341,6 +341,7 @@ spec:
           appName: ${{ parameters.appName }}
           team: ${{ parameters.team }}
           description: ${{ parameters.description }}
+          repoUrl: ${{ parameters.repoUrl }}
           frontendFramework: ${{ parameters.frontendFramework }}
           uiLibrary: ${{ parameters.uiLibrary }}
           enableTypeScript: ${{ parameters.enableTypeScript }}
