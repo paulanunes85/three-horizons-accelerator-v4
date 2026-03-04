@@ -1,0 +1,24 @@
+# =============================================================================
+# THREE HORIZONS ACCELERATOR — Self-Signed ClusterIssuer (Local Demo)
+# =============================================================================
+# Replaces Let's Encrypt for local TLS demonstration.
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+  labels:
+    app.kubernetes.io/part-of: three-horizons
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    app.kubernetes.io/part-of: three-horizons
+  annotations:
+    description: "Local stand-in for letsencrypt-prod — uses self-signed CA"
+spec:
+  selfSigned: {}

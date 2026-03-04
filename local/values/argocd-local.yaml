@@ -1,0 +1,117 @@
+# =============================================================================
+# THREE HORIZONS ACCELERATOR — ArgoCD Local Values Override
+# =============================================================================
+# Overrides deploy/helm/argocd/values.yaml for local kind cluster.
+# Single replicas, no SSO, no HA, no ingress TLS.
+# =============================================================================
+
+global:
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v2.9.3
+  logging:
+    format: json
+    level: info
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+server:
+  replicas: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    type: NodePort
+    nodePortHttps: 30443
+  ingress:
+    enabled: false
+  rbacConfig:
+    policy.default: role:admin
+    policy.csv: |
+      g, admin, role:admin
+
+repoServer:
+  replicas: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    - name: HELM_CACHE_HOME
+      value: /helm-cache
+    - name: HELM_CONFIG_HOME
+      value: /helm-config
+    - name: HELM_DATA_HOME
+      value: /helm-data
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+
+applicationSet:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+notifications:
+  enabled: false
+
+redis:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+dex:
+  enabled: false
+
+configs:
+  secret:
+    createSecret: true
+  cm:
+    exec.enabled: "true"
+    admin.enabled: "true"
+    timeout.reconciliation: 180s
+    kustomize.buildOptions: --enable-helm
+  rbac:
+    create: true
+    policy.default: role:admin
+  params:
+    server.insecure: true
+    server.basehref: /
+    controller.status.processors: 10
+    controller.operation.processors: 5
+    controller.self.heal.timeout.seconds: 5

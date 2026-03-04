@@ -1,0 +1,115 @@
+# =============================================================================
+# paulasilvatech — Three Horizons Agentic DevOps Platform (RHDH)
+# =============================================================================
+# Red Hat Developer Hub — enterprise-grade developer portal.
+# Deploys via openshift-helm-charts/redhat-developer-hub.
+#
+# Requires: registry.redhat.io pull credentials (free developer account).
+# Enable with: PORTAL_TYPE="rhdh" + RHDH_ENABLED=true in local/config/local.env
+# =============================================================================
+
+upstream:
+  backstage:
+    replicas: 1
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    # -- Extra environment variables (populated by deploy-local.sh) -----------
+    extraEnvVars:
+      - name: GITHUB_APP_ID
+        valueFrom:
+          secretKeyRef:
+            name: paulasilvatech-devhub-github-app
+            key: app-id
+            optional: true
+      - name: GITHUB_APP_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: paulasilvatech-devhub-github-app
+            key: client-id
+            optional: true
+      - name: GITHUB_APP_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: paulasilvatech-devhub-github-app
+            key: client-secret
+            optional: true
+      - name: GITHUB_APP_PRIVATE_KEY
+        valueFrom:
+          secretKeyRef:
+            name: paulasilvatech-devhub-github-app
+            key: private-key
+            optional: true
+
+    appConfig:
+      app:
+        title: "paulasilvatech — Agentic DevOps Platform (Three Horizons)"
+        baseUrl: http://localhost:7007
+
+      backend:
+        baseUrl: http://localhost:7007
+        database:
+          client: pg
+          connection:
+            host: postgresql.databases.svc.cluster.local
+            port: 5432
+            user: postgres
+            password: demo-postgres-2026
+
+      # -- Authentication -----------------------------------------------------
+      # Guest mode is always enabled as fallback.
+      # GitHub App auth activates when the paulasilvatech-devhub-github-app secret exists.
+      auth:
+        environment: development
+        providers:
+          guest:
+            dangerouslyAllowOutsideDevelopment: true
+          github:
+            development:
+              clientId: ${GITHUB_APP_CLIENT_ID}
+              clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+
+      # -- GitHub Integration --------------------------------------------------
+      integrations:
+        github:
+          - host: github.com
+            apps:
+              - appId: ${GITHUB_APP_ID}
+                clientId: ${GITHUB_APP_CLIENT_ID}
+                clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+                privateKey: ${GITHUB_APP_PRIVATE_KEY}
+
+      # -- Catalog -------------------------------------------------------------
+      catalog:
+        rules:
+          - allow: [Component, System, API, Resource, Location, Template]
+        locations:
+          # Golden Path templates from 3horizons/golden-paths repo
+          - type: url
+            target: https://github.com/3horizons/golden-paths/blob/main/catalog-info.yaml
+            rules:
+              - allow: [Location, Template]
+
+      # -- TechDocs ------------------------------------------------------------
+      techdocs:
+        builder: local
+        generator:
+          runIn: local
+        publisher:
+          type: local
+
+    service:
+      type: NodePort
+      ports:
+        backend: 7007
+        targetPort: 7007
+        nodePort: 30700
+
+  postgresql:
+    enabled: false  # Using external PostgreSQL from databases namespace

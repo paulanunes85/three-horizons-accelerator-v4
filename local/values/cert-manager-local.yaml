@@ -1,0 +1,38 @@
+# =============================================================================
+# THREE HORIZONS ACCELERATOR — cert-manager Local Values Override
+# =============================================================================
+
+installCRDs: true
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+webhook:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+cainjector:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+startupapicheck:
+  enabled: true

@@ -1,0 +1,219 @@
+# =============================================================================
+# THREE HORIZONS ACCELERATOR — Monitoring Local Values Override
+# =============================================================================
+# Overrides deploy/helm/monitoring/values.yaml for local kind cluster.
+# Single replicas, hostpath storage, no SSO, no external alerts.
+# =============================================================================
+
+fullnameOverride: monitoring
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    replicas: 1
+    retention: 1d
+    retentionSize: 3GB
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+    additionalScrapeConfigs:
+      - job_name: 'argocd-metrics'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - argocd
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            regex: argocd-metrics
+            action: keep
+    externalLabels:
+      cluster: three-horizons-demo
+      environment: local
+  ingress:
+    enabled: false
+  service:
+    type: NodePort
+    nodePort: 30900
+
+grafana:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  persistence:
+    enabled: true
+    size: 2Gi
+  adminUser: admin
+  adminPassword: admin
+  ingress:
+    enabled: false
+  service:
+    type: NodePort
+    nodePort: 30300
+  grafana.ini:
+    server:
+      root_url: http://localhost:3000
+    auth.anonymous:
+      enabled: true
+      org_role: Viewer
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'three-horizons'
+          orgId: 1
+          folder: 'Three Horizons'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/three-horizons
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'namespace', 'severity']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'null'
+    receivers:
+      - name: 'null'
+  ingress:
+    enabled: false
+
+nodeExporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 30Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+kubeStateMetrics:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  admissionWebhooks:
+    enabled: true
+    patch:
+      enabled: true
+
+additionalPrometheusRulesMap:
+  three-horizons-rules:
+    groups:
+      - name: three-horizons.rules
+        rules:
+          - alert: ThreeHorizonsHighErrorRate
+            expr: |
+              sum(rate(http_requests_total{status=~"5.."}[5m]))
+              / sum(rate(http_requests_total[5m])) > 0.05
+            for: 5m
+            labels:
+              severity: critical
+              horizon: h2
+            annotations:
+              summary: "High error rate detected"
+              description: "Error rate is above 5% for the last 5 minutes"
+          - alert: ThreeHorizonsSlowResponse
+            expr: |
+              histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+            for: 10m
+            labels:
+              severity: warning
+              horizon: h2
+            annotations:
+              summary: "Slow response times detected"
+              description: "99th percentile latency is above 1 second"
+
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: false
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: false
+    kubelet: true
+    kubeProxy: false
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true

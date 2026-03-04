@@ -1,0 +1,41 @@
+# =============================================================================
+# THREE HORIZONS ACCELERATOR — ingress-nginx Local Values Override
+# =============================================================================
+# Configured for kind with hostPort binding.
+# =============================================================================
+
+controller:
+  replicas: 1
+
+  hostPort:
+    enabled: true
+
+  service:
+    type: NodePort
+
+  nodeSelector:
+    ingress-ready: "true"
+
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Equal"
+      effect: "NoSchedule"
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  admissionWebhooks:
+    enabled: true
+    patch:
+      enabled: true
+
+  metrics:
+    enabled: true
+
+defaultBackend:
+  enabled: false

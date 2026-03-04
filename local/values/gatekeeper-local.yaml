@@ -1,0 +1,38 @@
+# =============================================================================
+# THREE HORIZONS ACCELERATOR — Gatekeeper (OPA) Local Values Override
+# =============================================================================
+# Audit mode only — reports violations without blocking.
+# =============================================================================
+
+replicas: 1
+
+audit:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Audit mode: report violations without enforcement
+controllerManager:
+  exemptNamespaces:
+    - kube-system
+    - cert-manager
+    - ingress-nginx
+
+validatingWebhookFailurePolicy: Ignore
+
+# Log denials but don't block
+auditInterval: 300
+constraintViolationsLimit: 50
