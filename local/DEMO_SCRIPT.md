@@ -389,7 +389,7 @@ Abrir ArgoCD (`https://localhost:8443`):
 | Se isso falhar... | Faça isso |
 |--------------------|-----------|
 | Agent não responde | Use o comando bash diretamente |
-| RHDH não carrega | Mostre os template.yaml no VS Code |
+| Backstage não carrega | Mostre os template.yaml no VS Code |
 | Grafana sem dados | Espere 2 min para scraping, use `kubectl top nodes` |
 | ArgoCD timeout | `make argocd` (port-forward manual) |
 | Pods Pending | `kubectl describe pod -n <ns>` — provavelmente falta RAM |

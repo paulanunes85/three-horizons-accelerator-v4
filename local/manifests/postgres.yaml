@@ -2,7 +2,7 @@
 # THREE HORIZONS ACCELERATOR — PostgreSQL (Local Demo)
 # =============================================================================
 # Single-replica PostgreSQL for local demonstration.
-# Databases: postgres (default), rhdh, demo
+# Databases: postgres (default), backstage, demo
 # =============================================================================
 apiVersion: v1
 kind: ConfigMap
@@ -14,9 +14,9 @@ metadata:
     app.kubernetes.io/part-of: three-horizons
 data:
   init.sql: |
-    CREATE DATABASE rhdh;
+    CREATE DATABASE backstage;
     CREATE DATABASE demo;
-    GRANT ALL PRIVILEGES ON DATABASE rhdh TO postgres;
+    GRANT ALL PRIVILEGES ON DATABASE backstage TO postgres;
     GRANT ALL PRIVILEGES ON DATABASE demo TO postgres;
 ---
 apiVersion: v1

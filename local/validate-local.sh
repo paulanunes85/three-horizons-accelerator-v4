@@ -128,9 +128,9 @@ if [[ "$GATEKEEPER_ENABLED" == "true" ]]; then
 fi
 
 # --- Developer Portal ---
-if [[ "$RHDH_ENABLED" == "true" ]]; then
+if [[ "$Backstage_ENABLED" == "true" ]]; then
   header "Developer Portal (${PORTAL_TYPE:-backstage})"
-  if [[ "${PORTAL_TYPE:-backstage}" == "rhdh" ]]; then
+  if [[ "${PORTAL_TYPE:-backstage" == "backstage" ]]; then
     PORTAL_NS="${NS_DEVHUB:-devhub}"
   else
     PORTAL_NS="${NS_BACKSTAGE:-backstage}"

@@ -52,7 +52,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: rhdh
+  name: backstage
   labels:
     app.kubernetes.io/part-of: three-horizons
     three-horizons.io/horizon: h2

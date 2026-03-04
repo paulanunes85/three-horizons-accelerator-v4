@@ -14,7 +14,7 @@ SHELL := /bin/bash
 LOCAL_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: help up down status validate reset logs \
-        argocd grafana prometheus rhdh argocd-password \
+        argocd grafana prometheus backstage argocd-password \
         add-helm-repos
 
 help: ## Show available targets
@@ -94,14 +94,14 @@ prometheus: ## Port-forward Prometheus → http://localhost:9090
 	@kubectl port-forward svc/monitoring-kube-prometheus-prometheus -n observability 9090:9090 2>/dev/null || \
 		kubectl port-forward svc/kube-prometheus-stack-prometheus -n observability 9090:9090
 
-portal: ## Port-forward Developer Portal (Backstage or RHDH) → http://localhost:7007
+portal: ## Port-forward Developer Portal (Backstage or Backstage) → http://localhost:7007
 	@echo "Developer Portal → http://localhost:7007"
 	@kubectl port-forward svc/paulasilvatech-backstage -n backstage 7007:7007 2>/dev/null || \
 		kubectl port-forward svc/paulasilvatech-devhub-redhat-developer-hub -n devhub 7007:7007 2>/dev/null || \
 		kubectl port-forward svc/backstage -n backstage 7007:7007 2>/dev/null || \
-		echo "Portal not installed. Set RHDH_ENABLED=true in local/config/local.env"
+		echo "Portal not installed. Set Backstage_ENABLED=true in local/config/local.env"
 
-rhdh: portal ## Alias for portal (backward compat)
+backstage: portal ## Alias for portal (backward compat)
 
 argocd-password: ## Show ArgoCD admin password
 	@kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d && echo "" || \

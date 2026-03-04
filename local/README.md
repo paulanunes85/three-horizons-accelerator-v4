@@ -31,7 +31,7 @@ make -C local up
 | **Gatekeeper/OPA** (policies) | Always | Audit mode |
 | **PostgreSQL 16** | Always | databases namespace |
 | **Redis 7** | Always | databases namespace |
-| **RHDH** (Developer Hub) | Optional | http://localhost:7007 |
+| **Backstage** (Developer Hub) | Optional | http://localhost:7007 |
 | **Backstage** (Open Horizons) | Optional | http://localhost:7007 |
 | **Developer Hub** (Three Horizons) | Optional | http://localhost:7008 |
 | **17 Copilot Chat Agents** | Always | VS Code Copilot Chat |
@@ -59,7 +59,7 @@ make -C local up
 │  └──────────────┘  └───────────────┘                       │
 │                                                             │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐│
-│  │ 🔵 Backstage (Open)      │  │ 🔴 Developer Hub (RHDH)  ││
+│  │ 🔵 Backstage (Open)      │  │ 🔴 Developer Hub (Backstage)  ││
 │  │  backstage ns — :7007    │  │  devhub ns — :7008       ││
 │  │  Custom React pages      │  │  Dynamic plugins         ││
 │  │  Blue theme              │  │  Red theme + MS logos    ││
@@ -98,7 +98,7 @@ Allocate at least **16 GB RAM** and **6 CPUs** in Docker Desktop → Settings �
 | `make argocd` | Port-forward ArgoCD |
 | `make grafana` | Port-forward Grafana |
 | `make prometheus` | Port-forward Prometheus |
-| `make rhdh` | Port-forward RHDH |
+| `make backstage` | Port-forward Backstage |
 | `make argocd-password` | Show ArgoCD admin password |
 | `make dashboards` | Import Grafana dashboards |
 | `make logs NS=x POD=y` | Tail pod logs |
@@ -166,21 +166,21 @@ Default + enabled overrides:
 - **TechDocs**: Frontend + Backend + Addons (ReportIssue)
 - **Notifications**: Frontend + Backend
 - **Signals**: Frontend + Backend (real-time)
-- **RHDH Core**: Dynamic Home Page, Global Header, Extensions, Quickstart, Adoption Insights
+- **Backstage Core**: Dynamic Home Page, Global Header, Extensions, Quickstart, Adoption Insights
 
-## RHDH (Optional)
+## Backstage (Optional)
 
-RHDH requires credentials for `registry.redhat.io`:
+Backstage requires credentials for `registry.redhat.io`:
 
 1. Create a free account at https://developers.redhat.com
 2. Create a pull secret at https://console.redhat.com/openshift/install/pull-secret
 3. Configure Docker: `docker login registry.redhat.io`
-4. Set `RHDH_ENABLED=true` in `local/config/local.env`
+4. Set `Backstage_ENABLED=true` in `local/config/local.env`
 5. Re-run `make -C local up`
 
 ### Authentication Modes
 
-RHDH supports two authentication modes:
+Backstage supports two authentication modes:
 
 #### Guest Mode (default)
 
@@ -196,7 +196,7 @@ Go to https://github.com/settings/apps/new and fill in:
 
 | Field | Value |
 |-------|-------|
-| App name | `three-horizons-rhdh` |
+| App name | `three-horizons-backstage` |
 | Homepage URL | `http://localhost:7007` |
 | Callback URL | `http://localhost:7007/api/auth/github/handler/frame` |
 | Webhook active | **Uncheck** (not needed for local demo) |
@@ -228,14 +228,14 @@ After creating the app:
 Edit `local/config/local.env`:
 
 ```bash
-RHDH_AUTH_MODE="github"
+Backstage_AUTH_MODE="github"
 GITHUB_APP_ID="123456"
 GITHUB_APP_CLIENT_ID="Iv1.abc123..."
 GITHUB_APP_CLIENT_SECRET="your-client-secret"
-GITHUB_APP_PRIVATE_KEY_FILE="/Users/you/Downloads/three-horizons-rhdh.pem"
+GITHUB_APP_PRIVATE_KEY_FILE="/Users/you/Downloads/three-horizons-backstage.pem"
 ```
 
-**Step 4: Redeploy RHDH**
+**Step 4: Redeploy Backstage**
 
 ```bash
 make -C local up  # or: ./local/deploy-local.sh --phase 5
@@ -312,7 +312,7 @@ local/
 │   ├── cert-manager-local.yaml
 │   ├── gatekeeper-local.yaml
 │   ├── ingress-nginx-local.yaml
-│   └── rhdh-local.yaml        # Developer Hub Helm overrides (plugins, branding, catalog)
+│   └── backstage-local.yaml        # Developer Hub Helm overrides (plugins, branding, catalog)
 ├── manifests/
 │   ├── namespaces.yaml        # Platform namespaces
 │   ├── postgres.yaml          # PostgreSQL StatefulSet

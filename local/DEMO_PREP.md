@@ -163,8 +163,8 @@ kubectl -n devhub create secret generic paulasilvatech-devhub-github-app \
 
 ```bash
 helm upgrade --install paulasilvatech-devhub \
-  openshift-helm-charts/redhat-developer-hub \
-  -n devhub -f local/values/rhdh-local.yaml --wait=false
+  backstage/backstage \
+  -n devhub -f local/values/backstage-local.yaml --wait=false
 ```
 
 Wait for pod to be 1/1 Running, then port-forward on 7008.

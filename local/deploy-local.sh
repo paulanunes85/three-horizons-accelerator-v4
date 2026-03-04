@@ -9,7 +9,7 @@
 #   ./local/deploy-local.sh                     # Full deploy
 #   ./local/deploy-local.sh --dry-run            # Preview only
 #   ./local/deploy-local.sh --phase h1           # Deploy specific phase
-#   ./local/deploy-local.sh --skip-rhdh          # Skip RHDH
+#   ./local/deploy-local.sh --skip-backstage          # Skip Backstage
 #   ./local/deploy-local.sh --resume             # Resume from checkpoint
 #   ./local/deploy-local.sh --destroy            # Teardown
 # =============================================================================
@@ -33,7 +33,7 @@ source "$SCRIPT_DIR/config/local.env"
 DRY_RUN=false
 DESTROY=false
 RESUME=false
-SKIP_RHDH=false
+SKIP_BACKSTAGE=false
 TARGET_PHASE="all"
 
 while [[ $# -gt 0 ]]; do
@@ -41,10 +41,10 @@ while [[ $# -gt 0 ]]; do
     --dry-run)       DRY_RUN=true ;;
     --destroy)       DESTROY=true ;;
     --resume)        RESUME=true ;;
-    --skip-rhdh)     SKIP_RHDH=true ;;
+    --skip-backstage)     SKIP_BACKSTAGE=true ;;
     --phase)         TARGET_PHASE="$2"; shift ;;
     -h|--help)
-      echo "Usage: $0 [--dry-run] [--destroy] [--resume] [--skip-rhdh] [--phase h1|h2|all]"
+      echo "Usage: $0 [--dry-run] [--destroy] [--resume] [--skip-backstage] [--phase h1|h2|all]"
       exit 0
       ;;
     *) echo "Unknown flag: $1"; exit 1 ;;
@@ -300,7 +300,7 @@ if should_run_phase 5; then
   echo -e "\n${BOLD}━━━ Phase 5/7: Developer Portal ━━━${NC}"
 
   # Determine namespace and secret name based on portal type
-  if [[ "${PORTAL_TYPE:-backstage}" == "rhdh" ]]; then
+  if [[ "${PORTAL_TYPE:-backstage" == "backstage" ]]; then
     PORTAL_NS="${NS_DEVHUB:-devhub}"
     PORTAL_SECRET="${PORTAL_NAME:-paulasilvatech}-devhub-github-app"
   else
@@ -308,14 +308,14 @@ if should_run_phase 5; then
     PORTAL_SECRET="${PORTAL_NAME:-paulasilvatech}-backstage-github-app"
   fi
 
-  if [[ "$SKIP_RHDH" == "true" || "$RHDH_ENABLED" != "true" ]]; then
-    warn "Developer portal skipped (set RHDH_ENABLED=true to enable)"
+  if [[ "$SKIP_BACKSTAGE" == "true" || "$Backstage_ENABLED" != "true" ]]; then
+    warn "Developer portal skipped (set Backstage_ENABLED=true to enable)"
   else
     # Ensure namespace exists before creating secrets
     kubectl create namespace "$PORTAL_NS" --dry-run=client -o yaml | kubectl apply -f -
 
     # Create GitHub App secret if configured
-    if [[ "$RHDH_AUTH_MODE" == "github" && -n "$GITHUB_APP_CLIENT_ID" ]]; then
+    if [[ "$Backstage_AUTH_MODE" == "github" && -n "$GITHUB_APP_CLIENT_ID" ]]; then
       log "Configuring GitHub App authentication..."
       private_key=""
       if [[ -n "$GITHUB_APP_PRIVATE_KEY_FILE" && -f "$GITHUB_APP_PRIVATE_KEY_FILE" ]]; then
@@ -331,14 +331,14 @@ if should_run_phase 5; then
         --dry-run=client -o yaml | kubectl apply -f -
       ok "GitHub App secret ($PORTAL_SECRET) created in $PORTAL_NS"
     else
-      log "Using guest authentication (set RHDH_AUTH_MODE=github for GitHub App auth)"
+      log "Using guest authentication (set Backstage_AUTH_MODE=github for GitHub App auth)"
     fi
 
-    if [[ "${PORTAL_TYPE:-backstage}" == "rhdh" ]]; then
-      log "Installing Red Hat Developer Hub (RHDH)..."
+    if [[ "${PORTAL_TYPE:-backstage" == "backstage" ]]; then
+      log "Installing Backstage..."
       warn "Requires registry.redhat.io credentials. If this fails, switch to PORTAL_TYPE=backstage"
-      helm_install "${PORTAL_NAME:-paulasilvatech}-devhub" "openshift-helm-charts/redhat-developer-hub" "$PORTAL_NS" \
-        "$SCRIPT_DIR/values/rhdh-local.yaml"
+      helm_install "${PORTAL_NAME:-paulasilvatech}-devhub" "backstage/backstage" "$PORTAL_NS" \
+        "$SCRIPT_DIR/values/backstage-local.yaml"
     else
       log "Installing Backstage (upstream, open-source)..."
       helm_install "${PORTAL_NAME:-paulasilvatech}-backstage" "backstage/backstage" "$PORTAL_NS" \
@@ -434,7 +434,7 @@ else
   echo -e "  ${GREEN}ArgoCD${NC}      https://localhost:8443"
   echo -e "  ${GREEN}Grafana${NC}     http://localhost:3000       (admin / admin)"
   echo -e "  ${GREEN}Prometheus${NC}  http://localhost:9090"
-  if [[ "$RHDH_ENABLED" == "true" && "$SKIP_RHDH" != "true" ]]; then
+  if [[ "$Backstage_ENABLED" == "true" && "$SKIP_BACKSTAGE" != "true" ]]; then
     echo -e "  ${GREEN}Portal${NC}      http://localhost:7007       (${PORTAL_TYPE:-backstage})"
   fi
   if [[ "${AWX_ENABLED:-false}" == "true" ]]; then

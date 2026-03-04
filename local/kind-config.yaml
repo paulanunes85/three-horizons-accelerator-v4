@@ -40,7 +40,7 @@ nodes:
       - containerPort: 30900
         hostPort: 9090
         protocol: TCP
-      # RHDH NodePort
+      # Backstage NodePort
       - containerPort: 30700
         hostPort: 7007
         protocol: TCP
